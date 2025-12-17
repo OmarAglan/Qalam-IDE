@@ -36,7 +36,8 @@ TMenuBar::TMenuBar(QWidget* parent) {
 
     //QAction* folderAction = new QAction("فتح مجلد", parent);
     QAction* newAction = new QAction("جديد", parent);
-    QAction* openAction = new QAction("فتح", parent);
+    QAction* openFileAction = new QAction("فتح ملف", parent);
+    QAction* openFolderAction = new QAction("فتح مجلد", parent);
     QAction* saveAction = new QAction("حفظ", parent);
     QAction* saveAsAction = new QAction("حفظ باسم", parent);
     QAction* SettingsAction = new QAction("الإعدادات", parent);
@@ -50,7 +51,8 @@ TMenuBar::TMenuBar(QWidget* parent) {
     //fileMenu->addAction(folderAction);
     //fileMenu->addSeparator();
     fileMenu->addAction(newAction);
-    fileMenu->addAction(openAction);
+    fileMenu->addAction(openFileAction);
+    fileMenu->addAction(openFolderAction);
     fileMenu->addAction(saveAction);
     fileMenu->addAction(saveAsAction);
     fileMenu->addSeparator();
@@ -95,7 +97,8 @@ TMenuBar::TMenuBar(QWidget* parent) {
 
 
     connect(newAction, &QAction::triggered, this, &TMenuBar::onNewAction);
-    connect(openAction, &QAction::triggered, this, &TMenuBar::onOpenAction);
+    connect(openFileAction, &QAction::triggered, this, &TMenuBar::onOpenFileAction);
+    connect(openFolderAction, &QAction::triggered, this, &TMenuBar::onOpenFolderAction);
     connect(saveAction, &QAction::triggered, this, &TMenuBar::onSaveAction);
     connect(saveAsAction, &QAction::triggered, this, &TMenuBar::onSaveAsAction);
     connect(SettingsAction, &QAction::triggered, this, &TMenuBar::onSettingsAction);
@@ -106,5 +109,13 @@ TMenuBar::TMenuBar(QWidget* parent) {
     connect(aboutAction, &QAction::triggered, this, &TMenuBar::onAboutAction);
 }
 
-
+void TMenuBar::onNewAction() { emit newRequested(); }
+void TMenuBar::onOpenFileAction() { emit openFileRequested(); }
+void TMenuBar::onOpenFolderAction() { emit openFolderRequested(); }
+void TMenuBar::onSaveAction() { emit saveRequested(); }
+void TMenuBar::onSaveAsAction() { emit saveAsRequested(); }
+void TMenuBar::onSettingsAction() { emit settingsRequest(); }
+void TMenuBar::onExitApp() { emit exitRequested(); }
+void TMenuBar::onRunAction() { emit runRequested(); }
+void TMenuBar::onAboutAction() { emit aboutRequested(); }
 

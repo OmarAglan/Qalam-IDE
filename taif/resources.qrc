@@ -17,5 +17,10 @@
         <file>resources/TaifLogo.png</file>
         <file>resources/down-arrow.png</file>
         <file>resources/up-arrow.png</file>
+        <file>resources/side-bar.png</file>
+        <file>resources/run.png</file>
+    </qresource>
+    <qresource prefix="/json">
+        <file>resources/highlight-defination/alif.json</file>
     </qresource>
 </RCC>

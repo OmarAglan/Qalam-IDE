@@ -1,13 +1,20 @@
 #pragma once
 
-//#include "TFolders.h"
 #include "TEditor.h"
-//#include "TTerminal.h"
 #include "TMenu.h"
 #include "TSettings.h"
+#include "TConsole.h"
+#include "TSearchPanel.h"
 
 #include <QMainWindow>
+#include <QStatusBar>
 
+#include <QSplitter>
+
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class Taif; }
+QT_END_NAMESPACE
 
 class Taif : public QMainWindow
 {
@@ -16,15 +23,16 @@ class Taif : public QMainWindow
 public:
     Taif(const QString& filePath = "", QWidget* parent = nullptr);
     ~Taif();
-
+    void loadFolder(const QString &folderPath);
 protected:
     void closeEvent(QCloseEvent *event) override;
-
+    bool eventFilter(QObject *object, QEvent *event) override;
 private slots:
     void newFile();
     void openFile(QString);
     void saveFile();
     void saveFileAs();
+    void handleOpenFolderMenu();
     void openSettings();
     void exitApp();
 
@@ -33,15 +41,49 @@ private slots:
 
     void updateWindowTitle();
     void onModificationChanged(bool modified);
+    void onFileTreeDoubleClicked(const QModelIndex &index);
+    void closeTab(int index);
+    void toggleSidebar();
+
+    void toggleConsole();
+
+    void updateCursorPosition();
+    void onCurrentTabChanged();
+
+    void showFindBar();
+    void hideFindBar();
+    void findNextText();
+    void findPrevText();
+
+    void goToLine();
 
 private:
     int needSave();
+    TEditor* currentEditor();
 
 private:
-    TEditor* editor{};
+    QTabWidget *tabWidget{};
     TMenuBar* menuBar{};
     TSettings* settings{};
+    QAction *toggleSidebarAction{};
+    QString folderPath{};
+    QAbstractItemModel* model{};
 
-    QString currentFilePath{};
+    QSplitter *mainSplitter{};
+    QTreeView *fileTreeView{};
+    QFileSystemModel *fileSystemModel{};
 
+
+    QSplitter *editorSplitter;
+    TConsole *console;
+    QTabWidget *consoleTabWidget;
+
+    TConsole *cmdConsole;
+    TConsole *alifConsole;
+
+    QLabel *cursorPositionLabel;
+    QLabel *encodingLabel;
+    QProcess *alifProcess;
+    QProcess *currentAlifProcess = nullptr;
+    SearchPanel *searchBar;
 };

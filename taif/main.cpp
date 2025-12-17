@@ -1,8 +1,13 @@
 #include "Taif.h"
+#include "TWelcomeWindow.h"
 
 #include <QApplication>
 #include <QMessageBox>
 #include <QDebug>
+
+#include <QFileDialog>
+#include <QLockFile>
+#include <QDir>
 
 int main(int argc, char *argv[])
 {
@@ -10,6 +15,16 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName("Alif");
     QCoreApplication::setApplicationName("Taif");
     app.setLayoutDirection(Qt::RightToLeft);
+
+
+    QString lockPath = QDir::tempPath() + "/taif_editor.lock";
+    QLockFile lockFile(lockPath);
+
+    if (!lockFile.tryLock(100)) {
+        QMessageBox::warning(nullptr, "طيف",
+                             "البرنامج يعمل بالفعل!\nلا يمكن تشغيل أكثر من نسخة في نفس الوقت.");
+        return 0;
+    }
 
     int fontId1 = QFontDatabase::addApplicationFont(":/fonts/resources/fonts/Tajawal/Tajawal-Regular.ttf");
     int fontId2 = QFontDatabase::addApplicationFont(":/fonts/resources/fonts/KawkabMono-Regular.ttf");
@@ -24,7 +39,7 @@ int main(int argc, char *argv[])
         QStringList fontFamilies{};
         fontFamilies << notoKufi << tajawal << kawkabMono;
         font.setFamilies(fontFamilies);
-        font.setPointSize(12);
+        font.setPixelSize(14);
         font.setWeight(QFont::Weight::Normal);
         app.setFont(font);
     }
@@ -84,8 +99,6 @@ int main(int argc, char *argv[])
         }
     )");
 
-
-
     // لتشغيل ملف ألف بإستخدام محرر طيف عند إختيار المحرر ك برنامج للتشغيل
     QString filePath{};
     if (app.arguments().count() > 2) {
@@ -94,11 +107,20 @@ int main(int argc, char *argv[])
                                        QMessageBox::Close);
         return ret;
     }
+
     if (app.arguments().count() == 2) {
         filePath = app.arguments().at(1);
     }
 
-    Taif w(filePath);
-    w.showMaximized();
+    app.setQuitOnLastWindowClosed(true);
+
+    if (!filePath.isEmpty()) {
+        Taif *editor = new Taif(filePath);
+        editor->show();
+    } else {
+        WelcomeWindow *w = new WelcomeWindow();
+        w->show();
+    }
+
     return app.exec();
 }

@@ -1,63 +1,108 @@
 #include "THighlighter.h"
+#include <QDebug>
+#include <QFont>
+#include <QStringList>
+#include <QJsonParseError>
+#include <QJsonDocument>
+#include <QFile>
+#include <QJsonObject>
 
-
-SyntaxHighlighter::SyntaxHighlighter(QTextDocument* parent)
-    : QSyntaxHighlighter(parent) {
+THighlighter::THighlighter(QTextDocument *parent)
+    : QSyntaxHighlighter(parent)
+{
+    loadSyntaxDefinition(":/json/resources/highlight-defination/alif.json");
 }
 
-void SyntaxHighlighter::highlightBlock(const QString& text) {
-    Lexer lexer{};
-    QVector<Token> tokens = lexer.tokenize(text);
+void THighlighter::loadSyntaxDefinition(const QString &filePath)
+{
+    qDebug() << "[THighlighter] trying path:" << filePath;
 
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        qWarning() << "[THighlighter] QFile open failed:" << f.errorString();
+        return;
+    }
+
+    QByteArray data = f.readAll();
+    QJsonParseError err{};
+    QJsonDocument doc = QJsonDocument::fromJson(data, &err);
+
+    if (err.error != QJsonParseError::NoError) {
+        qWarning() << "[THighlighter] JSON parse error:" << err.errorString();
+        return;
+    }
+
+    if (!doc.isObject()) {
+        qWarning() << "[THighlighter] JSON root is not an object";
+        return;
+    }
+
+    if (m_definition.loadFromJson(doc.object())) {
+        rehighlight();
+        qDebug() << "[THighlighter] تم تحميل تعريف الصيغة بنجاح من JSON";
+    } else {
+        qWarning() << "[THighlighter] فشل تحميل تعريف الصيغة من JSON";
+    }
+}
+
+
+
+void THighlighter::highlightBlock(const QString &text)
+{
+    QVector<Token> tokens = m_lexer.tokenize(text);
     for (const auto& token : tokens) {
-        QTextCharFormat format;
+        QString styleName;
+
         switch (token.type) {
         case TokenType::Keyword:
-            format.setForeground(QColor(254, 135, 48));
-            // format.setForeground(QColor(255, 121, 198));
+            styleName = "Definition Keyword";
             break;
         case TokenType::Keyword1:
-            format.setForeground(QColor(218, 183, 68));
-            // format.setForeground(QColor(222, 49, 99));
+            styleName = "Operator Keyword";
             break;
         case TokenType::Keyword2:
-            format.setForeground(QColor(121, 129, 230));
-            // format.setForeground(QColor(204, 204, 255));
+            styleName = "Special Variable";
             break;
         case TokenType::Number:
-            format.setForeground(QColor(168, 135, 206));
-            // format.setForeground(QColor(255, 184, 108));
-            break;
-        case TokenType::Identifier:
-            if (isFunctionName(text, token.startPos + token.len)) {
-                format.setForeground(QColor(206, 147, 74));
-                // format.setForeground(QColor(139, 233, 253));
-            }
+            styleName = "Float";
             break;
         case TokenType::Comment:
-            format.setForeground(QColor(85, 91, 100));
-            // format.setForeground(QColor(98, 114, 164));
+            styleName = "Comment";
             break;
         case TokenType::String:
-            // format.setForeground(QColor(78, 116, 51));
-            // format.setForeground(QColor(80, 250, 123));
-            format.setForeground(QColor(0, 175, 4));
+            styleName = "String";
             break;
         case TokenType::Operator:
-            format.setForeground(QColor(224, 108, 117));
+            styleName = "Operator";
             break;
+        case TokenType::Identifier: {
+            QString tokenText = token.text;
+            if (isFunctionName(text, token.startPos + token.len)) {
+                styleName = "Overloaders";
+            } else {
+                QStringList builtins = {"اطبع", "ادخل", "مدى", "صحيح", "عشري", "منطق", "طول", "نوع"};
+                if (builtins.contains(tokenText)) styleName = "Builtin Function";
+                else styleName = "Normal Text";
+            }
+        } break;
         default:
+            styleName = "";
             break;
         }
-        setFormat(token.startPos, token.len, format);
+
+        if (!styleName.isEmpty()) {
+            QTextCharFormat format = m_definition.getStyleFormat(styleName);
+            if (format.isValid()) setFormat(token.startPos, token.len, format);
+            else qWarning() << "[THighlighter] نمط غير موجود في JSON:" << styleName;
+        }
     }
+
 }
 
-
-
-bool SyntaxHighlighter::isFunctionName(const QString& blockText, int idEndPos) {
-    if (idEndPos < blockText.length() and blockText[idEndPos] == '(') {
-        return true;
+bool THighlighter::isFunctionName(const QString& blockText, int idEndPos) {
+    int pos = idEndPos;
+    while (pos < blockText.length() && blockText[pos].isSpace()) {
+        pos++;
     }
-    return false;
+    return (pos < blockText.length() && blockText[pos] == '(');
 }
