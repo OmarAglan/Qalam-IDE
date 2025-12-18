@@ -5,8 +5,8 @@
 
 enum class TokenType {
     Keyword,
-    Keyword1,
-    Keyword2,
+    BiltinK,
+    SpecialK,
     Identifier,
     Number,
     Comment,
@@ -37,6 +37,6 @@ private:
     int isFString = 0;
 
     bool isKeyword(const QString& word);
-    bool isKeyword1(const QString& word);
-    bool isKeyword2(const QString& word);
+    bool isBiltinK(const QString& word);
+    bool isSpecialK(const QString& word);
 };

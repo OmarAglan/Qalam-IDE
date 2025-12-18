@@ -20,7 +20,7 @@ bool SyntaxDefinition::load(const QString &filePath)
 
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
-    if (doc.isNull() || !doc.isObject()) {
+    if (doc.isNull() or !doc.isObject()) {
         qWarning() << "JSON غير صالح في ملف تعريف الصيغة:" << filePath;
         qWarning() << "خطأ التحليل:" << parseError.errorString() << "عند الموضع:" << parseError.offset;
         return false;
@@ -261,23 +261,27 @@ QTextCharFormat SyntaxDefinition::createFormatFromStyleNum(const QString &defSty
         // النص العادي - لون افتراضي
         format.setForeground(QColor(250, 250, 250));
     }
-    // else if (defStyleNum == "dsKeyword" || defStyleNum == "dsControlFlow") {
-    //     // الكلمات المفتاحية - أزرق
-    //     format.setForeground(QColor("#569cd6"));
-    // }
+    else if (defStyleNum == "dsKeyword" or defStyleNum == "dsControlFlow") {
+        // الكلمات المفتاحية
+        format.setForeground(QColor(4, 165, 229));
+    }
     else if (defStyleNum == "dsOperator") {
         // المعاملات
         format.setForeground(QColor(234, 118, 203));
     }
-    // else if (defStyleNum == "dsBuiltIn") {
-    //     // الدوال المدمجة - أصفر
-    //     format.setForeground(QColor("#dcdcaa"));
-    // }
-    // else if (defStyleNum == "dsVariable" || defStyleNum == "dsFunction") {
-    //     // المتغيرات والدوال - أزرق فاتح
-    //     format.setForeground(QColor("#9cdcfe"));
-    // }
-    else if (defStyleNum == "dsString" || defStyleNum == "dsVerbatimString" || defStyleNum == "dsSpecialString") {
+    else if (defStyleNum == "dsBuiltIn") {
+        // الدوال المدمجة
+        format.setForeground(QColor(114, 135, 253));
+    }
+    else if (defStyleNum == "dsFunction") {
+        // الدوال
+        format.setForeground(QColor(140, 177, 255));
+    }
+    else if (defStyleNum == "dsVariable") {
+        // كلمات مفتاحية خاصة
+        format.setForeground(QColor(214, 150, 255));
+    }
+    else if (defStyleNum == "dsString" or defStyleNum == "dsVerbatimString" or defStyleNum == "dsSpecialString") {
         // النصوص
         format.setForeground(QColor(63, 209, 112));
     }
@@ -285,37 +289,35 @@ QTextCharFormat SyntaxDefinition::createFormatFromStyleNum(const QString &defSty
         // التعليقات
         format.setForeground(QColor(120, 120, 120));
     }
-    else if (defStyleNum == "dsFloat" || defStyleNum == "dsDecVal" || defStyleNum == "dsBaseN") {
+    else if (defStyleNum == "dsFloat" or defStyleNum == "dsDecVal" or defStyleNum == "dsBaseN") {
         // الأرقام
         format.setForeground(QColor(170, 112, 255));
     }
-    // else if (defStyleNum == "dsImport" || defStyleNum == "dsPreprocessor") {
-    //     // الاستيراد والمعالجات - وردي
+    // else if (defStyleNum == "dsImport" or defStyleNum == "dsPreprocessor") {
+    //     // الاستيراد والمعالجات
     //     format.setForeground(QColor("#c586c0"));
     // }
     else if (defStyleNum == "dsError") {
         // الأخطاء
         format.setForeground(QColor(210, 15, 57));
-        format.setFontUnderline(true);
     }
     // else if (defStyleNum == "dsAttribute") {
-    //     // السمات - أزرق
+    //     // السمات
     //     format.setForeground(QColor("#9cdcfe"));
-    //     format.setFontItalic(true);
     // }
     // else if (defStyleNum == "dsChar") {
-    //     // المحارف - برتقالي
+    //     // المحارف
     //     format.setForeground(QColor("#ce9178"));
     // }
     // else if (defStyleNum == "dsSpecialChar") {
-    //     // المحارف الخاصة - وردي
+    //     // المحارف الخاصة
     //     format.setForeground(QColor("#d7ba7d"));
     // }
-    // else {
-    //     // نمط افتراضي
-    //     format.setForeground(QColor("#cccccc"));
-    //     qDebug() << "نمط غير معروف:" << defStyleNum << "-> استخدام الافتراضي";
-    // }
+    else {
+        // نمط افتراضي
+        format.setForeground(QColor(250, 250, 250));
+        qDebug() << "نمط غير معروف:" << defStyleNum << "-> استخدام الافتراضي";
+    }
 
     return format;
 }
@@ -327,7 +329,7 @@ bool SyntaxDefinition::parseRules(const QJsonArray &rulesArray)
         if (!value.isObject()) continue;
         QJsonObject ruleObject = value.toObject();
 
-        if (!ruleObject.contains("match") || !ruleObject["match"].isString()) continue;
+        if (!ruleObject.contains("match") or !ruleObject["match"].isString()) continue;
 
         HighlightingRule rule;
         rule.pattern = QRegularExpression(ruleObject["match"].toString());
@@ -350,7 +352,7 @@ bool SyntaxDefinition::parseRules(const QJsonArray &rulesArray)
             for (auto it = captures.constBegin(); it != captures.constEnd(); ++it) {
                 bool ok;
                 int captureIndex = it.key().toInt(&ok);
-                if (!ok || captureIndex <= 0) continue;
+                if (!ok or captureIndex <= 0) continue;
 
                 if (it.value().isObject()) {
                     QJsonObject captureStyleObj = it.value().toObject();

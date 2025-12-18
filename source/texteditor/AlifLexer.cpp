@@ -122,23 +122,23 @@ QVector<Token> Lexer::tokenize(const QString& text) {
         }
         else if (currentChar.isDigit()) {
             int start = pos;
-            while (pos < text.length() && (text[pos].isDigit() || text[pos] == '.')) pos++;
+            while (pos < text.length() && (text[pos].isDigit() or text[pos] == '.')) pos++;
             tokens.append(Token(TokenType::Number, start, pos - start, text.mid(start, pos - start)));
         }
-        else if (currentChar.isLetter() || currentChar == '_') {
+        else if (currentChar.isLetter() or currentChar == '_') {
             int start = pos;
-            while (pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
+            while (pos < text.length() && (text[pos].isLetterOrNumber() or text[pos] == '_')) pos++;
 
             // Normalize identifier for consistent comparisons (helps مع الهمزات/تشكيل إذا احتجت لاحقًا)
             QString identifier = text.mid(start, pos - start).normalized(QString::NormalizationForm_KC);
 
             TokenType type = isKeyword(identifier) ? TokenType::Keyword :
-                                 isKeyword1(identifier) ? TokenType::Keyword1 :
-                                 isKeyword2(identifier) ? TokenType::Keyword2 :
+                                 isBiltinK(identifier) ? TokenType::BiltinK :
+                                 isSpecialK(identifier) ? TokenType::SpecialK :
                                  TokenType::Identifier;
             tokens.append(Token(type, start, pos - start, identifier));
         }
-        else if (currentChar == '"' || currentChar == '\'') {
+        else if (currentChar == '"' or currentChar == '\'') {
             int stringStart = pos;
             quoteCount++;
             // detect f-string marker 'م' before quote (exactly as in JSON delims)
@@ -205,9 +205,9 @@ QVector<Token> Lexer::tokenize(const QString& text) {
             // Check two-char ops
             if (pos < text.length()) {
                 QChar nextChar = text[pos];
-                if ((currentChar == '=' && nextChar == '=') ||
-                    (currentChar == '!' && nextChar == '=') ||
-                    (currentChar == '<' && nextChar == '=') ||
+                if ((currentChar == '=' && nextChar == '=') or
+                    (currentChar == '!' && nextChar == '=') or
+                    (currentChar == '<' && nextChar == '=') or
                     (currentChar == '>' && nextChar == '=')) {
                     op += nextChar;
                     pos++;
@@ -226,7 +226,7 @@ QVector<Token> Lexer::tokenize(const QString& text) {
 
 bool Lexer::isKeyword(const QString& word) {
 	static const QSet<QString> keywords = {
-	"ك", "و", "في", "او", "أو", "من", "مع", "صح", "هل",
+    "ك", "و", "في", "او", "أو", "من", "مع", "صح"
 	"اذا", "إذا", "ليس", "مرر", "عدم", "ولد", "صنف", "خطا", "خطأ", "عام",
 	"احذف", "دالة", "لاجل", "لأجل", "لكل", "والا", "وإلا", "توقف", "نطاق", "ارجع",
 	"اواذا", "أوإذا", "بينما", "انتظر", "استمر", "مزامنة", "استورد",
@@ -236,16 +236,16 @@ bool Lexer::isKeyword(const QString& word) {
 }
 
 
-bool Lexer::isKeyword1(const QString& word) {
+bool Lexer::isBiltinK(const QString& word) {
 	static const QSet<QString> keywords = {
-		"اطبع", "ادخل", "مدى"
+        "اطبع", "ادخل", "مدى", "تحقق_اي", "طول", "عشري", "صحيح", "مترابطة", "منطق", "مصفوفة"
 	};
 	return keywords.contains(word);
 }
 
-bool Lexer::isKeyword2(const QString& word) {
+bool Lexer::isSpecialK(const QString& word) {
 	static const QSet<QString> keywords = {
-		"_تهيئة_", "هذا", "اصل"
+        "__تهيئة__", "هذا", "اصل"
 	};
 	return keywords.contains(word);
 }

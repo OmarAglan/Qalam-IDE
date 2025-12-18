@@ -57,10 +57,10 @@ void THighlighter::highlightBlock(const QString &text)
         case TokenType::Keyword:
             styleName = "Definition Keyword";
             break;
-        case TokenType::Keyword1:
-            styleName = "Operator Keyword";
+        case TokenType::BiltinK:
+            styleName = "Builtin Function";
             break;
-        case TokenType::Keyword2:
+        case TokenType::SpecialK:
             styleName = "Special Variable";
             break;
         case TokenType::Number:
