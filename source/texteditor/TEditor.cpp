@@ -238,11 +238,11 @@ void TEditor::toggleComment()
             QString text = block.text();
             if (text.startsWith("# ")) {
                 lineCursor.movePosition(QTextCursor::StartOfBlock);
-                lineCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 2);
+                lineCursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 2);
                 lineCursor.removeSelectedText();
             } else if (text.startsWith("#")) {
                 lineCursor.movePosition(QTextCursor::StartOfBlock);
-                lineCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 1);
+                lineCursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
                 lineCursor.removeSelectedText();
             }
         }

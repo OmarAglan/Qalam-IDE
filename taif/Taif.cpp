@@ -114,15 +114,16 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     consoleTabWidget->setDocumentMode(true);
 
     TConsole *cmdConsole = new TConsole(this);
-    QString terminalName = "Terminal (CMD)";
+    QString terminalName = "طرفية (CMD)";
 #if defined(Q_OS_LINUX)
-    terminalName = "Terminal (Bash)";
+    terminalName = "طرفية (Bash)";
 #elif defined(Q_OS_MACOS)
-    terminalName = "Terminal (Zsh)";
+    terminalName = "طرفية (Zsh)";
 #endif
 
     consoleTabWidget->addTab(cmdConsole, terminalName);
     cmdConsole->setConsoleRTL();
+    cmdConsole->setStyleSheet("QWidget { background: black }");
     cmdConsole->startCmd();
 
 
@@ -172,7 +173,7 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     QShortcut *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
     connect(goToLineShortcut, &QShortcut::activated, this, &Taif::goToLine);
 
-    QShortcut *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
+    QShortcut *commentShortcut = new QShortcut(QKeySequence("Ctrl+ظ"), this);
     connect(commentShortcut, &QShortcut::activated, this, [this](){
         if (TEditor* editor = currentEditor()) editor->toggleComment();
     });
@@ -936,9 +937,10 @@ void Taif::runAlif() {
     if (!console) {
         console = new TConsole(this);
         console->setObjectName("interactiveConsole");
-        consoleTabWidget->addTab(console, "طرفية ألف");
+        consoleTabWidget->addTab(console, "مخرجات ألف");
         console->setLayoutDirection(Qt::RightToLeft);
         console->setConsoleRTL();
+        console->setStyleSheet("QWidget {background: black}");
     }
 
     consoleTabWidget->setCurrentWidget(console);

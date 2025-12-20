@@ -37,7 +37,6 @@ TConsole::TConsole(QWidget *parent)
 
     setLayoutDirection(Qt::RightToLeft);
     m_input->setLayoutDirection(Qt::RightToLeft);
-    m_input->setAlignment(Qt::AlignRight);
 
     connect(m_process, &QProcess::readyReadStandardOutput, this, &TConsole::processStdout);
     connect(m_process, &QProcess::readyReadStandardError, this, &TConsole::processStderr);
@@ -95,8 +94,6 @@ void TConsole::clear()
 void TConsole::setConsoleRTL()
 {
     setLayoutDirection(Qt::RightToLeft);
-    m_input->setLayoutDirection(Qt::RightToLeft);
-    m_input->setAlignment(Qt::AlignRight);
 
     QTextOption opt = m_output->document()->defaultTextOption();
     opt.setTextDirection(Qt::RightToLeft);
