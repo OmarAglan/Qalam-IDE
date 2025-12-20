@@ -259,39 +259,39 @@ QTextCharFormat SyntaxDefinition::createFormatFromStyleNum(const QString &defSty
     // تعيين الألوان بناءً على defStyleNum
     if (defStyleNum == "dsNormal") {
         // النص العادي - لون افتراضي
-        format.setForeground(QColor(250, 250, 250));
+        format.setForeground(QColor(248, 248, 255));
     }
     else if (defStyleNum == "dsKeyword" or defStyleNum == "dsControlFlow") {
         // الكلمات المفتاحية
-        format.setForeground(QColor(4, 165, 229));
+        format.setForeground(QColor(255, 100, 100));
     }
     else if (defStyleNum == "dsOperator") {
         // المعاملات
-        format.setForeground(QColor(234, 118, 203));
+        format.setForeground(QColor(40, 240, 240));
     }
     else if (defStyleNum == "dsBuiltIn") {
         // الدوال المدمجة
-        format.setForeground(QColor(114, 135, 253));
+        format.setForeground(QColor(90, 180, 255));
     }
     else if (defStyleNum == "dsFunction") {
         // الدوال
-        format.setForeground(QColor(140, 177, 255));
+        format.setForeground(QColor(210, 160, 255));
     }
     else if (defStyleNum == "dsVariable") {
         // كلمات مفتاحية خاصة
-        format.setForeground(QColor(214, 150, 255));
+        format.setForeground(QColor(255, 110, 255));
     }
     else if (defStyleNum == "dsString" or defStyleNum == "dsVerbatimString" or defStyleNum == "dsSpecialString") {
         // النصوص
-        format.setForeground(QColor(63, 209, 112));
+        format.setForeground(QColor(80, 240, 80));
     }
     else if (defStyleNum == "dsComment") {
         // التعليقات
-        format.setForeground(QColor(120, 120, 120));
+        format.setForeground(QColor(140, 150, 190));
     }
     else if (defStyleNum == "dsFloat" or defStyleNum == "dsDecVal" or defStyleNum == "dsBaseN") {
         // الأرقام
-        format.setForeground(QColor(170, 112, 255));
+        format.setForeground(QColor(255, 220, 80));
     }
     // else if (defStyleNum == "dsImport" or defStyleNum == "dsPreprocessor") {
     //     // الاستيراد والمعالجات
