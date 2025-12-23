@@ -800,8 +800,8 @@ void Taif::openSettings() {
 
     settings = new TSettings(this);
     connect(settings, &TSettings::fontSizeChanged, this, [this](int size){
-        if (TEditor* editor = currentEditor()) {
-            editor->updateFontSize(size);
+        for (int i = 0; i < tabWidget->count(); ++i) {
+            qobject_cast<TEditor*>(tabWidget->widget(i))->updateFontSize(size);
         }
     });
     settings->show();
