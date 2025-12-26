@@ -22,7 +22,7 @@ TConsole::TConsole(QWidget *parent)
     // UI
     m_output->setReadOnly(true);
     m_output->setUndoRedoEnabled(false);
-    m_output->setWordWrapMode(QTextOption::NoWrap);
+    m_output->setWordWrapMode(QTextOption::WordWrap);
     // simple monospace font
     QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     f.setPixelSize(15);
