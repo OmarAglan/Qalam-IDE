@@ -52,15 +52,13 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     QShortcut *findShortcut = new QShortcut(QKeySequence::Find, this);
     connect(findShortcut, &QShortcut::activated, this, &Taif::showFindBar);
 
-    QShortcut *escShortcut = new QShortcut(Qt::Key_Escape, this);
-    connect(escShortcut, &QShortcut::activated, this, &Taif::hideFindBar);
-
 
     // ===================================================================
     // الخطوة 2: إعداد النافذة وشريط القوائم
     // ===================================================================
-    QScreen* screenSize = QGuiApplication::primaryScreen();
-    this->setGeometry(screenSize->size().width() / 6, screenSize->size().height() / 7, 900, 700);
+    QScreen* screen = QGuiApplication::primaryScreen();
+    QRect screenGeo = screen->availableGeometry();
+    this->setGeometry(screenGeo.left(), screenGeo.top(), 900, 700);
     this->setMenuBar(menuBar);
     // ===================================================================
     //  الخطوة 3: إعداد شريط الأدوات وزر تبديل الشريط
