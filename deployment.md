@@ -1,5 +1,8 @@
 Windows:
-
+	Deployment:
+		~:\Qt\6.`*.*`\mingw_64\bin\windeployqt6.exe Taif.exe
+	Packaging:
+		~:\Qt\Tools\QtInstallerFramework\4.`*`\bin\binarycreator.exe -c config/config.xml -p packages TaifInstaller-Win-X64
 
 Linux:
  sudo apt install libxcb-cursor0 libxcb-cusor-dev // for qt   online installer
