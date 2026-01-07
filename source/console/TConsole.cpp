@@ -65,15 +65,14 @@ void TConsole::startCmd()
 
 #if defined(Q_OS_WIN)
     m_process->start("cmd.exe");
-
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-    QStringList args;
-    args << "-c" << "import pty; pty.spawn('/bin/bash')";
-
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("TERM", "xterm-256color");
-    m_process->setProcessEnvironment(env);
-    m_process->start("python3", args);
+#elif defined(Q_OS_MACOS)
+    QStringList args{};
+    args << "-q" << "-c" << "zsh" << "/dev/null"; // mean (interactive)
+    m_process->start("script", args);
+#elif defined(Q_OS_LINUX)
+    QStringList args{};
+    args << "-q" << "-c" << "bash" << "/dev/null"; // mean (interactive)
+    m_process->start("script", args);
 #endif
 }
 
