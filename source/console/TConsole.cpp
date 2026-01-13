@@ -67,8 +67,11 @@ void TConsole::startCmd()
     m_process->start("cmd.exe");
 #elif defined(Q_OS_MACOS)
     QStringList args{};
-    args << "-q" << "-c" << "zsh" << "/dev/null"; // mean (interactive)
-    m_process->start("script", args);
+    args << "-i" << "-l"; // mean (interactive)
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("PROMPT_EOL_MARK", ""); // لإزاله علامة "٪" من نهاية السطر الجديد في الطرفية
+    m_process->setProcessEnvironment(env);
+    m_process->start("zsh", args);
 #elif defined(Q_OS_LINUX)
     QStringList args{};
     args << "-q" << "-c" << "bash" << "/dev/null"; // mean (interactive)
