@@ -136,6 +136,8 @@ TEditor::TEditor(QWidget* parent) {
     QSettings settingsVal("Alif", "Taif");
     int savedSize = settingsVal.value("editorFontSize").toInt();
     updateFontSize(savedSize);
+    QString savedFont = settingsVal.value("editorFontType").toString();
+    updateFontType(savedFont);
 
     autoSaveTimer = new QTimer(this);
     autoSaveTimer->setInterval(60000);
@@ -187,16 +189,23 @@ void TEditor::wheelEvent(QWheelEvent *event) {
 
 void TEditor::updateFontSize(int size) {
     if (size < 10) {
-        size = 16;
+        size = 18;
     }
 
     QFont font = this->font();
-    font.setPointSize(size);
+    font.setPixelSize(size);
     this->setFont(font);
 
     QFont fontNums = lineNumberArea->font();
-    fontNums.setPointSize(size);
+    fontNums.setPixelSize(size);
     lineNumberArea->setFont(fontNums);
+}
+
+void TEditor::updateFontType(QString font) {
+    QFont currentFont = this->font();
+    currentFont.setFamily(font);
+
+    this->setFont(currentFont);
 }
 
 

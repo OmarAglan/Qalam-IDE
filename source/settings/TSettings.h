@@ -25,6 +25,7 @@ protected:
 
 signals:
     void fontSizeChanged(int size);
+    void fontTypeChanged(QString font);
     // void settingsChanged();
     // void windowClosed();
 
@@ -39,4 +40,5 @@ private:
     QList<TFlatButton*> categories{};
 
     QSpinBox* fontSpin{};
+    QComboBox* fontCombo{};
 };

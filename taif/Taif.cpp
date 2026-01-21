@@ -420,7 +420,8 @@ Taif::~Taif() {
 
     if (TEditor* editor = currentEditor()) {
         QSettings settings("Alif", "Taif");
-        settings.setValue("editorFontSize", editor->font().pointSize());
+        settings.setValue("editorFontSize", editor->font().pixelSize());
+        settings.setValue("editorFontType", editor->font().family());
     }
 }
 
@@ -828,6 +829,12 @@ void Taif::openSettings() {
             qobject_cast<TEditor*>(tabWidget->widget(i))->updateFontSize(size);
         }
     });
+    connect(settings, &TSettings::fontTypeChanged, this, [this](QString font){
+        for (int i = 0; i < tabWidget->count(); ++i) {
+            qobject_cast<TEditor*>(tabWidget->widget(i))->updateFontType(font);
+        }
+    });
+
     settings->show();
 }
 

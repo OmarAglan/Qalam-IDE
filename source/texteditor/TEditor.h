@@ -48,6 +48,7 @@ public:
 
 public slots:
     void updateFontSize(int);
+    void updateFontType(QString font);
     void toggleComment();
     void duplicateLine();
     void moveLineUp();
