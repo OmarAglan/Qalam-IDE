@@ -143,7 +143,6 @@ TEditor::TEditor(QWidget* parent) {
 
     connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::startAutoSave);
 
-    highlighter = new THighlighter(this->document());
     installEventFilter(this);
 }
 
