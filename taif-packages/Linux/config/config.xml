@@ -6,4 +6,5 @@
     <Publisher>Taif</Publisher>
     <StartMenuDir>Taif</StartMenuDir>
     <TargetDir>@ApplicationsDirUser@/Taif</TargetDir>
+    <StyleSheet>style.qss</StyleSheet>
 </Installer>
