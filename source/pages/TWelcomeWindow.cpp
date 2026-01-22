@@ -21,8 +21,8 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     // ===================================================================
 
     QWidget *centralWidget = new QWidget(this);
-    this->setCentralWidget(centralWidget);
     QVBoxLayout *mainVLayout = new QVBoxLayout(centralWidget);
+    this->setCentralWidget(centralWidget);
 
     QHBoxLayout *headerContent = new QHBoxLayout();
     QLabel *logoLabel = new QLabel();
@@ -40,7 +40,6 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     textVLayout->addWidget(subtitleLabel);
     headerContent->addWidget(logoLabel);
     headerContent->addSpacing(15);
-    headerContent->addLayout(textVLayout);
     headerContent->addSpacing(10);
     headerContent->addLayout(textVLayout);
     subtitleLabel->setFont(titleFont);
@@ -61,6 +60,7 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     recentFilesList = new QListWidget();
     recentFilesList->addItems(recentFiles);
     recentFilesList->setMinimumWidth(450);
+    recentFilesList->setWordWrap(true);
     filesGroup->addLayout(filesButtons);
     filesGroup->addWidget(recentFilesList);
 
@@ -120,8 +120,8 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
         QWidget {
             background-color: #141520;
             color: #eeeeee;
+            border-top-left-radius: 8px;
             border-bottom-left-radius: 8px;
-            border-bottom-right-radius: 8px;
         }
         QLabel#titleLabel { color: #ffffff; }
         QLabel { color: #eeeeee; }

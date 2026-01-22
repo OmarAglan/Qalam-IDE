@@ -39,7 +39,7 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
     layout->addStretch(); // فراغ في النهاية
 
     // 4. الخلفية واللون
-    QString styleSheet = R"("background-color: #1e202e; border-top: 1px solid #3e3e42;")";
+    QString styleSheet = "background-color: #1e202e; border-top: 1px solid #3e3e42;";
     setFixedHeight(45);
 
     this->setStyleSheet(styleSheet);
