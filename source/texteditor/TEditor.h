@@ -2,31 +2,17 @@
 
 #include <QTimer>
 #include <QScrollBar>
+#include <QPlainTextEdit>
+#include <QCompleter>
+#include <memory>
 
 #include "TSettings.h"
 #include "TSyntaxHighlighter.h"
-#include "AlifComplete.h"
+#include "AutoComplete.h"
+#include "AutoCompleteUI.h"
 
 
 class LineNumberArea;
-class TEditor;
-
-
-// class TMinimap : public QWidget {
-//     Q_OBJECT
-// public:
-//     explicit TMinimap(TEditor *editor);
-//     QSize sizeHint() const override;
-
-// protected:
-//     void paintEvent(QPaintEvent *event) override;
-//     void mousePressEvent(QMouseEvent *event) override;
-//     void mouseMoveEvent(QMouseEvent *event) override;
-
-// private:
-//     TEditor *editor;
-//     void scrollEditorTo(const QPoint &pos);
-// };
 
 
 class TEditor : public QPlainTextEdit {
@@ -42,6 +28,7 @@ public:
     QString getCurrentLineIndentation(const QTextCursor &cursor) const;
     void curserIndentation();
 
+    void setCompleter(QCompleter *completer);
 
     void startAutoSave();
     void stopAutoSave();
@@ -67,9 +54,13 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
 
+    void keyPressEvent(QKeyEvent *e) override;
+    // We override focusOutEvent to close the popup if the user clicks away
+    void focusOutEvent(QFocusEvent *e) override;
+
 private:
     TSyntaxHighlighter* highlighter{};
-    AutoComplete* autoComplete{};
+
     LineNumberArea* lineNumberArea{};
 
     struct FoldRegion {
@@ -85,15 +76,30 @@ private:
 
     QTimer *autoSaveTimer;
 
-    // friend class TMinimap;
     friend class LineNumberArea;
-    // TMinimap *minimap;
+
+    QCompleter* c{};
+    CompletionModel *model{};
+    std::vector<std::unique_ptr<ICompletionStrategy>> strategies{};
+    QStringList snippetTargets{};
+    QString textUnderCursor() const;
+    void performCompletion();
+    bool processSnippetNavigation();
+    void setupAutoComplete();
+    void insertWord(const QString& completion, QTextCursor& tc);
+    void insertBuiltinFunction(const QString& functionName, QTextCursor& tc);
+    void insertSnippet(const QString& snippet, QTextCursor& tc);
+    // Bracket auto-completion methods
+    bool handleAutoPairing(QKeyEvent* e);
+    bool handleBracketCompletion(QChar openingBracket, QChar closingBracket);
+    bool handleQuoteCompletion(QChar quoteChar);
+    bool handleBracketSkip(QChar typedChar);
 
 private slots:
     void updateLineNumberAreaWidth();
     void highlightCurrentLine();
     inline void updateLineNumberArea(const QRect &rect, int dy);
-    // void updateMinimap();
+    void insertCompletion(const QString &completion, CompletionType type);
 signals:
     void openRequest(QString filePath);
 };
