@@ -12,97 +12,6 @@
 #include <QFile>
 
 
-// TMinimap::TMinimap(TEditor *editor) : QWidget(editor), editor(editor)
-// {
-//     setStyleSheet("background-color: #1e1e1e; border-left: 1px solid #333;");
-//     setFixedWidth(100);
-// }
-
-// QSize TMinimap::sizeHint() const {
-//     return QSize(100, 0);
-// }
-
-
-// void TMinimap::paintEvent(QPaintEvent *event)
-// {
-//     Q_UNUSED(event);
-//     QPainter painter(this);
-
-//     painter.fillRect(rect(), QColor("#1e1e1e"));
-
-//     if (!editor) return;
-
-//     QFont font = editor->font();
-
-//     qreal scale = 0.15;
-//     painter.save();
-//     painter.scale(scale, scale);
-
-//     painter.setLayoutDirection(Qt::LeftToRight);
-//     painter.setPen(QColor("#a0a0a0"));
-
-
-//     QTextBlock block = editor->document()->firstBlock();
-//     qreal currentY = 0;
-
-//     while (block.isValid()) {
-//         QString text = block.text();
-
-//         if (!text.isEmpty()) {
-
-//             painter.drawText(QPointF(0, currentY + block.layout()->boundingRect().height()), text);
-//         }
-
-//         currentY += block.layout()->boundingRect().height();
-
-//         block = block.next();
-//     }
-
-//     painter.restore();
-
-//     int scrollMax = editor->verticalScrollBar()->maximum();
-//     int scrollVal = editor->verticalScrollBar()->value();
-//     int pageStep  = editor->verticalScrollBar()->pageStep();
-
-//     long long totalScrollableHeight = scrollMax + pageStep;
-//     if (totalScrollableHeight <= 0) totalScrollableHeight = 1;
-
-//     double viewRatio = (double)pageStep / totalScrollableHeight;
-//     double posRatio = (double)scrollVal / totalScrollableHeight;
-
-//     if (scrollMax == 0) { viewRatio = 1.0; posRatio = 0.0; }
-
-//     int mapHeight = height();
-//     int highlightY = mapHeight * posRatio;
-//     int highlightH = mapHeight * viewRatio;
-
-//     if (highlightH < 15) highlightH = 15;
-//     if (highlightY + highlightH > mapHeight) highlightY = mapHeight - highlightH;
-
-//     // رسم المستطيل
-//     painter.setPen(Qt::NoPen);
-//     painter.setBrush(QColor(255, 255, 255, 30));
-//     painter.drawRect(0, highlightY, width(), highlightH);
-// }
-
-// void TMinimap::mousePressEvent(QMouseEvent *event) {
-//     scrollEditorTo(event->pos());
-// }
-
-// void TMinimap::mouseMoveEvent(QMouseEvent *event) {
-//     if (event->buttons() & Qt::LeftButton) {
-//         scrollEditorTo(event->pos());
-//     }
-// }
-
-// void TMinimap::scrollEditorTo(const QPoint &pos) {
-//     double ratio = (double)pos.y() / height();
-//     int maxVal = editor->verticalScrollBar()->maximum();
-//     editor->verticalScrollBar()->setValue(maxVal * ratio);
-// }
-
-
-
 TEditor::TEditor(TSettings* setting, QWidget* parent) {
     setAcceptDrops(true);
     this->setStyleSheet("QPlainTextEdit { background-color: #141520; color: #cccccc; }");
@@ -116,18 +25,15 @@ TEditor::TEditor(TSettings* setting, QWidget* parent) {
 
 
     highlighter = new TSyntaxHighlighter(editorDocument);
-    autoComplete = new AutoComplete(this, parent);
     lineNumberArea = new LineNumberArea(this);
+
+    // ضبط الإكمال التلقائي
+    setupAutoComplete();
 
     connect(this, &TEditor::blockCountChanged, this, &TEditor::updateLineNumberAreaWidth);
     connect(this, &TEditor::updateRequest, this, &TEditor::updateLineNumberArea);
     connect(this, &TEditor::cursorPositionChanged, this, &TEditor::highlightCurrentLine);
     connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::updateFoldRegions);
-
-    // minimap = new TMinimap(this);
-
-    // connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::updateMinimap);
-    // connect(this->verticalScrollBar(), &QScrollBar::valueChanged, this, &TEditor::updateMinimap);
 
     updateLineNumberAreaWidth();
     highlightCurrentLine();
@@ -188,10 +94,6 @@ void TEditor::wheelEvent(QWheelEvent *event) {
     }
     QPlainTextEdit::wheelEvent(event);
 }
-
-// void TEditor::updateMinimap() {
-//     if (minimap) minimap->update();
-// }
 
 void TEditor::updateFontSize(int size) {
     if (size < 10) {
@@ -325,12 +227,7 @@ void TEditor::moveLineDown()
 bool TEditor::eventFilter(QObject* obj, QEvent* event) {
     if (obj == this and event->type() == QEvent::KeyPress) {
         QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
-        if (autoComplete->isPopupVisible()) {
-            if (keyEvent->key() == Qt::Key_Return
-                or keyEvent->key() == Qt::Key_Enter) {
-                return false;
-            }
-        }
+
         if (keyEvent->key() == Qt::Key_Return
              or keyEvent->key() == Qt::Key_Enter) {
             if (keyEvent->modifiers() & Qt::ShiftModifier) {
@@ -390,10 +287,6 @@ void TEditor::updateLineNumberAreaWidth() {
     int numsWidth = lineNumberAreaWidth();
 
     int mapWidth = 0;
-    // if (minimap && minimap->isVisible()) {
-    //     mapWidth = minimap->width();
-    // }
-
 
     setViewportMargins(mapWidth, 0, numsWidth, 0);
 }
@@ -416,11 +309,6 @@ void TEditor::resizeEvent(QResizeEvent* event) {
 
 
     lineNumberArea->setGeometry(this->width() - numsWidth, cr.top(), numsWidth, cr.height());
-
-    // if (minimap) {
-        // int mapWidth = minimap->width();
-        // minimap->setGeometry(25, cr.top(), mapWidth, cr.height());
-    // }
 }
 
 void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
@@ -769,7 +657,419 @@ void TEditor::removeBackupFile() {
 }
 
 
-
 void TEditor::updateHighlighterTheme(std::shared_ptr<SyntaxTheme> theme) {
     this->highlighter->setTheme(theme);
+}
+
+
+
+// --- autocomplete system ---
+
+void TEditor::setupAutoComplete() {
+    // set autocomplete system
+    model = new CompletionModel(this);
+    strategies.push_back(std::make_unique<SnippetStrategy>());
+    strategies.push_back(std::make_unique<KeywordStrategy>());
+    strategies.push_back(std::make_unique<BuiltinStrategy>());
+    strategies.push_back(std::make_unique<DynamicWordStrategy>());
+
+    QCompleter *completer = new QCompleter(this);
+    setCompleter(completer);
+}
+
+void TEditor::setCompleter(QCompleter *completer) {
+    if (c) disconnect(c, nullptr, this, nullptr);
+    c = completer;
+    if (!c) return;
+
+    c->setWidget(this);
+    c->setCompletionMode(QCompleter::PopupCompletion);
+    c->setCaseSensitivity(Qt::CaseInsensitive);
+    c->setModel(model);
+
+    // Custom Rich Popup ---
+    TCompletionPopup *popup = new TCompletionPopup;
+    c->setPopup(popup); // QCompleter takes ownership
+
+    popup->setItemDelegate(new TModernCompletionDelegate(popup));
+
+    // set dimensions
+    popup->setMinimumWidth(350);
+    popup->setMinimumHeight(200); // Taller to fit list + footer
+
+
+    // To this lambda that captures the type:
+    connect(c, QOverload<const QString &>::of(&QCompleter::activated),
+            this, [this](const QString &completion) {
+                // Get the current index from the completer popup
+                QModelIndex index = c->popup()->currentIndex();
+                if (index.isValid()) {
+                    // Get the type from the model
+                    CompletionType type = static_cast<CompletionType>(
+                        index.data(Qt::UserRole + 2).toInt());
+                    // Get the full completion item
+                    QString completionText = index.data(Qt::EditRole).toString();
+                    insertCompletion(completionText, type);
+                } else {
+                    // Fallback to just the string without type
+                    insertCompletion(completion, CompletionType::DynamicWord);
+                }
+            });
+}
+
+void TEditor::focusOutEvent(QFocusEvent *e) {
+    if (c && c->popup()->isVisible()) {
+        c->popup()->hide();
+    }
+    QPlainTextEdit::focusOutEvent(e);
+}
+
+void TEditor::keyPressEvent(QKeyEvent *e) {
+
+    // handleing Brackets and Quotes
+    if (handleAutoPairing(e)) {
+        e->accept();
+        return;
+    }
+
+    // Handle Navigation for Live Update (Arrow Keys) ---
+    if (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right) {
+        // Let the editor move the cursor first
+        QPlainTextEdit::keyPressEvent(e);
+        // Then immediately trigger completion to update the list based on the new cursor position
+        performCompletion();
+        return;
+    }
+
+    if (c && c->popup()->isVisible()) {
+        switch (e->key()) {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Escape:
+        case Qt::Key_Tab:
+        case Qt::Key_Backtab:
+            e->ignore();
+            return;
+        default: break;
+        }
+    }
+
+    if ((e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter)) {
+        if (!snippetTargets.isEmpty()) {
+            if (processSnippetNavigation()) {
+                e->accept();
+                return;
+            }
+        }
+    }
+
+    if (e->key() == Qt::Key_Tab && !snippetTargets.isEmpty()) {
+        if (processSnippetNavigation()) {
+            e->accept();
+            return;
+        }
+    }
+
+    bool isShortcut = ((e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_Space);
+
+    QPlainTextEdit::keyPressEvent(e);
+
+    if (!isShortcut && e->text().isEmpty()) return;
+
+    performCompletion();
+}
+
+void TEditor::performCompletion() {
+    QString textUnder = textUnderCursor();
+    // Allow empty text for shortcut (Ctrl+Space) to show all
+    if (textUnder.length() < 1) {
+        // Optional: Trigger immediately on Ctrl+Space even if empty?
+        // For now, keep logic to hide if empty, unless you want "all suggestion" behavior.
+        c->popup()->hide();
+        return;
+    }
+
+    std::vector<CompletionItem> allSuggestions;
+    QString fullDoc = toPlainText();
+
+    for (const auto& strategy : strategies) {
+        auto res = strategy->getSuggestions(textUnder, fullDoc);
+        allSuggestions.insert(allSuggestions.end(), res.begin(), res.end());
+    }
+
+    model->updateData(allSuggestions);
+
+    if (allSuggestions.empty()) {
+        c->popup()->hide();
+        return;
+    }
+
+    c->setCompletionPrefix(textUnder);
+    QRect cr = cursorRect();
+
+    QPoint widgetPos = this->viewport()->mapTo(this, cr.topRight());
+    cr.moveTo(widgetPos);
+
+    // Calculate popup width: Text width + Scrollbar + Padding
+    int popupWidth = std::clamp(35 + 150 + c->popup()->verticalScrollBar()->width() + 65, 295, 355);
+
+    // Shift dialog left ---
+    cr.moveLeft(cr.right() - popupWidth - 360);
+
+    // set width
+    cr.setWidth(popupWidth);
+
+    c->complete(cr);
+}
+
+QString TEditor::textUnderCursor() const {
+    QTextCursor tc = textCursor();
+    tc.movePosition(QTextCursor::StartOfWord, QTextCursor::KeepAnchor);
+    return tc.selectedText();
+}
+
+void TEditor::insertCompletion(const QString &completion, CompletionType type) {
+    if (c->widget() != this) return;
+    QTextCursor tc = textCursor();
+
+    // This ensures we replace the whole partial word with the completion.
+    tc.select(QTextCursor::WordUnderCursor);
+
+    switch (type) {
+    case CompletionType::Builtin:
+        insertBuiltinFunction(completion, tc);
+        break;
+    case CompletionType::Snippet:
+        insertSnippet(completion, tc);
+        break;
+    case CompletionType::Keyword:
+        insertWord(completion, tc);
+        break;
+    case CompletionType::DynamicWord:
+    default:
+        insertWord(completion, tc);
+        break;
+    }
+}
+void TEditor::insertWord(const QString& completion, QTextCursor& tc) {
+    tc.insertText(completion);
+    setTextCursor(tc);
+}
+void TEditor::insertBuiltinFunction(const QString& functionName, QTextCursor& tc) {
+    tc.insertText(functionName);
+    tc.insertText("()");
+    tc.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+
+    // Perform the insertion
+    setTextCursor(tc);
+}
+void TEditor::insertSnippet(const QString& snippet, QTextCursor& tc) {
+    QString textToInsert = snippet;
+
+    // Calculate indentation
+    // Get the full text of the current line to determine indentation
+    QTextBlock block = tc.block();
+    QString lineText = block.text();
+    QString baseIndentation{};
+    for (const QChar &ch : lineText) {
+        if (ch.isSpace()) baseIndentation.append(ch);
+        else break;
+    }
+
+    // Apply indentation to multi-line snippets
+    if (textToInsert.contains('\n')) {
+        QStringList lines = textToInsert.split('\n');
+        // Start from index 1 because index 0 is appended to the current line
+        // (which already has indentation on the left).
+        // Subsequent lines need the base indentation explicitly added.
+        for (int i = 1; i < lines.size(); ++i) {
+            lines[i] = baseIndentation + lines[i];
+        }
+        textToInsert = lines.join('\n');
+    }
+
+    // Perform the insertion
+    tc.insertText(textToInsert);
+    setTextCursor(tc);
+
+    // Reset snippet targets
+    snippetTargets.clear();
+
+    // Setup snippet navigation based on snippet content
+    if (snippet.startsWith("دالة")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("اسم", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "معاملات" << "مرر";
+    }
+    else if (snippet.startsWith("صنف")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("اسم", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "مرر";
+    }
+    else if (snippet.startsWith("اذا")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("الشرط", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "مرر";
+    }
+    else if (snippet.startsWith("لكل")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("عنصر", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "العناصر" << "مرر";
+    }
+    else if (snippet.startsWith("بينما")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("الشرط", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "مرر";
+    }
+    else if (snippet.startsWith("حاول")) {
+        QTextCursor finder = textCursor();
+        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
+        finder = document()->find("مرر", finder);
+        if (!finder.isNull()) setTextCursor(finder);
+        snippetTargets << "مرر";
+    }
+
+}
+
+
+bool TEditor::processSnippetNavigation() {
+    if (snippetTargets.isEmpty()) return false;
+    QString nextTarget = snippetTargets.first();
+    QTextCursor tc = textCursor();
+    QTextCursor found = document()->find(nextTarget, tc);
+    if (!found.isNull()) {
+        setTextCursor(found);
+        snippetTargets.removeFirst();
+        return true;
+    }
+    snippetTargets.clear();
+    return false;
+}
+
+bool TEditor::handleAutoPairing(QKeyEvent* e) {
+    QString text = e->text();
+
+    if (!text.isEmpty()) {
+        QChar typedChar = text.at(0);
+
+        // Handle opening brackets
+        if (typedChar == '(' || typedChar == '[' || typedChar == '{') {
+            QChar closingBracket;
+            if (typedChar == '(') closingBracket = ')';
+            else if (typedChar == '[') closingBracket = ']';
+            else closingBracket = '}';
+
+            return handleBracketCompletion(typedChar, closingBracket);
+        }
+        // Handle quotes
+        else if (typedChar == '\'' || typedChar == '"' || typedChar == '`') {
+                return handleQuoteCompletion(typedChar);
+        }
+        // Handle closing brackets (skip over existing ones)
+        else if (typedChar == ')' || typedChar == ']' || typedChar == '}' ||
+                 typedChar == '\'' || typedChar == '"' || typedChar == '`') {
+            return handleBracketSkip(typedChar);
+        }
+    }
+
+    return false;
+}
+
+bool TEditor::handleBracketCompletion(QChar openingBracket, QChar closingBracket) {
+    QTextCursor cursor = textCursor();
+
+    // Check if there's a selection
+    if (cursor.hasSelection()) {
+        // Wrap selection with brackets
+        QString selectedText = cursor.selectedText();
+        cursor.insertText(openingBracket + selectedText + closingBracket);
+
+        // Move cursor after the opening bracket to select the original text
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, selectedText.length() + 1);
+        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, selectedText.length());
+        setTextCursor(cursor);
+    } else {
+        // Insert both brackets and place cursor between them
+        cursor.insertText(QString(openingBracket) + closingBracket);
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        setTextCursor(cursor);
+    }
+
+    return true;
+}
+
+bool TEditor::handleQuoteCompletion(QChar quoteChar) {
+    QTextCursor cursor = textCursor();
+    QTextDocument *doc = document();
+
+    // Get the character at cursor position
+    int pos = cursor.position();
+
+    // Check if there's a selection
+    if (cursor.hasSelection()) {
+        // Wrap selection with quotes
+        QString selectedText = cursor.selectedText();
+        cursor.insertText(quoteChar + selectedText + quoteChar);
+
+        // Move cursor after the opening quote to select the original text
+        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, selectedText.length() + 1);
+        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, selectedText.length());
+        setTextCursor(cursor);
+        return true;
+    }
+
+    // Check if next character is the same quote (should skip)
+    QChar nextChar;
+    if (pos < doc->characterCount() - 1) {
+        nextChar = doc->characterAt(pos);
+        if (nextChar == quoteChar) {
+            // Just move cursor over the existing quote
+            cursor.movePosition(QTextCursor::Left);
+            setTextCursor(cursor);
+            return true;
+        }
+    }
+
+    // Check if we're inside a word (for smart quotes)
+    bool insideWord = false;
+    if (pos > 0) {
+        QChar prevChar = doc->characterAt(pos - 1);
+        insideWord = prevChar.isLetterOrNumber() || prevChar == '_';
+    }
+
+    // Insert the quote pair
+    cursor.insertText(QString(quoteChar) + quoteChar);
+    cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+    setTextCursor(cursor);
+
+    return true;
+}
+
+bool TEditor::handleBracketSkip(QChar typedChar) {
+    QTextCursor cursor = textCursor();
+    QTextDocument *doc = document();
+    int pos = cursor.position();
+
+    // Check if the next character matches the typed closing bracket/quote
+    if (pos < doc->characterCount() - 1) {
+        QChar nextChar = doc->characterAt(pos);
+        if (nextChar == typedChar) {
+            // Just move the cursor over the existing bracket/quote
+            cursor.movePosition(QTextCursor::Left);
+            setTextCursor(cursor);
+            return true;
+        }
+    }
+
+    return false;
 }
