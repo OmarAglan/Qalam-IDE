@@ -7,6 +7,7 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
+    setLayoutDirection(Qt::RightToLeft);  // Force RTL for entire window
     setWindowTitle("صفحة الترحيب - محرر قلم");
 
     // Main central widget
@@ -47,19 +48,17 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     QHBoxLayout *contentLayout = new QHBoxLayout();
     contentLayout->setContentsMargins(60, 20, 60, 20);
     contentLayout->setSpacing(60);
-    contentLayout->setDirection(QBoxLayout::RightToLeft); // Start column on Right, Recent on Left
+    // With setLayoutDirection(RTL), first added = Right side
 
-    // Right Column (Start Actions)
+    // Start Actions (will be on Right due to RTL)
     QVBoxLayout *startCol = createStartColumn();
     
-    // Left Column (Recent Files)
+    // Recent Files (will be on Left due to RTL)
     QVBoxLayout *recentCol = createRecentColumn();
 
-    // In RTL layout: 
-    // addLayout(startCol) -> puts it on RIGHT
-    // addLayout(recentCol) -> puts it on LEFT
-    contentLayout->addLayout(startCol, 0); // Fixed width for actions
-    contentLayout->addLayout(recentCol, 1); // Expand recent list
+    // RTL: first added goes Right
+    contentLayout->addLayout(startCol, 0);  // Right side
+    contentLayout->addLayout(recentCol, 1); // Left side
 
     mainLayout->addLayout(contentLayout, 1);
 
@@ -153,6 +152,7 @@ QVBoxLayout* WelcomeWindow::createStartColumn()
     
     QLabel *title = new QLabel("ابدأ");
     title->setObjectName("sectionTitle");
+    title->setAlignment(Qt::AlignRight);  // RTL alignment
     layout->addWidget(title);
     layout->addSpacing(10);
     
@@ -172,6 +172,7 @@ QVBoxLayout* WelcomeWindow::createRecentColumn()
     
     QLabel *title = new QLabel("الأخيرة");
     title->setObjectName("sectionTitle");
+    title->setAlignment(Qt::AlignRight);  // RTL alignment
     layout->addWidget(title);
     layout->addSpacing(10);
     
@@ -192,23 +193,17 @@ QWidget* WelcomeWindow::createActionLink(const QString &iconPath, const QString 
     QWidget *container = new QWidget();
     QHBoxLayout *layout = new QHBoxLayout(container);
     layout->setContentsMargins(0, 8, 0, 8);
-    layout->setSpacing(15);
-    layout->setDirection(QBoxLayout::RightToLeft); // Icon on right, text on left
+    layout->setSpacing(10);
+    // RTL: Icon on Right, Text on Left (icon added first = Right)
     
     QLabel *icon = new QLabel();
-    QPixmap pixmap(iconPath);
-    if (pixmap.isNull()) {
-        // Fallback if SVG not valid pixmap yet (using QIcon to render SVG properly usually)
-        icon->setPixmap(QIcon(iconPath).pixmap(24, 24));
-    } else {
-         icon->setPixmap(pixmap.scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    }
-    // Icon color handling is tricky with QPixmap/SVG simply, assume prepared SVG color or let it be
+    icon->setPixmap(QIcon(iconPath).pixmap(20, 20));
     
     QLabel *label = new QLabel(text);
     label->setObjectName("actionLink");
     label->setCursor(Qt::PointingHandCursor);
     
+    // RTL order: Icon (Right) -> Text (Left) -> Stretch (Far Left)
     layout->addWidget(icon);
     layout->addWidget(label);
     layout->addStretch();
