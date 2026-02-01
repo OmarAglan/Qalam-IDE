@@ -3,6 +3,7 @@ qt_add_executable(Qalam
     Qalam.cpp
     Qalam.h
     resources.qrc
+    ../source/pages/TWelcomeWindow.cpp
 )
 
 # Platform-specific icons
