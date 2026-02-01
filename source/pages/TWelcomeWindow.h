@@ -4,13 +4,15 @@
 #include <QListWidget>
 #include <QVariant>
 
+#include "../ui/QalamWindow.h"
+
 class QPushButton;
 class QCheckBox;
 class QLabel;
 class QVBoxLayout;
 class QWidget;
 
-class WelcomeWindow : public QMainWindow
+class WelcomeWindow : public QalamWindow
 {
     Q_OBJECT
 

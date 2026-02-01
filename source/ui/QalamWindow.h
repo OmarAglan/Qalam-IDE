@@ -7,6 +7,7 @@ class QalamWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit QalamWindow(QWidget *parent = nullptr);
+    void setCustomMenuBar(QWidget *menu);
 
 protected:
     // Native event handling for Windows

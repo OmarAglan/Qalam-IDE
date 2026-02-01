@@ -12,6 +12,7 @@ public:
     
     void setTitle(const QString &title);
     void setMaximizedState(bool maximized);
+    void addMenuBar(QWidget *menu);
 
 signals:
     void minimizeClicked();

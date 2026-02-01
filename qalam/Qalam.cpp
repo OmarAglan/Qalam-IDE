@@ -65,7 +65,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     int width = screenGeo.size().width() - margin * widthFixedNum;
     int height = screenGeo.size().height() - margin;
     this->setGeometry(x, y, width, height);
-    this->setMenuBar(menuBar);
+    this->setCustomMenuBar(menuBar);
     // ===================================================================
     //  الخطوة 3: إعداد شريط الأدوات وزر تبديل الشريط
     // ===================================================================

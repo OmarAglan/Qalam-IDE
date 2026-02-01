@@ -127,6 +127,21 @@ void TTitleBar::setMaximizedState(bool maximized) {
     }
 }
 
+void TTitleBar::addMenuBar(QWidget *menu) {
+    if (!menu) return;
+    
+    // Insert menu after title (index 2: Icon=0, Title=1)
+    // Layout is QHBoxLayout.
+    // We access the layout() of this widget.
+    if (QHBoxLayout *l = qobject_cast<QHBoxLayout*>(layout())) {
+        l->insertWidget(2, menu);
+    }
+    
+    // Style adjustments for embedded menu
+    menu->setStyleSheet(menu->styleSheet() + "QMenuBar { background: transparent; border: none; }");
+    menu->setFixedHeight(30);
+}
+
 QPushButton* TTitleBar::createCaptionButton(const QString &iconPath, const QString &objName) {
     QPushButton *btn = new QPushButton(this);
     btn->setObjectName(objName);

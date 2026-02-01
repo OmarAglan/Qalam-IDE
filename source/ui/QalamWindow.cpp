@@ -40,6 +40,12 @@ QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
     // We keep standard flags.
 }
 
+void QalamWindow::setCustomMenuBar(QWidget *menu) {
+    if (m_titleBar) {
+        m_titleBar->addMenuBar(menu);
+    }
+}
+
 bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
     if (eventType == "windows_generic_MSG") {
         MSG *msg = static_cast<MSG *>(message);
