@@ -92,9 +92,9 @@ public:
     }
 };
 
-class TaifGlowTheme : public SyntaxTheme {
+class QalamGlowTheme : public SyntaxTheme {
 public:
-    QString name() const override { return "طيفي متوهج"; }
+    QString name() const override { return "قلمي متوهج"; }
     void apply(QHash<TokenType, QTextCharFormat>& formats) const override {
         setFormat(formats, TokenType::Keyword,      QColor(255, 100, 100), false); // Purple
         setFormat(formats, TokenType::BuiltinFunc,  QColor(90, 180, 255));       // Blue

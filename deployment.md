@@ -1,8 +1,8 @@
 Windows:
 	Deployment:
-		~:\Qt\6.`*.*`\mingw_64\bin\windeployqt6.exe Taif.exe
+		~:\Qt\6.`*.*`\mingw_64\bin\windeployqt6.exe Qalam.exe
 	Packaging:
-		~:\Qt\Tools\QtInstallerFramework\4.`*`\bin\binarycreator.exe -c config/config.xml -p packages TaifInstaller-Win-X64
+		~:\Qt\Tools\QtInstallerFramework\4.`*`\bin\binarycreator.exe -c config/config.xml -p packages QalamInstaller-Win-X64
 
 Linux:
  Important:"use linux ubuntu version 22 only"

@@ -38,7 +38,7 @@ private slots:
     void openSettings();
     void exitApp();
 
-    void runAlif();
+    void runBaa();
     void aboutQalam();
 
     void updateWindowTitle();
@@ -87,6 +87,6 @@ private:
     QLabel *cursorPositionLabel{};
     QLabel *encodingLabel{};
     QProcess *alifProcess{};
-    QProcess *currentAlifProcess{};
+    QProcess *currentBaaProcess{};
     SearchPanel *searchBar{};
 };

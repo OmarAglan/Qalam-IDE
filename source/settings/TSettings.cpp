@@ -193,7 +193,7 @@ void TSettings::setThemes() {
     availableThemes.append(std::make_shared<VSCodeDarkTheme>());
     availableThemes.append(std::make_shared<MonokaiTheme>());
     availableThemes.append(std::make_shared<OceanicTheme>());
-    availableThemes.append(std::make_shared<TaifGlowTheme>());
+    availableThemes.append(std::make_shared<QalamGlowTheme>());
 }
 
 QVector<std::shared_ptr<SyntaxTheme>> TSettings::getAvailableThemes() const {

@@ -7,7 +7,7 @@
 **English:** Qalam IDE is a fast, right-to-left friendly, Qt-powered IDE designed for Arabic-syntax system languages — starting with **Baa (باء)**.  
 **العربية:** محرر **قلم** هو بيئة تطوير سريعة تدعم اتجاه الكتابة من اليمين إلى اليسار، ومصممة للغات الأنظمة ذات الصياغة العربية — بدايةً مع **لغة باء**.
 
-> Note: the current codebase still contains legacy naming (Taif/Alif) that will be refactored in the next steps of this rebrand.
+> Note: the current codebase has been successfully rebranded to Qalam IDE.
 
 ---
 
@@ -60,7 +60,7 @@
 
 ## Project Structure
 
-- `taif/` — Qt application entry, resources, qmake project file
+- `qalam/` — Qt application entry, resources, qmake project file
 - `source/` — reusable components (editor, console, settings, menu bar, welcome window)
 
 ---
@@ -75,7 +75,7 @@ Qalam IDE is a Qt Widgets application written in C++23.
 - A C++23-capable compiler
 - **qmake** (this project currently uses qmake via a `.pro` file)
 
-> The qmake project file is currently located at: `taif/Taif.pro` (will be renamed to Qalam later).
+> The qmake project file is located at: `qalam/Qalam.pro`.
 
 ---
 
@@ -83,7 +83,7 @@ Qalam IDE is a Qt Widgets application written in C++23.
 
 ### Option A — Build with Qt Creator (recommended)
 1. Install Qt 6.x using the Qt Online Installer.
-2. Open `taif/Taif.pro` in Qt Creator.
+2. Open `qalam/Qalam.pro` in Qt Creator.
 3. Select a Qt 6 kit (MinGW 64-bit or MSVC).
 4. Build & run.
 
@@ -91,26 +91,26 @@ Qalam IDE is a Qt Widgets application written in C++23.
 From the repository root:
 
 ```powershell
-cd taif
-qmake .\Taif.pro
+cd qalam
+qmake .\Qalam.pro
 mingw32-make -j
 ```
 
 > If using MSVC kits, use the matching Qt command prompt and `nmake` instead of `mingw32-make`.
 
 ### Deploy (windeployqt)
-After building `Taif.exe` (name will change later), run:
+After building `Qalam.exe`, run:
 
 ```powershell
 # Example path from deployment.md (adjust to your Qt install)
-~:\Qt\6.*.*\mingw_64\bin\windeployqt6.exe .\Taif.exe
+~:\Qt\6.*.*\mingw_64\bin\windeployqt6.exe .\Qalam.exe
 ```
 
 ### Packaging (Qt Installer Framework)
 From [`deployment.md`](deployment.md):
 
 ```powershell
-~:\Qt\Tools\QtInstallerFramework\4.*\bin\binarycreator.exe -c config/config.xml -p packages TaifInstaller-Win-X64
+~:\Qt\Tools\QtInstallerFramework\4.*\bin\binarycreator.exe -c config/config.xml -p packages QalamInstaller-Win-X64
 ```
 
 ---
@@ -131,7 +131,7 @@ sudo apt install -y libxcb-cursor0 libxcb-cursor-dev
 
 ### Build with Qt Creator
 1. Install Qt 6 (or use distro Qt 6 packages).
-2. Open `taif/Taif.pro` in Qt Creator.
+2. Open `qalam/Qalam.pro` in Qt Creator.
 3. Configure with a Qt 6 kit and build.
 
 ### (Optional) Make Qt binaries available in your PATH
@@ -166,7 +166,7 @@ If linuxdeployqt cannot find qmake:
 
 ### Build with Qt Creator
 1. Install Qt 6.x for macOS using the Qt Online Installer.
-2. Open `taif/Taif.pro` in Qt Creator.
+2. Open `qalam/Qalam.pro` in Qt Creator.
 3. Select a Desktop Qt 6 kit (clang) and build.
 
 ### Deploy (macdeployqt)

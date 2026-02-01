@@ -504,8 +504,8 @@ void TEditor::toggleFold(int blockNumber) {
 void TEditor::dragEnterEvent(QDragEnterEvent* event) {
     if (event->mimeData()->hasUrls()) {
         for (const QUrl& url : event->mimeData()->urls()) {
-            if (url.fileName().endsWith(".alif", Qt::CaseInsensitive) or
-                url.fileName().endsWith(".aliflib", Qt::CaseInsensitive) or
+            if (url.fileName().endsWith(".baa", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".baahd", Qt::CaseInsensitive) or
                 url.fileName().endsWith(".txt", Qt::CaseInsensitive)) {
                 event->acceptProposedAction();
                 return;
@@ -527,8 +527,8 @@ void TEditor::dragMoveEvent(QDragMoveEvent* event) {
 void TEditor::dropEvent(QDropEvent* event) {
     if (event->mimeData()->hasUrls()) {
         for (const QUrl& url : event->mimeData()->urls()) {
-            if (url.fileName().endsWith(".alif", Qt::CaseInsensitive) or
-                url.fileName().endsWith(".aliflib", Qt::CaseInsensitive) or
+            if (url.fileName().endsWith(".baa", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".baahd", Qt::CaseInsensitive) or
                 url.fileName().endsWith(".txt", Qt::CaseInsensitive)) {
 
                 QString filePath = url.toLocalFile();

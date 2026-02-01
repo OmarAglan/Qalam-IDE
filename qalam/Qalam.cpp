@@ -87,7 +87,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     runToolbarAction->setToolTip("تشغيل الملف الحالي");
 
     mainToolBar->addAction(runToolbarAction);
-    connect(runToolbarAction, &QAction::triggered, this, &Qalam::runAlif);
+    connect(runToolbarAction, &QAction::triggered, this, &Qalam::runBaa);
     // mainToolBar->addSeparator();
     // mainToolBar->addAction(menuBar->newAction);
 
@@ -169,7 +169,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     connect(menuBar, &TMenuBar::saveAsRequested, this, &Qalam::saveFileAs);
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
-    connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runAlif);
+    connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
     connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
     connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
     connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::updateWindowTitle);
@@ -638,7 +638,7 @@ void Qalam::openFile(QString filePath) {
     }
 
     if (filePath.isEmpty()) {
-        filePath = QFileDialog::getOpenFileName(this, "فتح ملف", "", "ملف ألف (*.alif *.aliflib);;All Files (*)");
+        filePath = QFileDialog::getOpenFileName(this, "فتح ملف", "", "ملف باء (*.baa *.baahd);;All Files (*)");
     }
 
     if (!filePath.isEmpty()) {
@@ -794,8 +794,8 @@ void Qalam::saveFileAs() {
 
     QString content = editor->toPlainText();
     QString currentPath = editor->property("filePath").toString();
-    QString currentName = currentPath.isEmpty() ? "ملف جديد.alif" : QFileInfo(currentPath).fileName();
-    QString fileName = QFileDialog::getSaveFileName(this, "حفظ الملف", currentName, "ملف ألف (*.alif);;مكتبة ألف(*.aliflib);;All Files (*)");
+    QString currentName = currentPath.isEmpty() ? "ملف جديد.baa" : QFileInfo(currentPath).fileName();
+    QString fileName = QFileDialog::getSaveFileName(this, "حفظ الملف", currentName, "ملف باء (*.baa);;مكتبة باء(*.baahd);;All Files (*)");
 
     if (!fileName.isEmpty()) {
         QFile file(fileName);
@@ -957,7 +957,7 @@ void Qalam::updateCursorPosition()
 
 //----------------
 
-void Qalam::runAlif() {
+void Qalam::runBaa() {
     TEditor *editor = currentEditor();
     if (!editor) return;
 
@@ -993,7 +993,7 @@ void Qalam::runAlif() {
     if (!console) {
         console = new TConsole(this);
         console->setObjectName("interactiveConsole");
-        consoleTabWidget->addTab(console, "مخرجات ألف");
+        consoleTabWidget->addTab(console, "مخرجات باء");
         console->setConsoleRTL();
     }
 
@@ -1018,21 +1018,21 @@ void Qalam::runAlif() {
     QString appDir = QCoreApplication::applicationDirPath();
 
 #if defined(Q_OS_WIN)
-    QString localAlif = QDir(appDir).filePath("alif/alif.exe");
+    QString localAlif = QDir(appDir).filePath("baa/baa.exe");
     qDebug() <<  " -------------------------------------------------------------------------------------------- "  << localAlif <<  " -------------------------------------------------------------------------------------------- ";
 
     if (QFile::exists(localAlif)) {
         program = localAlif;
     } else {
-        program = "alif/alif.exe";
+        program = "baa/baa.exe";
     }
 #elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-    program = QDir(appDir).filePath("alif/alif");
+    program = QDir(appDir).filePath("baa/baa");
 #endif
 
     if (!QFile::exists(program)) {
         console->clear();
-        console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم ألف!");
+        console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم باء!");
         console->appendPlainTextThreadSafe("المسار المتوقع: " + program);
 
 #if defined(Q_OS_LINUX)
