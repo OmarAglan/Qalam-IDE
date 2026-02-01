@@ -2,6 +2,7 @@
 
 
 TFlatButton::TFlatButton(QWidget *parent, QString lable) {
+    Q_UNUSED(parent)
     setFlat(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setMinimumHeight(30);

@@ -631,7 +631,7 @@ void Qalam::newFile() {
 }
 
 void Qalam::openFile(QString filePath) {
-    if (TEditor* current = currentEditor()) {
+    if (currentEditor()) {
         int isNeedSave = needSave();
         if (!isNeedSave) return;
         if (isNeedSave == 1) this->saveFile();

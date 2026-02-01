@@ -21,7 +21,7 @@ int CompletionModel::rowCount(const QModelIndex &) const {
 }
 
 QVariant CompletionModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= m_data.size()) return QVariant();
+    if (!index.isValid() || static_cast<size_t>(index.row()) >= m_data.size()) return QVariant();
     const auto &item = m_data[index.row()];
 
     if (role == Qt::DisplayRole) return item.label;

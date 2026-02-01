@@ -26,10 +26,10 @@ private slots:
     void flushBuffers();
 
 private:
-    QProcess *process{};
     QString program{};
     QStringList args{};
     QString workingDir{};
+    QProcess *process{};
     QString outputBuffer{};
     QString errorBuffer{};
     QTimer *flushTimer{};

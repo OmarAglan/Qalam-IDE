@@ -42,6 +42,7 @@ TSettings::TSettings(QWidget* parent) : QWidget(parent) {
 
 
 void TSettings::closeEvent(QCloseEvent* event) {
+    Q_UNUSED(event)
     QSettings settings("Alif", "Qalam");
     settings.setValue("editorFontSize", fontSpin->value());
     settings.setValue("editorFontType", fontCombo->currentText());
@@ -192,7 +193,7 @@ void TSettings::setThemes() {
     availableThemes.append(std::make_shared<VSCodeDarkTheme>());
     availableThemes.append(std::make_shared<MonokaiTheme>());
     availableThemes.append(std::make_shared<OceanicTheme>());
-    availableThemes.append(std::make_shared<QalamGlowTheme>());
+    availableThemes.append(std::make_shared<TaifGlowTheme>());
 }
 
 QVector<std::shared_ptr<SyntaxTheme>> TSettings::getAvailableThemes() const {

@@ -209,7 +209,6 @@ void TConsole::flushPending() {
 void TConsole::appendOutput(const QString &text)
 {
     static QRegularExpression re("\x1B\\[([0-9;]+)m");
-    int pos = 0;
     QRegularExpressionMatch match;
 
     QTextCursor cur = m_output->textCursor();

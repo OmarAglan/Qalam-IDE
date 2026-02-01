@@ -13,6 +13,7 @@
 
 
 TEditor::TEditor(TSettings* setting, QWidget* parent) {
+    Q_UNUSED(parent)
     setAcceptDrops(true);
     this->setStyleSheet("QPlainTextEdit { background-color: #141520; color: #cccccc; }");
     this->setTabStopDistance(32);
@@ -330,10 +331,8 @@ void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
             painter.drawText(12, top, lineNumberArea->width(), fontMetrics().height(),
                                      Qt::AlignRight | Qt::AlignVCenter, number);
 
-            bool hasFold = false;
             for (const auto& region : foldRegions) {
                 if (region.startBlockNumber == blockNumber) {
-                    hasFold = true;
                     bool folded = region.folded;
 
                     QPolygon arrow;
@@ -1041,11 +1040,9 @@ bool TEditor::handleQuoteCompletion(QChar quoteChar) {
     }
 
     // Check if we're inside a word (for smart quotes)
-    bool insideWord = false;
-    if (pos > 0) {
-        QChar prevChar = doc->characterAt(pos - 1);
-        insideWord = prevChar.isLetterOrNumber() || prevChar == '_';
-    }
+    // Note: insideWord could be used for advanced smart quote behavior in future
+    Q_UNUSED(pos)
+    Q_UNUSED(doc)
 
     // Insert the quote pair
     cursor.insertText(QString(quoteChar) + quoteChar);

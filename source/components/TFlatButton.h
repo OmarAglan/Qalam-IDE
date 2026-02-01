@@ -9,7 +9,7 @@
 class TFlatButton : public QPushButton
 {
     Q_OBJECT
-    Q_PROPERTY(qreal glowIntensity READ glowIntensity WRITE setGlowIntensity CONSTANT)
+    Q_PROPERTY(qreal glowIntensity READ glowIntensity WRITE setGlowIntensity)
 
 public:
     explicit TFlatButton(QWidget *parent = nullptr, QString lable = "");
