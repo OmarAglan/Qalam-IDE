@@ -36,23 +36,32 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
         return TToken(TokenType::Whitespace, start, pos - start);
     }
 
-    // 2. Comments and Preprocessor
-    if (ch == '#') {
+    // 2. Comments (Baa uses // for single-line comments, NOT #)
+    if (pos + 1 < text.length() && ch == '/' && text[pos + 1] == '/') {
         int start = pos;
-        // Check if it's a preprocessor directive
-        int nextSpace = text.indexOf(' ', start);
-        if (nextSpace == -1) nextSpace = text.length();
-        QString potentialDirective = text.mid(start, nextSpace - start);
-
-        if (langDef.preprocessorSet.contains(potentialDirective)) {
-            // It's a preprocessor directive
-            pos = nextSpace;
-            return TToken(TokenType::Preprocessor, start, potentialDirective.length(), potentialDirective);
-        }
-
-        // Otherwise it's a comment
         pos = text.length();
         return TToken(TokenType::Comment, start, pos - start);
+    }
+
+    // 3. Preprocessor directives (start with #)
+    if (ch == '#') {
+        int start = pos;
+        pos++; // Skip the #
+
+        // Read the directive name (Arabic letters and underscores after #)
+        while (pos < text.length() && (text[pos].isLetter() || text[pos] == '_')) {
+            pos++;
+        }
+
+        QString directive = text.mid(start, pos - start);
+
+        if (langDef.preprocessorSet.contains(directive)) {
+            // It's a valid preprocessor directive - highlight the directive part
+            return TToken(TokenType::Preprocessor, start, pos - start, directive);
+        }
+
+        // Unknown directive starting with # - treat as error/operator
+        return TToken(TokenType::Operator, start, pos - start, directive);
     }
 
     // 3. Strings & F-Strings
