@@ -4,7 +4,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++23
 
-TARGET = Taif
+TARGET = Qalam
 
 RESOURCES += \
     resources.qrc
@@ -26,7 +26,7 @@ SOURCES += \
     ../source/texteditor/highlighter/TLexer.cpp \
     ../source/texteditor/highlighter/TSyntaxDefinition.cpp \
     ../source/texteditor/highlighter/TSyntaxHighlighter.cpp \
-    Taif.cpp \
+    Qalam.cpp \
     main.cpp \
     ../source/texteditor/TEditor.cpp \
     ../source/components/TFlatButton.cpp \
@@ -45,7 +45,7 @@ HEADERS += \
     ../source/texteditor/highlighter/TSyntaxHighlighter.h \
     ../source/texteditor/highlighter/TSyntaxThemes.h \
     ../source/texteditor/highlighter/TToken.h \
-    Taif.h  \
+    Qalam.h  \
     ../source/texteditor/TEditor.h \
     ../source/components/TFlatButton.h \
     ../source/components/TSearchPanel.h \
@@ -58,11 +58,11 @@ HEADERS += \
 
 
 # Add the application icon (Windows)
-win32:RC_ICONS += resources/TaifLogo.ico
+win32:RC_ICONS += resources/QalamLogo.ico
 
 # Add the application icon (macOS/Linux)
-macx:ICON = resources/TaifLogo.icns
-unix:!macx:ICON = resources/TaifLogo.png
+macx:ICON = resources/QalamLogo.icns
+unix:!macx:ICON = resources/QalamLogo.png
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

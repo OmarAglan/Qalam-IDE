@@ -1,4 +1,4 @@
-#include "Taif.h"
+#include "Qalam.h"
 #include "TWelcomeWindow.h"
 
 #include <QApplication>
@@ -13,15 +13,15 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName("Alif");
-    QCoreApplication::setApplicationName("Taif");
+    QCoreApplication::setApplicationName("Qalam");
     app.setLayoutDirection(Qt::RightToLeft);
 
 
-    QString lockPath = QDir::tempPath() + "/taif_editor.lock";
+    QString lockPath = QDir::tempPath() + "/qalam_ide.lock";
     QLockFile lockFile(lockPath);
 
     if (!lockFile.tryLock(100)) {
-        QMessageBox::warning(nullptr, "طيف",
+        QMessageBox::warning(nullptr, "قلم",
                              "البرنامج يعمل بالفعل!\nلا يمكن تشغيل أكثر من نسخة في نفس الوقت.");
         return 0;
     }
@@ -139,10 +139,10 @@ int main(int argc, char *argv[])
         }
     )");
 
-    // لتشغيل ملف ألف بإستخدام محرر طيف عند إختيار المحرر ك برنامج للتشغيل
+    // لتشغيل ملف باء بإستخدام محرر قلم عند إختيار المحرر ك برنامج للتشغيل
     QString filePath{};
     if (app.arguments().count() > 2) {
-        int ret = QMessageBox::warning(nullptr, "طيف",
+        int ret = QMessageBox::warning(nullptr, "قلم",
                                        "لا يمكن تمرير أكثر من معامل واحد",
                                        QMessageBox::Close);
         return ret;
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     app.setQuitOnLastWindowClosed(true);
 
     if (!filePath.isEmpty()) {
-        Taif *editor = new Taif(filePath);
+        Qalam *editor = new Qalam(filePath);
         editor->show();
     } else {
         WelcomeWindow *w = new WelcomeWindow();
