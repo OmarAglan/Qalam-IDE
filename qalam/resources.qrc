@@ -21,5 +21,9 @@
         <file>resources/run.svg</file>
         <file>resources/left-arrow.png</file>
         <file>resources/right-arrow.png</file>
+        <file>resources/file-new.svg</file>
+        <file>resources/folder.svg</file>
+        <file>resources/folder-open.svg</file>
+        <file>resources/git-clone.svg</file>
     </qresource>
 </RCC>

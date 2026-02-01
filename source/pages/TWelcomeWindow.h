@@ -1,12 +1,12 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QListWidget>
+#include <QVariant>
 
-// قم بتضمين forward declarations لتسريع عملية البناء
 class QPushButton;
-class QListWidget;
 class QCheckBox;
-class QListWidgetItem;
+class QLabel;
 
 class WelcomeWindow : public QMainWindow
 {
@@ -15,26 +15,26 @@ class WelcomeWindow : public QMainWindow
 public:
     WelcomeWindow(QWidget *parent = nullptr);
     ~WelcomeWindow();
+
 protected:
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
-    QMenu *fileMenu;
-    QMenu *editMenu;
-    QPushButton *newFileButton;
-    QPushButton *openFileButton;
-    QPushButton *openFolderButton;
-    QListWidget *recentFilesList;
+    // UI Creation Helpers
+    QWidget* createActionLink(const QString &iconPath, const QString &text, void (WelcomeWindow::*slot)());
+    QVBoxLayout* createStartColumn();
+    QVBoxLayout* createRecentColumn();
+    void populateRecentProjects();
 
-    QPushButton *newSessionButton;
-    QPushButton *manageSessionsButton;
-    QListWidget *savedSessionsList;
-
+    // UI Elements
+    QListWidget *recentProjectsList;
     QCheckBox *showOnStartupCheck;
 
 private slots:
     void handleNewFileRequest();
     void handleOpenFileRequest();
     void handleOpenFolderRequest();
-    void onRecentFileClicked(QListWidgetItem *);
+    void handleCloneRepo();
+    void onRecentFileClicked(QListWidgetItem *item);
 };
