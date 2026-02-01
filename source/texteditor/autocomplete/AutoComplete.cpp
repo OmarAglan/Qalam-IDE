@@ -4,16 +4,23 @@
 
 // --- Keyword Strategy ---
 KeywordStrategy::KeywordStrategy() {
-    keywords = {"احذف", "دالة", "صنف", "استورد",
-                "من", "بينما", "لكل", "اذا",
-                "اواذا", "والا", "ارجع", "أوإذا",
-                "حاول", "خلل", "توقف", "استمر",
-                "و", "او", "اصل", "أو",
-                "عدم", "صح", "خطا", "خطأ",
-                "ك", "في", "عام", "عند",
-                "مزامنة", "من", "مرر", "ليس",
-                "وإلا", "هل", "نهاية", "نطاق",
-                "ولد", "إذا",
+    keywords = {
+        // Types (§3.1)
+        "صحيح", "نص", "منطقي",
+        // Constants (§4)
+        "ثابت",
+        // Boolean literals (§3.1)
+        "صواب", "خطأ",
+        // Control flow (§7)
+        "إذا", "وإلا", "طالما", "لكل",
+        // Switch (§7.5)
+        "اختر", "حالة", "افتراضي",
+        // Loop control (§7.4)
+        "توقف", "استمر",
+        // Functions (§5)
+        "إرجع",
+        // Entry point
+        "الرئيسية"
     };
 }
 
@@ -23,7 +30,7 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 
     for (const auto &k : keywords) {
         if (k.startsWith(prefix, Qt::CaseInsensitive)) {
-            items.push_back({k, k, "كلمة محجوزة في اللغة", CompletionType::Keyword});
+            items.push_back({k, k, "كلمة محجوزة", CompletionType::Keyword});
         }
     }
     return items;
@@ -31,11 +38,10 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 
 // --- Built-ins Strategy ---
 BuiltinStrategy::BuiltinStrategy() {
-    builtins = {"تحقق_اي", "افتح", "ادخل", "اطبع",
-                "مصفوفة", "مترابطة", "عشري", "صحيح",
-                "اقصى", "طول", "ادنى", "منطق",
-                "مدى",
-                };
+    builtins = {
+        // I/O (§6)
+        "اطبع", "اقرأ"
+    };
 }
 
 QVector<CompletionItem> BuiltinStrategy::getSuggestions(const QString &prefix, const QString &) {
@@ -44,7 +50,7 @@ QVector<CompletionItem> BuiltinStrategy::getSuggestions(const QString &prefix, c
 
     for (const auto &b : builtins) {
         if (b.startsWith(prefix, Qt::CaseInsensitive)) {
-            items.push_back({b, b, "دالة ضمن لغة ألف", CompletionType::Builtin});
+            items.push_back({b, b, "دالة ضمن لغة باء", CompletionType::Builtin});
         }
     }
     return items;
@@ -55,40 +61,52 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
     QVector<CompletionItem> items;
     QString p = prefix.toLower();
 
-    if (QString("دالة").startsWith(p)) {
-        items.push_back({"دالة",
-                         "دالة اسم(معاملات):\n\tمرر",
-                         "تعريف دالة",
+    if (QString("الرئيسية").startsWith(p)) {
+        items.push_back({"الرئيسية",
+                         "صحيح الرئيسية() {\n\tإرجع ٠.\n}",
+                         "الدالة الرئيسية للبرنامج",
                          CompletionType::Snippet});
     }
-    if (QString("صنف").startsWith(p)) {
-        items.push_back({"صنف",
-                         "صنف اسم:\n\tدالة __تهيئة__(هذا):\n\t\tمرر",
-                         "تعريف صنف",
+    if (QString("صحيح").startsWith(p)) {
+        items.push_back({"دالة (صحيح)",
+                         "صحيح اسم_الدالة() {\n\tإرجع ٠.\n}",
+                         "تعريف دالة ترجع عدد صحيح",
                          CompletionType::Snippet});
     }
-    if (QString("اذا").startsWith(p)) {
-        items.push_back({"اذا",
-                         "اذا الشرط:\n\tمرر",
-                         "حالة إذا الشرطية",
+    if (QString("إذا").startsWith(p)) {
+        items.push_back({"إذا",
+                         "إذا (الشرط) {\n\t\n}",
+                         "جملة شرطية",
+                         CompletionType::Snippet});
+    }
+    if (QString("وإلا").startsWith(p)) {
+        items.push_back({"وإلا",
+                         "وإلا {\n\t\n}",
+                         "تتمة الجملة الشرطية",
                          CompletionType::Snippet});
     }
     if (QString("لكل").startsWith(p)) {
         items.push_back({"لكل",
-                         "لكل عنصر في العناصر:\n\tمرر",
-                         "حلقة لكل التكرارية",
+                         "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {\n\t\n}",
+                         "حلقة تكرارية (For)",
                          CompletionType::Snippet});
     }
-    if (QString("حاول").startsWith(p)) {
-        items.push_back({"حاول",
-                         "حاول:\n\tمرر\nخلل:\n\tمرر",
-                         "كتلة حاول/خلل",
+    if (QString("طالما").startsWith(p)) {
+        items.push_back({"طالما",
+                         "طالما (الشرط) {\n\t\n}",
+                         "حلقة تكرارية شرطية (While)",
                          CompletionType::Snippet});
     }
-    if (QString("بينما").startsWith(p)) {
-        items.push_back({"بينما",
-                         "بينما الشرط:\n\tمرر",
-                         "حلقة بينما التكرارية",
+    if (QString("اختر").startsWith(p)) {
+        items.push_back({"اختر",
+                         "اختر (المتغير) {\n\tحالة ١:\n\t\tتوقف.\n\tافتراضي:\n\t\tتوقف.\n}",
+                         "جملة الاختيار المتعدد (Switch)",
+                         CompletionType::Snippet});
+    }
+    if (QString("تضمين").startsWith(p)) {
+        items.push_back({"تضمين",
+                         "#تضمين \"ملف.baahd\"",
+                         "تضمين ملف خارجي",
                          CompletionType::Snippet});
     }
 

@@ -47,6 +47,7 @@ public:
         setFormat(formats, TokenType::Self,         QColor(86, 156, 214), false);
         setFormat(formats, TokenType::Operator,     QColor(212, 212, 212));
         setFormat(formats, TokenType::Identifier,   QColor(156, 220, 254));
+        setFormat(formats, TokenType::Preprocessor, QColor(197, 134, 192)); // Pink like keywords
     }
 };
 
@@ -68,6 +69,7 @@ public:
         setFormat(formats, TokenType::Self,         QColor(253, 151, 31), false); // Orange
         setFormat(formats, TokenType::Operator,     QColor(249, 38, 114));       // Pink
         setFormat(formats, TokenType::Identifier,   QColor(248, 248, 242));       // White
+        setFormat(formats, TokenType::Preprocessor, QColor(249, 38, 114));       // Pink like keywords
     }
 };
 
@@ -89,6 +91,7 @@ public:
         setFormat(formats, TokenType::Self,         QColor(255, 83, 112), false); // Red
         setFormat(formats, TokenType::Operator,     QColor(137, 221, 255));       // Cyan
         setFormat(formats, TokenType::Identifier,   QColor(238, 255, 255));       // White
+        setFormat(formats, TokenType::Preprocessor, QColor(199, 146, 234));       // Purple like keywords
     }
 };
 
@@ -110,6 +113,7 @@ public:
         setFormat(formats, TokenType::Self,         QColor(90, 180, 255), false); // Red
         setFormat(formats, TokenType::Operator,     QColor(40, 240, 240));       // Cyan
         setFormat(formats, TokenType::Identifier,   QColor(248, 248, 255));       // White
+        setFormat(formats, TokenType::Preprocessor, QColor(255, 100, 100));       // Red/Pink like keywords
     }
 };
 

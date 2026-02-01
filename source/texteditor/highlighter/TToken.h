@@ -44,7 +44,8 @@ enum class TokenType {
     Whitespace,
     MultiLineString,
     Self,
-    Error
+    Error,
+    Preprocessor // NEW: for #include, #define, etc.
 };
 
 struct TToken {

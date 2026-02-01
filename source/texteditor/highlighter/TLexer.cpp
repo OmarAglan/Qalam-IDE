@@ -36,9 +36,21 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
         return TToken(TokenType::Whitespace, start, pos - start);
     }
 
-    // 2. Comments
+    // 2. Comments and Preprocessor
     if (ch == '#') {
         int start = pos;
+        // Check if it's a preprocessor directive
+        int nextSpace = text.indexOf(' ', start);
+        if (nextSpace == -1) nextSpace = text.length();
+        QString potentialDirective = text.mid(start, nextSpace - start);
+
+        if (langDef.preprocessorSet.contains(potentialDirective)) {
+            // It's a preprocessor directive
+            pos = nextSpace;
+            return TToken(TokenType::Preprocessor, start, potentialDirective.length(), potentialDirective);
+        }
+
+        // Otherwise it's a comment
         pos = text.length();
         return TToken(TokenType::Comment, start, pos - start);
     }
@@ -91,6 +103,8 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
         while (pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
         QString word = text.mid(start, pos - start);
 
+        // Check specific keywords that start blocks
+        /*
         if (word == "دالة") {
             pendingState = std::make_unique<FunctionDefState>();
             return TToken(TokenType::Keyword, start, pos - start, word);
@@ -99,11 +113,13 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
             pendingState = std::make_unique<ClassDefState>();
             return TToken(TokenType::Keyword, start, pos - start, word);
         }
+        */
 
         if (word == "هذا") return TToken(TokenType::Self, start, pos - start, word);
         if (langDef.keywordSet.contains(word)) return TToken(TokenType::Keyword, start, pos - start, word);
         if (langDef.magicSet.contains(word)) return TToken(TokenType::MagicMethod, start, pos - start, word);
         if (langDef.builtinSet.contains(word)) return TToken(TokenType::BuiltinFunc, start, pos - start, word);
+        if (langDef.preprocessorSet.contains(word)) return TToken(TokenType::Preprocessor, start, pos - start, word);
 
         // Check for function call pattern 'func('
         int next = pos;
