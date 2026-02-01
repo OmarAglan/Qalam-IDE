@@ -11,9 +11,9 @@
         <file>resources/fonts/NotoKufiArabic-Regular.ttf</file>
     </qresource>
     <qresource prefix="/icons">
-        <file>resources/TaifLogo.icns</file>
-        <file>resources/TaifLogo.ico</file>
-        <file>resources/TaifLogo.png</file>
+        <file>resources/QalamLogo.icns</file>
+        <file>resources/QalamLogo.ico</file>
+        <file>resources/QalamLogo.png</file>
         <file>resources/down-arrow.png</file>
         <file>resources/up-arrow.png</file>
         <file>resources/panel-right-open.svg</file>
