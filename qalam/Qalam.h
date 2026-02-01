@@ -4,20 +4,13 @@
 #include "TMenu.h"
 #include "TSearchPanel.h"
 #include "ProcessWorker.h"
-
-#include <QMainWindow>
-#include <QStatusBar>
-
 #include <QSplitter>
+#include <QStatusBar>
+#include "../ui/QalamWindow.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui
-{
-    class Qalam;
-}
-QT_END_NAMESPACE
+// ...
 
-class Qalam : public QMainWindow
+class Qalam : public QalamWindow
 {
     Q_OBJECT
 

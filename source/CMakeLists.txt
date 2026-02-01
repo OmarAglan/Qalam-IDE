@@ -15,7 +15,12 @@ add_library(qalam_core STATIC
     # Menu
     menubar/TMenu.cpp
     # Settings
+    # Settings
     settings/TSettings.cpp
+    # UI Theme
+    ui/QalamTheme.cpp
+    ui/TTitleBar.cpp
+    ui/QalamWindow.cpp
 )
 
 target_include_directories(qalam_core PUBLIC
@@ -28,6 +33,11 @@ target_include_directories(qalam_core PUBLIC
     menubar
     pages
     settings
+    ui
 )
 
 target_link_libraries(qalam_core PUBLIC Qt6::Widgets Qt6::Gui Qt6::Core)
+
+if(WIN32)
+    target_link_libraries(qalam_core PUBLIC dwmapi user32)
+endif()

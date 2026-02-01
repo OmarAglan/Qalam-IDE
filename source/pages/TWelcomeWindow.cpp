@@ -4,10 +4,10 @@
 #include <QFontDatabase>
 
 WelcomeWindow::WelcomeWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QalamWindow(parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
-    setLayoutDirection(Qt::RightToLeft);  // Force RTL for entire window
+    setLayoutDirection(Qt::RightToLeft);  
     setWindowTitle("صفحة الترحيب - محرر قلم");
 
     // Main central widget
@@ -20,10 +20,16 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     mainLayout->setSpacing(0);
 
     // 1. Header (Logo + Title)
+    // ... (Keep existing layout logic, but remove hardcoded colors/styles where possible and rely on QalamTheme)
+    
+    // For now, keeping layout structure same.
+    // QalamWindow handles the TitleBar.
+    // We just provide content.
+
     QWidget *headerWidget = new QWidget();
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(40, 40, 40, 20);
-    headerLayout->setDirection(QBoxLayout::RightToLeft); // Ensure layout flows correctly
+    headerLayout->setDirection(QBoxLayout::RightToLeft); 
 
     QLabel *logoLabel = new QLabel();
     logoLabel->setPixmap(QPixmap(":/icons/resources/QalamLogo.ico").scaled(80, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -31,6 +37,9 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     QVBoxLayout *titleLayout = new QVBoxLayout();
     QLabel *titleLabel = new QLabel("محرر قلم");
     titleLabel->setObjectName("mainTitle");
+    // Styling is handled by global stylesheet now? 
+    // Yes, QalamTheme defines QLabel#mainTitle
+    
     QLabel *subtitleLabel = new QLabel("محرر لغة باء");
     subtitleLabel->setObjectName("subtitle");
     
@@ -65,77 +74,17 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     // 3. Footer (Checkbox)
     showOnStartupCheck = new QCheckBox("إظهار صفحة الترحيب عند بدء البرنامج");
     showOnStartupCheck->setChecked(true);
-    showOnStartupCheck->setDisabled(true); // Placeholder for now
+    showOnStartupCheck->setDisabled(true); 
     
     QHBoxLayout *footerLayout = new QHBoxLayout();
     footerLayout->addStretch();
     footerLayout->addWidget(showOnStartupCheck);
-    footerLayout->addSpacing(40); // Simple padding
+    footerLayout->addSpacing(40); 
     
     mainLayout->addLayout(footerLayout);
-
-
-    // ===================================================================
-    // Stylesheet
-    // ===================================================================
-    QString styleSheet = R"(
-        QMainWindow {
-            background-color: #1e1e2e;
-        }
-        QWidget {
-            background-color: #1e1e2e;
-            color: #cccccc;
-            font-family: 'Segoe UI', 'Tajawal', sans-serif;
-        }
-        QLabel#mainTitle {
-            font-size: 32px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-        QLabel#subtitle {
-            font-size: 16px;
-            color: #888888;
-        }
-        QLabel#sectionTitle {
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffffff;
-            margin-bottom: 15px;
-        }
-        QLabel#actionLink {
-            font-size: 15px;
-            color: #4fc3f7;
-        }
-        QLabel#actionLink:hover {
-            color: #81d4fa;
-            text-decoration: underline;
-        }
-        QListWidget {
-            background-color: transparent;
-            border: none;
-            outline: none;
-        }
-        QListWidget::item {
-            padding: 8px 5px;
-            border-bottom: 1px solid #2d2d3d;
-            background-color: transparent;
-        }
-        QListWidget::item:hover {
-            background-color: #2a2a3a;
-            border-radius: 4px;
-        }
-        QCheckBox {
-            color: #888888;
-        }
-    )";
     
-    // Attempt to set custom Arabic font if available
-    QStringList fontFamilies = QFontDatabase::applicationFontFamilies(QFontDatabase::Any);
-    if (!fontFamilies.isEmpty()) {
-        // Simple fallback logic or keep system default
-    }
-
-    this->setStyleSheet(styleSheet);
+    // Inherit QalamTheme styles (applied globally via main.cpp preferably, preventing local override)
+    // Remove local setStyleSheet calls.
     
     // Geometry
     resize(1000, 700);

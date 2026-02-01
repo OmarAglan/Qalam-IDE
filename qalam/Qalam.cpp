@@ -25,7 +25,7 @@
 #include <QInputDialog>
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
-    : QMainWindow(parent)
+    : QalamWindow(parent)
 {
 
     setAttribute(Qt::WA_DeleteOnClose);
