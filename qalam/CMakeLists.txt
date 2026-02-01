@@ -11,6 +11,12 @@ if(WIN32)
     # Ensure the directory exists or the path is correct relative to this CMakeLists.txt
     target_sources(Qalam PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/resources/QalamLogo.ico)
     set_target_properties(Qalam PROPERTIES WIN32_EXECUTABLE TRUE)
+    
+    # Run windeployqt after build to copy DLLs
+    add_custom_command(TARGET Qalam POST_BUILD
+        COMMAND ${CMAKE_PREFIX_PATH}/bin/windeployqt.exe --compiler-runtime --dir $<TARGET_FILE_DIR:Qalam> $<TARGET_FILE:Qalam>
+        COMMENT "Running windeployqt..."
+    )
 elseif(APPLE)
     set_target_properties(Qalam PROPERTIES
         MACOSX_BUNDLE TRUE
