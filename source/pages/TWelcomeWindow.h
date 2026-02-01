@@ -7,6 +7,8 @@
 class QPushButton;
 class QCheckBox;
 class QLabel;
+class QVBoxLayout;
+class QWidget;
 
 class WelcomeWindow : public QMainWindow
 {
