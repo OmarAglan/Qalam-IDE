@@ -10,19 +10,22 @@
 
 #include <QSplitter>
 
-
 QT_BEGIN_NAMESPACE
-namespace Ui { class Taif; }
+namespace Ui
+{
+    class Qalam;
+}
 QT_END_NAMESPACE
 
-class Taif : public QMainWindow
+class Qalam : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    Taif(const QString& filePath = "", QWidget* parent = nullptr);
-    ~Taif();
+    Qalam(const QString &filePath = "", QWidget *parent = nullptr);
+    ~Qalam();
     void loadFolder(const QString &folderPath);
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
@@ -36,7 +39,7 @@ private slots:
     void exitApp();
 
     void runAlif();
-    void aboutTaif();
+    void aboutQalam();
 
     void updateWindowTitle();
     void onModificationChanged(bool modified);
@@ -59,20 +62,19 @@ private slots:
 
 private:
     int needSave();
-    TEditor* currentEditor();
+    TEditor *currentEditor();
 
 private:
     QTabWidget *tabWidget{};
-    TMenuBar* menuBar{};
-    TSettings* setting{};
+    TMenuBar *menuBar{};
+    TSettings *setting{};
     QAction *toggleSidebarAction{};
     QString folderPath{};
-    QAbstractItemModel* model{};
+    QAbstractItemModel *model{};
 
     QSplitter *mainSplitter{};
     QTreeView *fileTreeView{};
     QFileSystemModel *fileSystemModel{};
-
 
     QSplitter *editorSplitter{};
     // TConsole *console;
