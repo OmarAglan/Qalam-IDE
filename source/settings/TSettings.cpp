@@ -1,4 +1,4 @@
-#include "TSettings.h"
+﻿#include "TSettings.h"
 
 TSettings::TSettings(QWidget* parent) : QWidget(parent) {
     setWindowTitle("الإعدادات");
@@ -42,7 +42,7 @@ TSettings::TSettings(QWidget* parent) : QWidget(parent) {
 
 
 void TSettings::closeEvent(QCloseEvent* event) {
-    QSettings settings("Alif", "Taif");
+    QSettings settings("Alif", "Qalam");
     settings.setValue("editorFontSize", fontSpin->value());
     settings.setValue("editorFontType", fontCombo->currentText());
     settings.setValue("editorCodeTheme", themeCombo->currentIndex());
@@ -116,7 +116,7 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     fontSpin->setMinimumHeight(40);
     fontSpin->setMaximumWidth(80);
 
-    QSettings settingsVal("Alif", "Taif");
+    QSettings settingsVal("Alif", "Qalam");
     int savedSize = settingsVal.value("editorFontSize").toInt();
     savedSize ? fontSpin->setValue(savedSize) : fontSpin->setValue(18);
 
@@ -192,9 +192,10 @@ void TSettings::setThemes() {
     availableThemes.append(std::make_shared<VSCodeDarkTheme>());
     availableThemes.append(std::make_shared<MonokaiTheme>());
     availableThemes.append(std::make_shared<OceanicTheme>());
-    availableThemes.append(std::make_shared<TaifGlowTheme>());
+    availableThemes.append(std::make_shared<QalamGlowTheme>());
 }
 
 QVector<std::shared_ptr<SyntaxTheme>> TSettings::getAvailableThemes() const {
     return availableThemes;
 }
+

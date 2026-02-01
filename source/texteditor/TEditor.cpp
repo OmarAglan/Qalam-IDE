@@ -1,4 +1,4 @@
-#include "TEditor.h"
+﻿#include "TEditor.h"
 
 #include <QPainter>
 #include <QTextBlock>
@@ -39,7 +39,7 @@ TEditor::TEditor(TSettings* setting, QWidget* parent) {
     highlightCurrentLine();
 
     // set saved setting font size to the editor
-    QSettings settingsVal("Alif", "Taif");
+    QSettings settingsVal("Alif", "Qalam");
     int savedSize = settingsVal.value("editorFontSize").toInt();
     updateFontSize(savedSize);
     // set saved setting font type to the editor
@@ -1073,3 +1073,4 @@ bool TEditor::handleBracketSkip(QChar typedChar) {
 
     return false;
 }
+

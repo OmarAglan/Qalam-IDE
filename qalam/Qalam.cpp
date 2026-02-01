@@ -1,4 +1,4 @@
-#include "Taif.h"
+﻿#include "Qalam.h"
 #include "TWelcomeWindow.h"
 #include "TConsole.h"
 #include "ProcessWorker.h"
@@ -24,7 +24,7 @@
 #include <QTimer>
 #include <QInputDialog>
 
-Taif::Taif(const QString& filePath, QWidget *parent)
+Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QMainWindow(parent)
 {
 
@@ -50,7 +50,7 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     searchBar->hide();
 
     QShortcut *findShortcut = new QShortcut(QKeySequence::Find, this);
-    connect(findShortcut, &QShortcut::activated, this, &Taif::showFindBar);
+    connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
 
 
     // ===================================================================
@@ -87,7 +87,7 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     runToolbarAction->setToolTip("تشغيل الملف الحالي");
 
     mainToolBar->addAction(runToolbarAction);
-    connect(runToolbarAction, &QAction::triggered, this, &Taif::runAlif);
+    connect(runToolbarAction, &QAction::triggered, this, &Qalam::runAlif);
     // mainToolBar->addSeparator();
     // mainToolBar->addAction(menuBar->newAction);
 
@@ -158,30 +158,30 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     // ===================================================================
     // الخطوة 6: ربط الإشارات والمقابس
     // ===================================================================
-    connect(fileTreeView, &QTreeView::doubleClicked, this, &Taif::onFileTreeDoubleClicked);
-    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Taif::closeTab);
-    connect(toggleSidebarAction, &QAction::triggered, this, &Taif::toggleSidebar);
+    connect(fileTreeView, &QTreeView::doubleClicked, this, &Qalam::onFileTreeDoubleClicked);
+    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
+    connect(toggleSidebarAction, &QAction::triggered, this, &Qalam::toggleSidebar);
     QShortcut* saveShortcut = new QShortcut(QKeySequence::Save, this);
-    connect(saveShortcut, &QShortcut::activated, this, &Taif::saveFile);
-    connect(menuBar, &TMenuBar::newRequested, this, &Taif::newFile);
+    connect(saveShortcut, &QShortcut::activated, this, &Qalam::saveFile);
+    connect(menuBar, &TMenuBar::newRequested, this, &Qalam::newFile);
     connect(menuBar, &TMenuBar::openFileRequested, this, [this](){this->openFile("");});
-    connect(menuBar, &TMenuBar::saveRequested, this, &Taif::saveFile);
-    connect(menuBar, &TMenuBar::saveAsRequested, this, &Taif::saveFileAs);
-    connect(menuBar, &TMenuBar::settingsRequest, this, &Taif::openSettings);
-    connect(menuBar, &TMenuBar::exitRequested, this, &Taif::exitApp);
-    connect(menuBar, &TMenuBar::runRequested, this, &Taif::runAlif);
-    connect(menuBar, &TMenuBar::aboutRequested, this, &Taif::aboutTaif);
-    connect(menuBar, &TMenuBar::openFolderRequested, this, &Taif::handleOpenFolderMenu);
-    connect(tabWidget, &QTabWidget::currentChanged, this, &Taif::updateWindowTitle);
-    connect(tabWidget, &QTabWidget::currentChanged, this, &Taif::onCurrentTabChanged);
-    connect(searchBar, &SearchPanel::findNext, this, &Taif::findNextText);
-    connect(searchBar, &SearchPanel::findText, this, &Taif::findText);
-    connect(searchBar, &SearchPanel::findPrevious, this, &Taif::findPrevText);
-    connect(searchBar, &SearchPanel::closed, this, &Taif::hideFindBar);
+    connect(menuBar, &TMenuBar::saveRequested, this, &Qalam::saveFile);
+    connect(menuBar, &TMenuBar::saveAsRequested, this, &Qalam::saveFileAs);
+    connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
+    connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
+    connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runAlif);
+    connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
+    connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::updateWindowTitle);
+    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::onCurrentTabChanged);
+    connect(searchBar, &SearchPanel::findNext, this, &Qalam::findNextText);
+    connect(searchBar, &SearchPanel::findText, this, &Qalam::findText);
+    connect(searchBar, &SearchPanel::findPrevious, this, &Qalam::findPrevText);
+    connect(searchBar, &SearchPanel::closed, this, &Qalam::hideFindBar);
     onCurrentTabChanged();
 
     QShortcut *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
-    connect(goToLineShortcut, &QShortcut::activated, this, &Taif::goToLine);
+    connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
 
     QShortcut *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
     connect(commentShortcut, &QShortcut::activated, this, [this](){
@@ -420,10 +420,10 @@ Taif::Taif(const QString& filePath, QWidget *parent)
     }
 }
 
-Taif::~Taif() {
+Qalam::~Qalam() {
 
     if (TEditor* editor = currentEditor()) {
-        QSettings settings("Alif", "Taif");
+        QSettings settings("Alif", "Qalam");
         settings.setValue("editorFontSize", editor->font().pixelSize());
         settings.setValue("editorFontType", editor->font().family());
         settings.setValue("editorCodeTheme", setting->getThemeCombo()->currentIndex());
@@ -431,7 +431,7 @@ Taif::~Taif() {
     }
 }
 
-void Taif::closeEvent(QCloseEvent *event) {
+void Qalam::closeEvent(QCloseEvent *event) {
     int saveResult = needSave();
 
     if (saveResult == 1) {
@@ -444,7 +444,7 @@ void Taif::closeEvent(QCloseEvent *event) {
     event->accept();
 }
 
-bool Taif::eventFilter(QObject *object, QEvent *event)
+bool Qalam::eventFilter(QObject *object, QEvent *event)
 {
     if (event->type() == QEvent::KeyPress) {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
@@ -456,7 +456,7 @@ bool Taif::eventFilter(QObject *object, QEvent *event)
     return QMainWindow::eventFilter(object, event);
 }
 
-void Taif::goToLine()
+void Qalam::goToLine()
 {
     TEditor *editor = currentEditor();
     if (!editor) return;
@@ -480,19 +480,19 @@ void Taif::goToLine()
     }
 }
 
-void Taif::showFindBar() {
+void Qalam::showFindBar() {
     searchBar->show();
     searchBar->setFocusToInput();
 }
 
-void Taif::hideFindBar() {
+void Qalam::hideFindBar() {
     searchBar->hide();
     if (TEditor* editor = currentEditor()) {
         editor->setFocus();
     }
 }
 
-void Taif::findText() {
+void Qalam::findText() {
     TEditor* editor = currentEditor();
     if (!editor) return;
 
@@ -512,7 +512,7 @@ void Taif::findText() {
     }
 }
 
-void Taif::findNextText() {
+void Qalam::findNextText() {
     TEditor* editor = currentEditor();
     if (!editor) return;
 
@@ -536,7 +536,7 @@ void Taif::findNextText() {
     }
 }
 
-void Taif::findPrevText() {
+void Qalam::findPrevText() {
     TEditor* editor = currentEditor();
     if (!editor) return;
 
@@ -556,7 +556,7 @@ void Taif::findPrevText() {
     }
 }
 
-void Taif::toggleConsole()
+void Qalam::toggleConsole()
 {
     bool isVisible = !consoleTabWidget->isVisible();
     consoleTabWidget->setVisible(isVisible);
@@ -578,11 +578,11 @@ void Taif::toggleConsole()
 
 /* ----------------------------------- File Menu Button ----------------------------------- */
 
-int Taif::needSave() {
+int Qalam::needSave() {
     if (TEditor* editor = currentEditor()) {
         if (editor->document()->isModified()) {
             QMessageBox msgBox;
-            msgBox.setWindowTitle("طيف");
+            msgBox.setWindowTitle("قلم");
             msgBox.setText("تم التعديل على الملف.\n"    \
                            "هل تريد حفظ التغييرات؟");
             QPushButton *saveButton = msgBox.addButton("حفظ", QMessageBox::AcceptRole);
@@ -612,7 +612,7 @@ int Taif::needSave() {
     return 2;
 }
 
-void Taif::newFile() {
+void Qalam::newFile() {
 
     TEditor* editor = currentEditor();
     if (editor) {
@@ -626,11 +626,11 @@ void Taif::newFile() {
     tabWidget->setCurrentWidget(newEditor);
 
     connect(newEditor, &TEditor::openRequest, this, [this](QString filePath){this->openFile(filePath);});
-    connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Taif::onModificationChanged);
+    connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
     updateWindowTitle();
 }
 
-void Taif::openFile(QString filePath) {
+void Qalam::openFile(QString filePath) {
     if (TEditor* current = currentEditor()) {
         int isNeedSave = needSave();
         if (!isNeedSave) return;
@@ -658,7 +658,7 @@ void Taif::openFile(QString filePath) {
             file.close();
 
             TEditor *newEditor = new TEditor(setting, this);
-            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Taif::onModificationChanged);
+            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
             newEditor->setPlainText(content);
             newEditor->setProperty("filePath", filePath);
 
@@ -685,8 +685,8 @@ void Taif::openFile(QString filePath) {
                 }
             }
 
-            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Taif::onModificationChanged);
-            connect(newEditor, &QPlainTextEdit::cursorPositionChanged, this, &Taif::updateCursorPosition);
+            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
+            connect(newEditor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
 
             QFileInfo fileInfo(filePath);
             tabWidget->addTab(newEditor, fileInfo.fileName());
@@ -695,7 +695,7 @@ void Taif::openFile(QString filePath) {
             updateWindowTitle();
 
 
-            QSettings settings("Alif", "Taif");
+            QSettings settings("Alif", "Qalam");
             QStringList recentFiles = settings.value("RecentFiles").toStringList();
             recentFiles.removeAll(filePath);
             recentFiles.prepend(filePath);
@@ -709,7 +709,7 @@ void Taif::openFile(QString filePath) {
     }
 }
 
-void Taif::loadFolder(const QString &folderPath)
+void Qalam::loadFolder(const QString &folderPath)
 {
 
     if (!folderPath.isEmpty() && QDir(folderPath).exists()) {
@@ -721,7 +721,7 @@ void Taif::loadFolder(const QString &folderPath)
     }
 }
 
-void Taif::handleOpenFolderMenu()
+void Qalam::handleOpenFolderMenu()
 {
     QString folderPath = QFileDialog::getExistingDirectory(this, "اختر مجلد", QDir::homePath());
     if (folderPath.isEmpty()) return;
@@ -733,7 +733,7 @@ void Taif::handleOpenFolderMenu()
 
 }
 
-void Taif::toggleSidebar()
+void Qalam::toggleSidebar()
 {
     bool shouldBeVisible = !fileTreeView->isVisible();
     fileTreeView->setVisible(shouldBeVisible);
@@ -745,7 +745,7 @@ void Taif::toggleSidebar()
     }
 }
 
-void Taif::onFileTreeDoubleClicked(const QModelIndex &index)
+void Qalam::onFileTreeDoubleClicked(const QModelIndex &index)
 {
     const QString filePath = fileSystemModel->filePath(index);
     if (!fileSystemModel->isDir(index)) {
@@ -753,7 +753,7 @@ void Taif::onFileTreeDoubleClicked(const QModelIndex &index)
     }
 }
 
-void Taif::saveFile() {
+void Qalam::saveFile() {
     TEditor *editor = currentEditor();
     if (!editor) return;
 
@@ -788,7 +788,7 @@ void Taif::saveFile() {
     }
 }
 
-void Taif::saveFileAs() {
+void Qalam::saveFileAs() {
     TEditor *editor = currentEditor();
     if (!editor) return ;
 
@@ -825,7 +825,7 @@ void Taif::saveFileAs() {
     return ;
 }
 
-void Taif::openSettings() {
+void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
 
     connect(setting, &TSettings::fontSizeChanged, this, [this](int size){
@@ -850,7 +850,7 @@ void Taif::openSettings() {
 }
 
 
-void Taif::exitApp() {
+void Qalam::exitApp() {
     int isNeedSave = needSave();
     if (!isNeedSave) {
         return;
@@ -865,18 +865,18 @@ void Taif::exitApp() {
     this->close();
 }
 
-void Taif::onCurrentTabChanged()
+void Qalam::onCurrentTabChanged()
 {
     updateWindowTitle();
     updateCursorPosition();
 
     TEditor* editor = currentEditor();
     if (editor) {
-        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Taif::updateCursorPosition);
+        connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
     }
 }
 
-void Taif::updateCursorPosition()
+void Qalam::updateCursorPosition()
 {
     TEditor* editor = currentEditor();
     if (editor) {
@@ -893,7 +893,7 @@ void Taif::updateCursorPosition()
 
 /* ----------------------------------- Run Menu Button ----------------------------------- */
 
-// void Taif::runAlif() {
+// void Qalam::runAlif() {
 //     QString program{};
 //     QStringList args{};
 //     QString command{};
@@ -957,7 +957,7 @@ void Taif::updateCursorPosition()
 
 //----------------
 
-void Taif::runAlif() {
+void Qalam::runAlif() {
     TEditor *editor = currentEditor();
     if (!editor) return;
 
@@ -1083,11 +1083,11 @@ void Taif::runAlif() {
 
 //----------------
 
-TEditor* Taif::currentEditor() {
+TEditor* Qalam::currentEditor() {
     return qobject_cast<TEditor*>(tabWidget->currentWidget());
 }
 
-void Taif::closeTab(int index)
+void Qalam::closeTab(int index)
 {
 
     if (tabWidget->count() <= 1) {
@@ -1119,27 +1119,22 @@ void Taif::closeTab(int index)
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */
 
-void Taif::aboutTaif() {
+void Qalam::aboutQalam() {
     QMessageBox messageDialog{};
-    messageDialog.setWindowTitle("عن محرر طيف");
+    messageDialog.setWindowTitle("عن محرر قلم");
     messageDialog.setText(R"(
-        محرر طيف (نـ3) 1445-1446
+        محرر قلم (Qalam IDE)
 
-        © الحقوق محفوظة لصالح
-        برمجيات ألف - عبدالرحمن ومحمد الخطيب - سوريا
+        بيئة تطوير مبنية بـ Qt و C++ موجهة لدعم البرمجة ذات الصياغة العربية.
 
-        محرر نصي خاص بلغة ألف نـ5
-        يعمل على جميع المنصات "ويندوز - لينكس - ماك"
-        ـــــــــــــــــــــــــــــــــــــــــــــــــــــ
-        المحرر لا يزال تحت التطوير وقد يحتوي بعض الاخطاء
-        نرجو تبليغ مجتمع ألف في حال وجود أي خطأ
-        https://t.me/aliflang
-        ـــــــــــــــــــــــــــــــــــــــــــــــــــــ
-        فريق التطوير لا يمتلك أي ضمانات وغير مسؤول
-        عن أي خطأ او خلل قد يحدث بسبب المحرر.
+        • يدعم اتجاه الكتابة من اليمين إلى اليسار (RTL)
+        • تلوين شيفرة (Syntax Highlighting) ومحرك ثيمات
+        • إكمال تلقائي (Auto-complete) وحفظ تلقائي واستعادة النسخ الاحتياطية
 
-        المحرر يخضع لرخصة برمجيات ألف
-        يجب قراءة الرخصة جيداً قبل البدأ بإستخدام المحرر
+        ملاحظة:
+        المشروع كان يُعرف سابقاً باسم "طيف" ويتم حالياً تحديث الهوية والواجهة.
+
+        © Qalam IDE
                                     )"
                           );
 
@@ -1150,12 +1145,12 @@ void Taif::aboutTaif() {
 
 /* ----------------------------------- Other Functions ----------------------------------- */
 
-void Taif::updateWindowTitle() {
+void Qalam::updateWindowTitle() {
     TEditor* editor = currentEditor();
     QString title{};
 
     if (!editor) {
-        title = "طيف";
+        title = "قلم";
     } else {
         QString filePath = editor->property("filePath").toString();
         // --------------------------------------------------------
@@ -1168,13 +1163,13 @@ void Taif::updateWindowTitle() {
         if (editor->document()->isModified()) {
             title += "[*]";
         }
-        title += " - طيف";
+        title += " - قلم";
     }
     setWindowTitle(title);
     setWindowModified(editor && editor->document()->isModified()); // تحديث علامة التعديل للنافذة
 }
 
-void Taif::onModificationChanged(bool modified) {
+void Qalam::onModificationChanged(bool modified) {
     updateWindowTitle(); // استدعِ الدالة لتحديث علامة [*]
     // قد تحتاج أيضًا لتحديث اسم التبويب نفسه لإضافة [*]
     TEditor* editor = currentEditor(); // الحصول على المحرر المرتبط بالإشارة
@@ -1190,4 +1185,5 @@ void Taif::onModificationChanged(bool modified) {
         }
     }
 }
+
 

@@ -1,5 +1,5 @@
-#include "TWelcomeWindow.h"
-#include "Taif.h"
+﻿#include "TWelcomeWindow.h"
+#include "Qalam.h"
 #include "TMenu.h"
 #include <QtWidgets>
 
@@ -26,16 +26,16 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
 
     QHBoxLayout *headerContent = new QHBoxLayout();
     QLabel *logoLabel = new QLabel();
-    logoLabel->setPixmap(QPixmap(":/icons/resources/TaifLogo.ico").scaled(90, 90, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    logoLabel->setPixmap(QPixmap(":/icons/resources/QalamLogo.ico").scaled(90, 90, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     QVBoxLayout *textVLayout = new QVBoxLayout();
-    QLabel *titleLabel = new QLabel("أهلا في محرر طيف");
+    QLabel *titleLabel = new QLabel("أهلاً في محرر قلم");
     QFont titleFont;
     QStringList NotoKufiArabicFont = QFontDatabase::applicationFontFamilies(2);
     titleFont.setFamily(NotoKufiArabicFont.at(0));
     titleFont.setPixelSize(18);
     titleFont.setBold(true);
     titleLabel->setFont(titleFont);
-    QLabel *subtitleLabel = new QLabel("طيف - محرر لغة ألف");
+    QLabel *subtitleLabel = new QLabel("قلم - محرر لغة باء");
     textVLayout->addWidget(titleLabel);
     textVLayout->addWidget(subtitleLabel);
     headerContent->addWidget(logoLabel);
@@ -46,7 +46,7 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
 
     QVBoxLayout *mainContentLayout = new QVBoxLayout();
     mainContentLayout->setSpacing(20);
-    QSettings settings("Alif", "Taif");
+    QSettings settings("Alif", "Qalam");
     QStringList recentFiles = settings.value("RecentFiles").toStringList();
     QHBoxLayout *filesGroup = new QHBoxLayout();
     QVBoxLayout *filesButtons = new QVBoxLayout();
@@ -145,7 +145,7 @@ WelcomeWindow::WelcomeWindow(QWidget *parent)
     )";
     this->setStyleSheet(styleSheet);
 
-    this->setWindowTitle("صفحة الترحيب - محرر طيف");
+    this->setWindowTitle("صفحة الترحيب - محرر قلم");
     QScreen* screen = QGuiApplication::primaryScreen();
     QRect screenGeo = screen->availableGeometry();
     int margin = 100;
@@ -179,14 +179,14 @@ void WelcomeWindow::onRecentFileClicked(QListWidgetItem *item)
         return;
     }
 
-    Taif *editor = new Taif(filePath);
+    Qalam *editor = new Qalam(filePath);
     editor->show();
     this->close();
 }
 
 void WelcomeWindow::handleNewFileRequest()
 {
-    Taif *editor = new Taif();
+    Qalam *editor = new Qalam();
     editor->show();
     this->close();
 }
@@ -196,7 +196,7 @@ void WelcomeWindow::handleOpenFileRequest()
     QString filePath = QFileDialog::getOpenFileName(this, "Open File");
 
     if (!filePath.isEmpty()) {
-        Taif *editor = new Taif(filePath);
+        Qalam *editor = new Qalam(filePath);
         editor->show();
         this->close();
     }
@@ -207,7 +207,7 @@ void WelcomeWindow::handleOpenFolderRequest()
     QString folderPath = QFileDialog::getExistingDirectory(this, "Open Folder");
 
     if (!folderPath.isEmpty()) {
-        Taif *editor = new Taif();
+        Qalam *editor = new Qalam();
         editor->loadFolder(folderPath);
 
         editor->show();
@@ -223,3 +223,4 @@ void WelcomeWindow::closeEvent(QCloseEvent *event)
 WelcomeWindow::~WelcomeWindow()
 {
 }
+
