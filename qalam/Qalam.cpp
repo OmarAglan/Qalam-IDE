@@ -77,7 +77,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     this->setGeometry(x, y, width, height);
     this->setCustomMenuBar(menuBar);
     // ===================================================================
-    //  الخطوة 3: إعداد شريط الأدوات وزر تبديل الشريط
+    //  الخطوة 3: إعداد شريط الأدوات وزر تبديل الشريط (قديم - سيتم استبداله بـ Activity Bar)
     // ===================================================================
     QToolBar *mainToolBar = new QToolBar("Main Toolbar", this);
     mainToolBar->setObjectName("mainToolBar");
@@ -85,6 +85,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     mainToolBar->setIconSize(QSize(25, 25));
     mainToolBar->setStyleSheet("QToolButton:hover {background-color: #334466;}");
     this->addToolBar(Qt::RightToolBarArea, mainToolBar);
+    mainToolBar->hide();  // Hidden - replaced by Activity Bar
 
     toggleSidebarAction = new QAction(this);
     toggleSidebarAction->setIcon(QIcon(":/icons/resources/panel-right-open.svg"));
@@ -735,15 +736,34 @@ void Qalam::openFile(QString filePath) {
     }
 }
 
-void Qalam::loadFolder(const QString &folderPath)
+void Qalam::loadFolder(const QString &path)
 {
-
-    if (!folderPath.isEmpty() && QDir(folderPath).exists()) {
+    this->folderPath = path;
+    
+    if (!path.isEmpty() && QDir(path).exists()) {
         fileTreeView->setVisible(true);
-
-        fileTreeView->setRootIndex(fileSystemModel->index(folderPath));
+        fileTreeView->setRootIndex(fileSystemModel->index(path));
+        
+        // Update new sidebar with folder path
+        if (m_sidebar && m_sidebar->explorerView()) {
+            m_sidebar->explorerView()->setRootPath(path);
+        }
+        
+        // Update breadcrumb project root
+        if (m_breadcrumb) {
+            m_breadcrumb->setProjectRoot(path);
+        }
+        
+        // Update status bar
+        if (m_statusBar) {
+            m_statusBar->setFolderOpen(true);
+        }
     } else {
         fileTreeView->setVisible(false);
+        
+        if (m_statusBar) {
+            m_statusBar->setFolderOpen(false);
+        }
     }
 }
 
@@ -761,6 +781,22 @@ void Qalam::handleOpenFolderMenu()
 
 void Qalam::toggleSidebar()
 {
+    // Toggle the new sidebar
+    if (m_sidebar) {
+        bool shouldBeVisible = !m_sidebar->isVisible();
+        m_sidebar->setVisible(shouldBeVisible);
+        
+        // Update activity bar state
+        if (m_activityBar) {
+            if (shouldBeVisible) {
+                m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
+            } else {
+                m_activityBar->setCurrentView(TActivityBar::ViewType::None);
+            }
+        }
+    }
+    
+    // Also toggle old file tree for backward compatibility
     bool shouldBeVisible = !fileTreeView->isVisible();
     fileTreeView->setVisible(shouldBeVisible);
     toggleSidebarAction->setChecked(shouldBeVisible);
@@ -913,6 +949,17 @@ void Qalam::updateCursorPosition()
         int column = cursor.columnNumber() + 1;
 
         cursorPositionLabel->setText(QString("UTF-8    السطر: %1   العمود: %2 ").arg(line).arg(column));
+        
+        // Update new status bar
+        if (m_statusBar) {
+            m_statusBar->setCursorPosition(line, column);
+        }
+        
+        // Update breadcrumb with current file
+        if (m_breadcrumb) {
+            QString filePath = editor->property("filePath").toString();
+            m_breadcrumb->setFilePath(filePath);
+        }
     } else {
         cursorPositionLabel->setText("");
     }
@@ -1267,14 +1314,76 @@ void Qalam::setupNewLayout()
     
     // Connect Status Bar signals
     connect(m_statusBar, &TStatusBar::problemsClicked, this, [this]() {
-        // TODO: Show problems panel
+        toggleConsole();  // For now, toggle console when problems clicked
     });
     
-    // Initially hide the new components (incremental integration)
-    m_activityBar->hide();
-    m_sidebar->hide();
-    m_statusBar->hide();
-    m_breadcrumb->hide();
+    // =========================================================
+    // Rebuild the main layout in RTL style
+    // =========================================================
+    
+    // Create a central widget to hold everything
+    QWidget *centralContainer = new QWidget(this);
+    QVBoxLayout *mainVLayout = new QVBoxLayout(centralContainer);
+    mainVLayout->setContentsMargins(0, 0, 0, 0);
+    mainVLayout->setSpacing(0);
+    
+    // Create horizontal layout for Activity Bar + Sidebar + Editor
+    QHBoxLayout *contentLayout = new QHBoxLayout();
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(0);
+    contentLayout->setDirection(QBoxLayout::RightToLeft);  // RTL layout
+    
+    // Add Activity Bar (rightmost in RTL)
+    contentLayout->addWidget(m_activityBar);
+    
+    // Add Sidebar
+    contentLayout->addWidget(m_sidebar);
+    
+    // Create editor area container with breadcrumb
+    QWidget *editorContainer = new QWidget();
+    QVBoxLayout *editorVLayout = new QVBoxLayout(editorContainer);
+    editorVLayout->setContentsMargins(0, 0, 0, 0);
+    editorVLayout->setSpacing(0);
+    
+    // Add breadcrumb above editor tabs
+    editorVLayout->addWidget(m_breadcrumb);
+    
+    // Move the editor splitter (tabs + console) into the editor container
+    editorVLayout->addWidget(editorSplitter, 1);
+    
+    // Add editor container to content layout (takes remaining space)
+    contentLayout->addWidget(editorContainer, 1);
+    
+    // Add content layout to main vertical layout
+    mainVLayout->addLayout(contentLayout, 1);
+    
+    // Add status bar at bottom
+    mainVLayout->addWidget(m_statusBar);
+    
+    // Set the new central widget
+    this->setCentralWidget(centralContainer);
+    
+    // Hide old tree view (replaced by sidebar)
+    fileTreeView->hide();
+    
+    // Show the new components
+    m_activityBar->show();
+    m_sidebar->hide();  // Start collapsed, like VSCode
+    m_statusBar->show();
+    m_breadcrumb->show();
+    
+    // Set initial status bar values
+    m_statusBar->setCursorPosition(1, 1);
+    m_statusBar->setEncoding("UTF-8");
+    m_statusBar->setLineEnding("LF");
+    m_statusBar->setLanguage("Baa");
+    m_statusBar->setFolderOpen(false);
+    
+    // Hide the old QMainWindow status bar
+    QStatusBar* oldStatusBar = this->statusBar();
+    if (oldStatusBar) {
+        oldStatusBar->hide();
+    }
 }
 
 void Qalam::onActivityViewChanged(int viewType)
