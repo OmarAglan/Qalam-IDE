@@ -15,12 +15,19 @@ add_library(qalam_core STATIC
     # Menu
     menubar/TMenu.cpp
     # Settings
-    # Settings
     settings/TSettings.cpp
-    # UI Theme
+    # Sidebar
+    sidebar/TExplorerView.cpp
+    sidebar/TSearchView.cpp
+    # UI Components
     ui/QalamTheme.cpp
     ui/TTitleBar.cpp
     ui/QalamWindow.cpp
+    ui/TActivityBar.cpp
+    ui/TSidebar.cpp
+    ui/TBreadcrumb.cpp
+    ui/TPanelArea.cpp
+    ui/TStatusBar.cpp
 )
 
 target_include_directories(qalam_core PUBLIC
@@ -34,6 +41,7 @@ target_include_directories(qalam_core PUBLIC
     menubar
     pages
     settings
+    sidebar
     ui
 )
 

@@ -4,6 +4,7 @@
 namespace Constants {
     const QString OrgName = "Alif";
     const QString AppName = "Qalam";
+    const QString AppVersion = "3.3.0";
     
     // Settings Keys
     const QString SettingsKeyRecentFiles = "RecentFiles";
@@ -11,14 +12,25 @@ namespace Constants {
     const QString SettingsKeyFontType = "editorFontType";
     const QString SettingsKeyTheme = "editorCodeTheme";
     const QString SettingsKeyCompilerPath = "compilerPath";
+    const QString SettingsKeySidebarWidth = "sidebarWidth";
+    const QString SettingsKeyPanelHeight = "panelHeight";
+    const QString SettingsKeyShowWelcome = "ShowWelcomeOnStartup";
 
     // File Extensions
     const QString ProjectExtension = ".baa";
     const QString HeaderExtension = ".baahd";
     const QString BackupExtension = ".~";
 
-    // UI Strings
+    // UI Strings (Arabic)
     const QString NewFileLabel = "غير معنون";
+    const QString ExplorerLabel = "المستكشف";
+    const QString SearchLabel = "البحث";
+    const QString SettingsLabel = "الإعدادات";
+    const QString ProblemsLabel = "المشاكل";
+    const QString OutputLabel = "المخرجات";
+    const QString TerminalLabel = "الطرفية";
+    const QString OpenEditorsLabel = "الملفات المفتوحة";
+    const QString NoFolderOpenLabel = "لم يتم فتح مجلد";
 
     // Defaults
     const int DefaultFontSize = 18;
@@ -31,20 +43,30 @@ namespace Constants {
         // Primary backgrounds
         constexpr const char* WindowBackground = "#1e202e";
         constexpr const char* EditorBackground = "#141520";
-        constexpr const char* SidebarBackground = "#232629";
-        constexpr const char* ConsoleBackground = "#03091A";
-        constexpr const char* StatusBarBackground = "#333333";
+        constexpr const char* SidebarBackground = "#252526";
+        constexpr const char* SidebarHeaderBackground = "#1e202e";
+        constexpr const char* ConsoleBackground = "#1e1e1e";
         constexpr const char* MenuBackground = "#252526";
+        
+        // Activity Bar
+        constexpr const char* ActivityBarBackground = "#1e202e";
+        constexpr const char* ActivityBarBorder = "#19191c";
+        constexpr const char* IconInactive = "#858585";
+        constexpr const char* IconActive = "#ffffff";
+        constexpr const char* ActivityIndicator = "#007acc";
         
         // Tab colors
         constexpr const char* TabBackground = "#2d2d30";
         constexpr const char* TabActiveBackground = "#1e1e1e";
         constexpr const char* TabHoverBackground = "#3e3e42";
+        constexpr const char* TabBorder = "#252526";
         
         // Accent colors
         constexpr const char* Accent = "#007acc";
+        constexpr const char* AccentHover = "#1c97ea";
         constexpr const char* AccentAlt = "#0078d7";
         constexpr const char* Selection = "#094771";
+        constexpr const char* SelectionHighlight = "#add6ff26";
         
         // Button states
         constexpr const char* ButtonHover = "#4f5357";
@@ -57,24 +79,60 @@ namespace Constants {
         // Text colors
         constexpr const char* TextPrimary = "#ffffff";
         constexpr const char* TextSecondary = "#cccccc";
-        constexpr const char* TextMuted = "#909090";
+        constexpr const char* TextMuted = "#858585";
+        constexpr const char* TextDisabled = "#5a5a5a";
         constexpr const char* ConsoleText = "#DEE8FF";
+        
+        // Status Bar (Blue like VSCode)
+        constexpr const char* StatusBarBackground = "#007acc";
+        constexpr const char* StatusBarForeground = "#ffffff";
+        constexpr const char* StatusBarHover = "#1c97ea";
+        constexpr const char* StatusBarNoFolder = "#68217a";  // Purple when no folder open
+        
+        // Breadcrumb
+        constexpr const char* BreadcrumbBackground = "#1e1e1e";
+        constexpr const char* BreadcrumbForeground = "#cccccc";
+        constexpr const char* BreadcrumbFocusForeground = "#e0e0e0";
+        
+        // Panel/Console Area
+        constexpr const char* PanelBackground = "#1e1e1e";
+        constexpr const char* PanelBorder = "#19191c";
+        constexpr const char* PanelTabActive = "#1e1e1e";
+        constexpr const char* PanelTabInactive = "transparent";
+        
+        // Problems colors
+        constexpr const char* ErrorForeground = "#f14c4c";
+        constexpr const char* WarningForeground = "#cca700";
+        constexpr const char* InfoForeground = "#3794ff";
         
         // Borders
         constexpr const char* Border = "#454545";
-        constexpr const char* BorderActive = "#444444";
+        constexpr const char* BorderActive = "#007acc";
+        constexpr const char* BorderSubtle = "#2d2d30";
         constexpr const char* LineNumberBorder = "#10a8f4";
+        
+        // Scrollbar
+        constexpr const char* ScrollbarBackground = "#1e1e1e";
+        constexpr const char* ScrollbarThumb = "#424242";
+        constexpr const char* ScrollbarThumbHover = "#4f4f4f";
+        
+        // List/Tree
+        constexpr const char* ListHoverBackground = "#2a2d2e";
+        constexpr const char* ListActiveBackground = "#094771";
+        constexpr const char* ListInactiveBackground = "#37373d";
     }
 
     // ==========================================================================
     // Font Sizes
     // ==========================================================================
     namespace Fonts {
-        constexpr int ConsoleSize = 15;
-        constexpr int UISize = 12;
-        constexpr int StatusBarSize = 6;       // pt
-        constexpr int TabSize = 9;             // pt
-        constexpr int TreeViewSize = 10;       // pt
+        constexpr int ConsoleSize = 13;
+        constexpr int UISize = 13;
+        constexpr int StatusBarSize = 12;
+        constexpr int TabSize = 13;
+        constexpr int TreeViewSize = 13;
+        constexpr int BreadcrumbSize = 12;
+        constexpr int SectionHeaderSize = 11;
         constexpr int EditorMinSize = 12;
         constexpr int EditorMaxSize = 36;
     }
@@ -83,24 +141,48 @@ namespace Constants {
     // Layout Dimensions
     // ==========================================================================
     namespace Layout {
+        // Title Bar
         constexpr int TitleBarHeight = 40;
         constexpr int CaptionButtonWidth = 46;
         constexpr int CaptionButtonHeight = 40;
-        constexpr int IconSize = 24;
         constexpr int CaptionIconSize = 16;
-        constexpr int ToolButtonSize = 40;
-        constexpr int ToolbarIconSize = 30;
-        constexpr int ToolbarPadding = 5;
-        constexpr int ToolbarSpacing = 10;
-        constexpr int BorderRadius = 6;
-        constexpr int TabBorderRadius = 4;
+        
+        // Activity Bar
+        constexpr int ActivityBarWidth = 48;
+        constexpr int ActivityBarIconSize = 24;
+        constexpr int ActivityBarButtonSize = 48;
+        constexpr int ActivityIndicatorWidth = 2;
+        
+        // Sidebar
+        constexpr int SidebarDefaultWidth = 250;
+        constexpr int SidebarMinWidth = 170;
+        constexpr int SidebarMaxWidth = 500;
+        constexpr int SidebarHeaderHeight = 35;
+        constexpr int SidebarSectionHeaderHeight = 22;
+        
+        // Editor Area
+        constexpr int TabBarHeight = 35;
+        constexpr int BreadcrumbHeight = 22;
+        constexpr int IconSize = 16;
+        
+        // Panel Area
+        constexpr int PanelDefaultHeight = 200;
+        constexpr int PanelMinHeight = 100;
+        constexpr int PanelTabHeight = 35;
+        
+        // Status Bar
+        constexpr int StatusBarHeight = 22;
+        constexpr int StatusBarItemPadding = 8;
+        
+        // General
+        constexpr int BorderRadius = 4;
         constexpr int SplitterWidth = 1;
-        constexpr int MenuItemPadding = 5;
+        constexpr int ScrollbarWidth = 10;
         
         // Autocomplete popup
         constexpr int PopupMinWidth = 295;
         constexpr int PopupMaxWidth = 355;
-        constexpr int PopupBasePadding = 250;  // Base padding for text + scrollbar + margins
+        constexpr int PopupBasePadding = 250;
     }
 
     // ==========================================================================
@@ -111,6 +193,8 @@ namespace Constants {
         constexpr int ProcessTerminateTimeout = 500;
         constexpr int ProcessKillTimeout = 200;
         constexpr int AutoSaveInterval = 30000;
+        constexpr int SearchDebounce = 300;
+        constexpr int HoverDelay = 500;
     }
 
     // ==========================================================================
