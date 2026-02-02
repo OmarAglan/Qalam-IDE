@@ -62,6 +62,7 @@ private:
     TMenuBar *menuBar{};
     TSettings *setting{};
     QAction *toggleSidebarAction{};
+    QAction *runToolbarAction{};
     QAction *stopToolbarAction{};
     QString folderPath{};
     QAbstractItemModel *model{};

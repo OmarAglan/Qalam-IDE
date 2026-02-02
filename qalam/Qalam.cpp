@@ -83,6 +83,9 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     toggleSidebarAction->setChecked(false);
     mainToolBar->addAction(toggleSidebarAction);
 
+    runToolbarAction = new QAction(this);
+    runToolbarAction->setIcon(QIcon(":/icons/resources/run.svg"));
+    runToolbarAction->setToolTip("تشغيل (F5)");
     mainToolBar->addAction(runToolbarAction);
     connect(runToolbarAction, &QAction::triggered, this, &Qalam::runBaa);
 
@@ -1085,7 +1088,7 @@ void Qalam::runBaa() {
     connect(worker, &ProcessWorker::errorReady,
             console, &TConsole::appendPlainTextThreadSafe);
  
-    connect(worker, &ProcessWorker::finished, this, [=](int code){
+    connect(worker, &ProcessWorker::finished, this, [this](int code){
         console->appendPlainTextThreadSafe(
             "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
             + QString::number(code) + ")\n"
