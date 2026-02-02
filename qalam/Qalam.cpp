@@ -585,6 +585,25 @@ void Qalam::findPrevText() {
 
 void Qalam::toggleConsole()
 {
+    // Use new panel area if available
+    if (m_panelArea) {
+        bool isVisible = !m_panelArea->isVisible();
+        m_panelArea->setVisible(isVisible);
+        
+        if (isVisible) {
+            m_panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
+            if (m_panelArea->terminal()) {
+                m_panelArea->terminal()->setFocus();
+            }
+        } else {
+            if (TEditor* editor = currentEditor()) {
+                editor->setFocus();
+            }
+        }
+        return;
+    }
+    
+    // Fallback to old console tab widget
     bool isVisible = !consoleTabWidget->isVisible();
     consoleTabWidget->setVisible(isVisible);
 
@@ -1294,6 +1313,7 @@ void Qalam::setupNewLayout()
     m_sidebar = new TSidebar(this);
     m_statusBar = new TStatusBar(this);
     m_breadcrumb = new TBreadcrumb(this);
+    m_panelArea = new TPanelArea(this);
     
     // Connect Activity Bar signals
     connect(m_activityBar, &TActivityBar::viewChanged, this, [this](TActivityBar::ViewType view) {
@@ -1301,6 +1321,11 @@ void Qalam::setupNewLayout()
     });
     
     connect(m_activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
+        if (view == TActivityBar::ViewType::Settings) {
+            // Settings opens a dialog, doesn't toggle sidebar
+            openSettings();
+            return;
+        }
         if (!visible) {
             m_sidebar->hide();
         } else {
@@ -1314,7 +1339,20 @@ void Qalam::setupNewLayout()
     
     // Connect Status Bar signals
     connect(m_statusBar, &TStatusBar::problemsClicked, this, [this]() {
-        toggleConsole();  // For now, toggle console when problems clicked
+        m_panelArea->setCurrentTab(TPanelArea::Tab::Problems);
+        m_panelArea->show();
+    });
+    
+    // Connect Panel Area signals
+    connect(m_panelArea, &TPanelArea::closeRequested, this, [this]() {
+        m_panelArea->hide();
+    });
+    
+    connect(m_panelArea, &TPanelArea::tabChanged, this, [this](TPanelArea::Tab tab) {
+        // Focus the appropriate widget when tab changes
+        if (tab == TPanelArea::Tab::Terminal && m_panelArea->terminal()) {
+            m_panelArea->terminal()->setFocus();
+        }
     });
     
     // =========================================================
@@ -1339,6 +1377,11 @@ void Qalam::setupNewLayout()
     // Add Sidebar
     contentLayout->addWidget(m_sidebar);
     
+    // Create editor + panel vertical splitter
+    QSplitter *editorPanelSplitter = new QSplitter(Qt::Vertical);
+    editorPanelSplitter->setHandleWidth(1);
+    editorPanelSplitter->setStyleSheet("QSplitter::handle { background: #007acc; }");
+    
     // Create editor area container with breadcrumb
     QWidget *editorContainer = new QWidget();
     QVBoxLayout *editorVLayout = new QVBoxLayout(editorContainer);
@@ -1348,11 +1391,17 @@ void Qalam::setupNewLayout()
     // Add breadcrumb above editor tabs
     editorVLayout->addWidget(m_breadcrumb);
     
-    // Move the editor splitter (tabs + console) into the editor container
-    editorVLayout->addWidget(editorSplitter, 1);
+    // Add tabs and search bar to editor container
+    editorVLayout->addWidget(tabWidget, 1);
+    editorVLayout->addWidget(searchBar);
     
-    // Add editor container to content layout (takes remaining space)
-    contentLayout->addWidget(editorContainer, 1);
+    // Add editor container and panel to splitter
+    editorPanelSplitter->addWidget(editorContainer);
+    editorPanelSplitter->addWidget(m_panelArea);
+    editorPanelSplitter->setSizes({700, 200});
+    
+    // Add splitter to content layout (takes remaining space)
+    contentLayout->addWidget(editorPanelSplitter, 1);
     
     // Add content layout to main vertical layout
     mainVLayout->addLayout(contentLayout, 1);
@@ -1363,14 +1412,17 @@ void Qalam::setupNewLayout()
     // Set the new central widget
     this->setCentralWidget(centralContainer);
     
-    // Hide old tree view (replaced by sidebar)
+    // Hide old components (replaced by new ones)
     fileTreeView->hide();
+    consoleTabWidget->hide();
+    editorSplitter->hide();
     
     // Show the new components
     m_activityBar->show();
     m_sidebar->hide();  // Start collapsed, like VSCode
     m_statusBar->show();
     m_breadcrumb->show();
+    m_panelArea->hide();  // Start collapsed, like VSCode
     
     // Set initial status bar values
     m_statusBar->setCursorPosition(1, 1);
@@ -1383,6 +1435,12 @@ void Qalam::setupNewLayout()
     QStatusBar* oldStatusBar = this->statusBar();
     if (oldStatusBar) {
         oldStatusBar->hide();
+    }
+    
+    // Initialize the panel terminal
+    if (m_panelArea->terminal()) {
+        m_panelArea->terminal()->setConsoleRTL();
+        m_panelArea->terminal()->startCmd();
     }
 }
 
