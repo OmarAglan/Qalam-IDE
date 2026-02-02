@@ -7,7 +7,7 @@
 **English:** Qalam IDE is a fast, right-to-left friendly, Qt-powered IDE designed for Arabic-syntax system languages — starting with **Baa (باء)**.  
 **العربية:** محرر **قلم** هو بيئة تطوير سريعة تدعم اتجاه الكتابة من اليمين إلى اليسار، ومصممة للغات الأنظمة ذات الصياغة العربية — بدايةً مع **لغة باء**.
 
-> Note: the current codebase has been successfully rebranded to Qalam IDE.
+> Note: Qalam IDE is the evolution of the Taif editor, now fully aligned with the Baa programming language.
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## Language: Baa (باء)
 
-- **Spec:** See [`LANGUAGE.md`](LANGUAGE.md) (Baa Language Specification).
+- **Spec:** See [`documents/LANGUAGE.md`](documents/LANGUAGE.md) (Baa Language Specification).
 - **File extension (spec):** `.baa`
 - **Entry point (spec):** `الرئيسية`
 
@@ -50,7 +50,7 @@
 
 ### IDE features
 - **Embedded interactive console** with command history and fast flush buffering
-- **Run integration** (currently wired to run the legacy “Alif” compiler executable; will be aligned to Baa during rebranding)
+- **Run integration** (executes `baa/baa.exe` for the current file)
 - **File explorer sidebar** (QTreeView + QFileSystemModel)
 - **Welcome screen**
   - Recent files list
@@ -60,8 +60,9 @@
 
 ## Project Structure
 
-- `qalam/` — Qt application entry, resources, qmake project file
-- `source/` — reusable components (editor, console, settings, menu bar, welcome window)
+- `qalam/` — Qt application entry, main window, and resources.
+- `source/` — Reusable components (editor, console, settings, menu bar, welcome window).
+- `documents/` — Language specifications, user guide, and deployment notes.
 
 ---
 
@@ -73,143 +74,80 @@ Qalam IDE is a Qt Widgets application written in C++23.
 
 - Qt **6.x** (Widgets / GUI / Core)
 - A C++23-capable compiler
-- **qmake** (this project currently uses qmake via a `.pro` file)
-
-> The qmake project file is located at: `qalam/Qalam.pro`.
+- **CMake** 3.21+ (recommended) or qmake
 
 ---
 
-## Windows (Qt 6 + MinGW or MSVC)
+## Building with CMake (Recommended)
 
-### Option A — Build with Qt Creator (recommended)
-1. Install Qt 6.x using the Qt Online Installer.
-2. Open `qalam/Qalam.pro` in Qt Creator.
-3. Select a Qt 6 kit (MinGW 64-bit or MSVC).
-4. Build & run.
-
-### Option B — Build with command line (qmake + make)
 From the repository root:
 
+```powershell
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+### Build with Qt Creator
+1. Open `CMakeLists.txt` from the root directory.
+2. Select a Qt 6 kit.
+3. Build & run.
+
+---
+
+## Building with qmake (Legacy)
+
+The qmake project file is located at `qalam/Qalam.pro`.
+
+### Build with Qt Creator
+1. Open `qalam/Qalam.pro`.
+2. Select a Qt 6 kit.
+3. Build & run.
+
+### Build with command line
 ```powershell
 cd qalam
 qmake .\Qalam.pro
 mingw32-make -j
 ```
 
-> If using MSVC kits, use the matching Qt command prompt and `nmake` instead of `mingw32-make`.
-
-### Deploy (windeployqt)
-After building `Qalam.exe`, run:
-
-```powershell
-# Example path from deployment.md (adjust to your Qt install)
-~:\Qt\6.*.*\mingw_64\bin\windeployqt6.exe .\Qalam.exe
-```
-
-### Packaging (Qt Installer Framework)
-From [`deployment.md`](deployment.md):
-
-```powershell
-~:\Qt\Tools\QtInstallerFramework\4.*\bin\binarycreator.exe -c config/config.xml -p packages QalamInstaller-Win-X64
-```
-
 ---
 
-## Linux (Ubuntu 22.04+)
+## Deployment & Packaging
 
-> The existing deployment notes explicitly target Ubuntu 22.
-
-### Install dependencies
-
-```bash
-sudo apt update
-sudo apt install -y build-essential qt6-base-dev qt6-base-dev-tools
-sudo apt install -y libxcb-cursor0 libxcb-cursor-dev
-```
-
-> Your existing notes mention `libxcb-cusor-dev` (typo). The common package name is `libxcb-cursor-dev`.
-
-### Build with Qt Creator
-1. Install Qt 6 (or use distro Qt 6 packages).
-2. Open `qalam/Qalam.pro` in Qt Creator.
-3. Configure with a Qt 6 kit and build.
-
-### (Optional) Make Qt binaries available in your PATH
-From [`deployment.md`](deployment.md):
-
-```bash
-# Add Qt bin folder to PATH (adjust path)
-export PATH=/path/to/qt/bin:$PATH
-```
-
-### Deploy (linuxdeployqt)
-From [`deployment.md`](deployment.md):
-
-```bash
-sudo apt install -y libfuse2
-
-# Download linuxdeployqt AppImage (continuous)
-chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-
-./linuxdeployqt-continuous-x86_64.AppImage AppNameHere -always-overwrite
-```
-
-If linuxdeployqt cannot find qmake:
-
-```bash
-./linuxdeployqt-continuous-x86_64.AppImage AppNameHere -always-overwrite -qmake=/home/name/Qt/6.*.*/gcc_64/bin/qmake
-```
-
----
-
-## macOS (Qt 6)
-
-### Build with Qt Creator
-1. Install Qt 6.x for macOS using the Qt Online Installer.
-2. Open `qalam/Qalam.pro` in Qt Creator.
-3. Select a Desktop Qt 6 kit (clang) and build.
-
-### Deploy (macdeployqt)
-After building the `.app`, run (from a Qt terminal with macdeployqt in PATH):
-
-```bash
-macdeployqt Qalam.app
-```
+For detailed instructions on how to deploy Qalam IDE on Windows, Linux, and macOS, see [`documents/deployment.md`](documents/deployment.md).
 
 ---
 
 ## Keyboard Shortcuts
 
-The following shortcuts are implemented in code:
+The following shortcuts are implemented:
 
 | Shortcut | Action |
 |---|---|
 | `Ctrl+S` | Save |
 | `Ctrl+F` | Find / Search bar |
 | `Ctrl+G` | Go to line |
-| `Ctrl+/` | Toggle comment (current implementation uses `#` as the line comment marker) |
+| `Ctrl+/` | Toggle comment |
 | `Ctrl+D` | Duplicate line |
 | `Alt+Up` | Move line up |
 | `Alt+Down` | Move line down |
 | `F6` | Toggle embedded console |
 | `Ctrl + Mouse Wheel` | Zoom editor font in/out |
-| `Ctrl+L` | Clear embedded console (when focus is in console input) |
+| `Ctrl+L` | Clear embedded console (focus in console) |
 
 ---
 
-## Notes & Roadmap (rebrand)
+## More Documentation
 
-- Rename Taif → Qalam across source, build system, resources, and UI strings.
-- Align language-specific UX to Baa:
-  - File extensions, highlighting keywords, snippets, built-ins
-  - Run/compile integration to Baa toolchain
-- Consider migrating from qmake to CMake for smoother cross-platform builds.
+- [**Baa Language Specification**](documents/LANGUAGE.md)
+- [**User Guide**](documents/USER_GUIDE.md) (How to use the IDE)
+- [**Internal Architecture**](documents/INTERNALS.md) (For contributors)
 
 ---
 
 ## Download Qt 6
-
-From [`deployment.md`](deployment.md):
 
 - Qt mirror list: https://download.qt.io/static/mirrorlist/
 - Example installer mirror usage:
