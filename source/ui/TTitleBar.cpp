@@ -9,11 +9,6 @@ TTitleBar::TTitleBar(QWidget *parent) : QWidget(parent) {
 }
 
 void TTitleBar::setupUi() {
-    QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(10, 0, 0, 0); // Left margin for icon
-    layout->setSpacing(10);
-    layout->setDirection(QBoxLayout::RightToLeft); // Arabic RTL standard
-
     // Logo
     m_iconLabel = new QLabel(this);
     m_iconLabel->setFixedSize(24, 24);
@@ -37,70 +32,26 @@ void TTitleBar::setupUi() {
     connect(m_maximizeBtn, &QPushButton::clicked, this, &TTitleBar::maximizeRestoreClicked);
     connect(m_closeBtn, &QPushButton::clicked, this, &TTitleBar::closeClicked);
 
-    // Layout
-    layout->addWidget(m_minimizeBtn);
-    layout->addWidget(m_maximizeBtn);
-    layout->addWidget(m_closeBtn);
-    layout->addSpacing(10);
+    // Build layout correctly once (no delete/recreate)
+    // RTL Layout: Elements added first appear on the right
+    // We want: [Close][Max][Min] ....stretch.... [Title] [Logo] (visual left to right)
+    // In RTL mode, addWidget adds from right to left visually
     
-    // In RTL: Controls are Far Left (added first)? 
-    // Wait, Standard Window controls in Arabic Windows are on the Top-Left?
-    // Yes, usually.
-    // So if layout RTL:
-    // add(min) -> Rightmost? No.
-    // RTL Layout:
-    // Element 0: Rightmost. Element N: Leftmost.
-    // We want Close/Max/Min on the LEFT side (if mirroring standard Arabic UI).
-    // Standard Windows (English): Controls Right.
-    // Standard Windows (Arabic): Controls Left.
-    // Layout RTL: addWidget adds from Right to Left.
-    // So to put items on Left, we add them LAST or add a Stretch first.
-    
-    // Let's reset layout and do it carefully.
-    // We want: [Controls] [Stretch] [Title] [Logo] (Visual Left to Right)
-    // Or rather standard Arabic Header:
-    // [Close][Max][Min] ........ [Title] [Logo]
-    
-    // If RTL Layout:
-    // add(Logo) -> Rightmost.
-    // add(Title) -> Right of Logo (wait, to the Left of Logo).
-    // add(Stretch) -> Fills middle.
-    // add(Min) -> Left.
-    // add(Max) -> Left of Min.
-    // add(Close) -> Leftmost.
-    
-    // Let's clear and re-add in logical connection order for RTL.
-    // 1. Logo (Start/Right)
-    // 2. Title
-    // 3. Stretch
-    // 4. Min
-    // 5. Max
-    // 6. Close (End/Left)
-    
-    // Rebuild layout
-    delete layout;
-    layout = new QHBoxLayout(this);
-    layout->setContentsMargins(10, 0, 0, 0); // Margins might need swap for RTL
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(10, 0, 10, 0);
     layout->setSpacing(10);
     layout->setDirection(QBoxLayout::RightToLeft);
     
-    layout->addWidget(m_iconLabel);   // Rightmost
+    // Add logo and title (will appear on the right in RTL)
+    layout->addWidget(m_iconLabel);
     layout->addWidget(m_titleLabel);
     layout->addStretch();
     
-    // Controls
-    // We want spacing 0 between caption buttons
+    // Controls layout (no spacing between caption buttons)
     QHBoxLayout *controlsLayout = new QHBoxLayout();
     controlsLayout->setSpacing(0);
-    controlsLayout->setContentsMargins(0,0,0,0);
-    controlsLayout->setDirection(QBoxLayout::RightToLeft); // Min, Max, Close (Right to Left visually? No. Min is inner.)
-    
-    // Order: Min [Max] [Close] (Leftmost)
-    // RTL add order:
-    // add(Min) -> Right side of block
-    // add(Max)
-    // add(Close) -> Left side of block
-    
+    controlsLayout->setContentsMargins(0, 0, 0, 0);
+    // In RTL: Min, Max, Close order means Close will be leftmost
     controlsLayout->addWidget(m_minimizeBtn);
     controlsLayout->addWidget(m_maximizeBtn);
     controlsLayout->addWidget(m_closeBtn);
