@@ -5,6 +5,15 @@
 #include "TSearchPanel.h"
 #include "Constants.h"
 
+// New VSCode-like UI components
+#include "TActivityBar.h"
+#include "TSidebar.h"
+#include "TStatusBar.h"
+#include "TPanelArea.h"
+#include "TBreadcrumb.h"
+#include "TExplorerView.h"
+#include "TSearchView.h"
+
 #include <QThread>
 #include <QDockWidget>
 #include <QVBoxLayout>
@@ -421,7 +430,12 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
 
 
     // ===================================================================
-    // الخطوة 8: تحميل الملف المبدئي أو إنشاء تبويب جديد
+    // الخطوة 8: إعداد المكونات الجديدة (VSCode-like)
+    // ===================================================================
+    setupNewLayout();
+    
+    // ===================================================================
+    // الخطوة 9: تحميل الملف المبدئي أو إنشاء تبويب جديد
     // ===================================================================
     installEventFilter(this);
 
@@ -1220,6 +1234,64 @@ void Qalam::onModificationChanged(bool modified) {
             }
         }
     }
+}
+
+// ===================================================================
+// New VSCode-like Layout Methods
+// ===================================================================
+
+void Qalam::setupNewLayout()
+{
+    // Create the new UI components
+    m_activityBar = new TActivityBar(this);
+    m_sidebar = new TSidebar(this);
+    m_statusBar = new TStatusBar(this);
+    m_breadcrumb = new TBreadcrumb(this);
+    
+    // Connect Activity Bar signals
+    connect(m_activityBar, &TActivityBar::viewChanged, this, [this](TActivityBar::ViewType view) {
+        onActivityViewChanged(static_cast<int>(view));
+    });
+    
+    connect(m_activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
+        if (!visible) {
+            m_sidebar->hide();
+        } else {
+            m_sidebar->show();
+            m_sidebar->setCurrentView(view);
+        }
+    });
+    
+    // Connect Sidebar signals
+    connect(m_sidebar, &TSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
+    
+    // Connect Status Bar signals
+    connect(m_statusBar, &TStatusBar::problemsClicked, this, [this]() {
+        // TODO: Show problems panel
+    });
+    
+    // Initially hide the new components (incremental integration)
+    m_activityBar->hide();
+    m_sidebar->hide();
+    m_statusBar->hide();
+    m_breadcrumb->hide();
+}
+
+void Qalam::onActivityViewChanged(int viewType)
+{
+    auto view = static_cast<TActivityBar::ViewType>(viewType);
+    m_sidebar->setCurrentView(view);
+    m_sidebar->show();
+    
+    // Update the sidebar root path when switching to Explorer
+    if (view == TActivityBar::ViewType::Explorer && !folderPath.isEmpty()) {
+        m_sidebar->explorerView()->setRootPath(folderPath);
+    }
+}
+
+void Qalam::onSidebarFileSelected(const QString &filePath)
+{
+    openFile(filePath);
 }
 
 

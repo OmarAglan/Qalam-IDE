@@ -9,7 +9,12 @@
 #include <QPointer>
 #include "../ui/QalamWindow.h"
 
-// ...
+// Forward declarations for new UI components
+class TActivityBar;
+class TSidebar;
+class TStatusBar;
+class TPanelArea;
+class TBreadcrumb;
 
 class Qalam : public QalamWindow
 {
@@ -53,10 +58,15 @@ private slots:
     void findPrevText();
 
     void goToLine();
+    
+    // New component slots
+    void onActivityViewChanged(int viewType);
+    void onSidebarFileSelected(const QString &filePath);
 
 private:
     int needSave();
     TEditor *currentEditor();
+    void setupNewLayout();  // New method for VSCode-like layout
 
 private:
     QTabWidget *tabWidget{};
@@ -86,4 +96,11 @@ private:
     QProcess *alifProcess{};
     QProcess *currentBaaProcess{};
     SearchPanel *searchBar{};
+    
+    // New VSCode-like UI components
+    TActivityBar *m_activityBar{};
+    TSidebar *m_sidebar{};
+    TStatusBar *m_statusBar{};
+    TPanelArea *m_panelArea{};
+    TBreadcrumb *m_breadcrumb{};
 };
