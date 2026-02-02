@@ -30,7 +30,7 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 
     for (const auto &k : keywords) {
         if (k.startsWith(prefix, Qt::CaseInsensitive)) {
-            items.push_back({k, k, "كلمة محجوزة", CompletionType::Keyword});
+            items.push_back(CompletionItem(k, k, "كلمة محجوزة", CompletionType::Keyword));
         }
     }
     return items;
@@ -50,7 +50,7 @@ QVector<CompletionItem> BuiltinStrategy::getSuggestions(const QString &prefix, c
 
     for (const auto &b : builtins) {
         if (b.startsWith(prefix, Qt::CaseInsensitive)) {
-            items.push_back({b, b, "دالة ضمن لغة باء", CompletionType::Builtin});
+            items.push_back(CompletionItem(b, b, "دالة ضمن لغة باء", CompletionType::Builtin));
         }
     }
     return items;
@@ -62,52 +62,52 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
     QString p = prefix.toLower();
 
     if (QString("الرئيسية").startsWith(p)) {
-        items.push_back({"الرئيسية",
+        items.push_back(CompletionItem("الرئيسية",
                          "صحيح الرئيسية() {\n\tإرجع ٠.\n}",
                          "الدالة الرئيسية للبرنامج",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("صحيح").startsWith(p)) {
-        items.push_back({"دالة (صحيح)",
+        items.push_back(CompletionItem("دالة (صحيح)",
                          "صحيح اسم_الدالة() {\n\tإرجع ٠.\n}",
                          "تعريف دالة ترجع عدد صحيح",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("إذا").startsWith(p)) {
-        items.push_back({"إذا",
+        items.push_back(CompletionItem("إذا",
                          "إذا (الشرط) {\n\t\n}",
                          "جملة شرطية",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("وإلا").startsWith(p)) {
-        items.push_back({"وإلا",
+        items.push_back(CompletionItem("وإلا",
                          "وإلا {\n\t\n}",
                          "تتمة الجملة الشرطية",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("لكل").startsWith(p)) {
-        items.push_back({"لكل",
+        items.push_back(CompletionItem("لكل",
                          "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {\n\t\n}",
                          "حلقة تكرارية (For)",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("طالما").startsWith(p)) {
-        items.push_back({"طالما",
+        items.push_back(CompletionItem("طالما",
                          "طالما (الشرط) {\n\t\n}",
                          "حلقة تكرارية شرطية (While)",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
     if (QString("اختر").startsWith(p)) {
-        items.push_back({"اختر",
-                         "اختر (المتغير) {\n\tحالة ١:\n\t\tتوقف.\n\tافتراضي:\n\t\tتوقف.\n}",
-                         "جملة الاختيار المتعدد (Switch)",
-                         CompletionType::Snippet});
+        items.push_back(CompletionItem("اختر",
+                         "اختر (المتغير) {\n\tحالة القيمة:\n\t\t\n\tافتراضي:\n\t\t\n}",
+                         "جملة الاختيار (Switch)",
+                         CompletionType::Snippet));
     }
     if (QString("تضمين").startsWith(p)) {
-        items.push_back({"تضمين",
+        items.push_back(CompletionItem("تضمين",
                          "#تضمين \"ملف.baahd\"",
                          "تضمين ملف خارجي",
-                         CompletionType::Snippet});
+                         CompletionType::Snippet));
     }
 
     return items;
@@ -121,7 +121,7 @@ QVector<CompletionItem> DynamicWordStrategy::getSuggestions(const QString &prefi
     // Query the pre-built index instead of regex scanning everything
     for (const auto &word : wordIndex) {
         if (word != prefix && word.startsWith(prefix, Qt::CaseInsensitive)) {
-            items.push_back({word, word, "نص ضمن الملف الحالي", CompletionType::DynamicWord});
+            items.push_back(CompletionItem(word, word, "نص ضمن الملف الحالي", CompletionType::DynamicWord));
         }
     }
 

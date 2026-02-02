@@ -3,6 +3,7 @@
 #include <QString>
 #include <QVector>
 #include <QStringList>
+#include <QSet>
 
 enum CompletionType {
     Keyword,
@@ -16,6 +17,9 @@ struct CompletionItem {
     QString completion;
     QString description; // New field for the UI
     CompletionType type;
+
+    CompletionItem(QString l = "", QString c = "", QString d = "", CompletionType t = CompletionType::Keyword)
+        : label(l), completion(c), description(d), type(t) {}
 };
 
 // Abstract Strategy Interface
