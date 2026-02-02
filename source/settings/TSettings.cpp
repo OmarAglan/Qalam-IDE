@@ -189,9 +189,3 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
 QComboBox *TSettings::getThemeCombo() const {
     return themeCombo;
 }
-
-
-QVector<std::shared_ptr<SyntaxTheme>> TSettings::getAvailableThemes() const {
-    return ThemeManager::getAvailableThemes();
-}
-
