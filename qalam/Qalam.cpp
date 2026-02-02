@@ -1063,50 +1063,51 @@ void Qalam::runBaa() {
         if (filePath.isEmpty() || editor->document()->isModified()) return;
     }
 
+    // Use new TPanelArea's terminal if available, fallback to old consoleTabWidget
     TConsole *console = nullptr;
-    for (int i = 0; i < consoleTabWidget->count(); i++) {
-        auto *tab = consoleTabWidget->widget(i);
-        if (tab->objectName() == "interactiveConsole")
-            console = qobject_cast<TConsole*>(tab);
-    }
-    consoleTabWidget->setStyleSheet(R"(
-    QTabBar::tab {
-            background: transparent;
-            color: white;
-            border-top: 1px solid #30B5FF;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-            min-width: 12ex;
-            padding: 2px;
+    
+    if (m_panelArea) {
+        // Use new panel area terminal
+        console = m_panelArea->terminal();
+        m_panelArea->setCurrentTab(TPanelArea::Tab::Output);
+        m_panelArea->show();
+        m_panelArea->setCollapsed(false);
+        
+        // Ensure panel area has enough height in splitter
+        if (editorSplitter && m_panelArea->height() < 150) {
+            int totalHeight = editorSplitter->height();
+            int panelHeight = 250;
+            int searchBarHeight = (searchBar && searchBar->isVisible()) ? searchBar->height() : 0;
+            int editorHeight = totalHeight - panelHeight - searchBarHeight;
+            editorSplitter->setSizes({editorHeight, searchBarHeight > 0 ? 45 : 0, panelHeight});
         }
-    QTabBar::tab:selected, QTabBar::tab:hover {
-        background: #006EAB;
-    }
-    )");
-
-    if (!console) {
-        console = new TConsole(this);
-        console->setObjectName("interactiveConsole");
-        consoleTabWidget->addTab(console, "مخرجات باء");
-        console->setConsoleRTL();
-    }
-
-    consoleTabWidget->setCurrentWidget(console);
-
-    if (!consoleTabWidget->isVisible() || consoleTabWidget->height() < 50) {
-        int totalHeight = editorSplitter->height();
-        int consoleHeight = 250;
-
-        int searchBarHeight = 0;
-        if (searchBar && searchBar->isVisible()) {
-            searchBarHeight = searchBar->height();
+    } else {
+        // Fallback to old consoleTabWidget
+        for (int i = 0; i < consoleTabWidget->count(); i++) {
+            auto *tab = consoleTabWidget->widget(i);
+            if (tab->objectName() == "interactiveConsole")
+                console = qobject_cast<TConsole*>(tab);
         }
-        int editorHeight = totalHeight - consoleHeight - searchBarHeight;
+        
+        if (!console) {
+            console = new TConsole(this);
+            console->setObjectName("interactiveConsole");
+            consoleTabWidget->addTab(console, "مخرجات باء");
+            console->setConsoleRTL();
+        }
 
-        editorSplitter->setSizes({editorHeight, 45, consoleHeight});
+        consoleTabWidget->setCurrentWidget(console);
+
+        if (!consoleTabWidget->isVisible() || consoleTabWidget->height() < 50) {
+            int totalHeight = editorSplitter->height();
+            int consoleHeight = 250;
+            int searchBarHeight = (searchBar && searchBar->isVisible()) ? searchBar->height() : 0;
+            int editorHeight = totalHeight - consoleHeight - searchBarHeight;
+            editorSplitter->setSizes({editorHeight, 45, consoleHeight});
+        }
+
+        consoleTabWidget->setVisible(true);
     }
-
-    consoleTabWidget->setVisible(true);
  
     // Dynamic Compiler Path Logic
     QSettings settings(Constants::OrgName, Constants::AppName);
