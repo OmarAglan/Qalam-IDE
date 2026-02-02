@@ -605,9 +605,11 @@ void TEditor::curserIndentation() {
         if (checkPos >= 0 and lineText.at(checkPos) == ':') {
             currentIndentation += "\t";
         } else {
-            // Also indent after function or class definitions
+            // Also indent after function, class definitions, or control blocks starting with {
             QString trimmed = lineText.trimmed();
-            if (trimmed.startsWith("دالة ") || trimmed.startsWith("صنف ")) {
+            if (trimmed.startsWith("دالة ") || trimmed.startsWith("صنف ") || 
+                trimmed.startsWith("إذا") || trimmed.startsWith("طالما") || 
+                trimmed.startsWith("لكل") || trimmed.endsWith("{")) {
                 currentIndentation += "\t";
             }
         }

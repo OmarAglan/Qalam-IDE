@@ -104,9 +104,27 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
                          CompletionType::Snippet));
     }
     if (QString("تضمين").startsWith(p)) {
-        items.push_back(CompletionItem("تضمين",
+        items.push_back(CompletionItem("تضمين (#تضمين)",
                          "#تضمين \"ملف.baahd\"",
                          "تضمين ملف خارجي",
+                         CompletionType::Snippet));
+    }
+    if (QString("إذا_عرف").contains(p)) {
+        items.push_back(CompletionItem("إذا_عرف (#إذا_عرف)",
+                         "#إذا_عرف اسم_الماكرو\n\t\n#نهاية",
+                         "شرط المعالجة القبلية (Ifdef)",
+                         CompletionType::Snippet));
+    }
+    if (QString("تعريف").startsWith(p)) {
+        items.push_back(CompletionItem("تعريف (#تعريف)",
+                         "#تعريف الاسم القيمة",
+                         "تعريف ماكرو (Define)",
+                         CompletionType::Snippet));
+    }
+    if (QString("صنف").startsWith(p)) {
+        items.push_back(CompletionItem("صنف",
+                         "صنف اسم_الصنف {\n\t\n}",
+                         "تعريف صنف جديد (Class)",
                          CompletionType::Snippet));
     }
 

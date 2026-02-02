@@ -114,6 +114,7 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         QString word = wordView.toString();
 
         if (word == "هذا") return TToken(TokenType::Self, start, pos - start, word);
+        if (word == "صواب" || word == "خطأ") return TToken(TokenType::BooleanLiteral, start, pos - start, word);
         if (langDef.keywordSet.contains(word)) return TToken(TokenType::Keyword, start, pos - start, word);
         if (langDef.magicSet.contains(word)) return TToken(TokenType::MagicMethod, start, pos - start, word);
         if (langDef.builtinSet.contains(word)) return TToken(TokenType::BuiltinFunc, start, pos - start, word);
@@ -144,6 +145,11 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         auto m = langDef.numberPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
         if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         pos++; return TToken(TokenType::Number, start, 1);
+    }
+
+    if (ch == '.' || ch == u'؛') {
+        pos++;
+        return TToken(TokenType::Separator, pos - 1, 1, QString(ch));
     }
 
     pos++;
