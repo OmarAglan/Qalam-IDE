@@ -18,6 +18,8 @@ LanguageDefinition::LanguageDefinition() {
         "توقف", "استمر",
         // Functions (§5)
         "إرجع",
+        // Logical Operators (§8)
+        "و", "أو", "ليس",
         // Entry point
         "الرئيسية"
     };
@@ -46,6 +48,6 @@ LanguageDefinition::LanguageDefinition() {
     preprocessorSet = QSet<QString>(preprocessors.begin(), preprocessors.end());
 
     hexPattern = QRegularExpression(R"(\b0[xX][0-9a-fA-F]+\b)");
-    // Enhanced number pattern to support Arabic-Indic numerals ٠-٩
-    numberPattern = QRegularExpression(R"(\b[\d٠-٩]+(\.[\d٠-٩]+)?([eE][+-]?[\d٠-٩]+)?\b)");
+    // Enhanced number pattern to support Arabic-Indic numerals ٠-٩ (Integers Only)
+    numberPattern = QRegularExpression(R"(\b[\d٠-٩]+\b)");
 }

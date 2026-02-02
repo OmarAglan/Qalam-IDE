@@ -5,19 +5,10 @@
 // ==================== Helpers ====================
 
 static QPair<int, QString> checkStringStart(QStringView text, int pos) {
-    int idx = pos;
-    while (idx < text.length() && idx < pos + 2 && text[idx].isLetter()) {
-        idx++;
-    }
-    for (int end = idx; end >= pos; --end) {
-        if (end >= text.length()) continue;
-        QChar ch = text[end];
-        if (ch == '"' || ch == '\'') {
-            QString prefix = text.mid(pos, end - pos).toString().toLower();
-            bool valid = true;
-            for(QChar c : prefix) if(!QString("م").contains(c)) valid = false;
-            if(valid) return {end - pos, QString(ch)};
-        }
+    if (pos >= text.length()) return {-1, ""};
+    QChar ch = text[pos];
+    if (ch == '"' || ch == '\'') {
+        return {0, QString(ch)};
     }
     return {-1, ""};
 }
@@ -36,7 +27,7 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         return TToken(TokenType::Whitespace, start, pos - start);
     }
 
-    // 2. Comments (Baa uses // for single-line comments, NOT #)
+    // 2. Comments (Baa uses // for single-line comments)
     if (pos + 1 < text.length() && ch == '/' && text[pos + 1] == '/') {
         int start = pos;
         pos = text.length();
@@ -56,30 +47,26 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         QString directive = text.mid(start, pos - start).toString();
 
         if (langDef.preprocessorSet.contains(directive)) {
-            // It's a valid preprocessor directive - highlight the directive part
             return TToken(TokenType::Preprocessor, start, pos - start, directive);
         }
 
-        // Unknown directive starting with # - treat as error/operator
         return TToken(TokenType::Operator, start, pos - start, directive);
     }
 
-    // 3. Strings
+    // 4. Strings
     auto strCheck = checkStringStart(text, pos);
     if (strCheck.first != -1) {
         int start = pos;
-        int prefixLen = strCheck.first;
         QString quote = strCheck.second;
         
-        pos += prefixLen;
-        pos += quote.length(); // Single or Double quote (no triple in Baa)
+        pos += quote.length(); 
 
         int delimId = (quote == "\"") ? StateMasks::Double : StateMasks::Single;
         pendingState = std::make_unique<StringState>(quote, delimId);
         return TToken(TokenType::String, start, pos - start);
     }
 
-    // 4. Identifiers
+    // 5. Identifiers & Keywords
     if (ch.isLetter() || ch == '_') {
         int start = pos;
         while (pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
@@ -91,7 +78,7 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         if (langDef.builtinSet.contains(word)) return TToken(TokenType::BuiltinFunc, start, pos - start, word);
         if (langDef.preprocessorSet.contains(word)) return TToken(TokenType::Preprocessor, start, pos - start, word);
 
-        // Check for function call pattern 'func('
+        // Check for function pattern 'func('
         int next = pos;
         while(next < text.length() && text[next].isSpace()) next++;
         if (next < text.length() && text[next] == '(') {
@@ -101,8 +88,8 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         return TToken(TokenType::Identifier, start, pos - start, word);
     }
 
-    // 5. Numbers
-    if (ch.isDigit()) {
+    // 6. Numbers (Integers Only (§3.1))
+    if (ch.isDigit() || ch == u'٠' || ch == u'١' || ch == u'٢' || ch == u'٣' || ch == u'٤' || ch == u'٥' || ch == u'٦' || ch == u'٧' || ch == u'٨' || ch == u'٩') {
         int start = pos;
         if (ch == '0' && pos + 1 < text.length() && text.mid(pos, 2).compare(u"0x", Qt::CaseInsensitive) == 0) {
             auto m = langDef.hexPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
@@ -113,11 +100,13 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         pos++; return TToken(TokenType::Number, start, 1);
     }
 
+    // 7. Separators
     if (ch == '.' || ch == u'؛') {
         pos++;
         return TToken(TokenType::Separator, pos - 1, 1, QString(ch));
     }
 
+    // 8. Operators
     pos++;
     return TToken(TokenType::Operator, pos - 1, 1, QString(ch));
 }
@@ -130,46 +119,6 @@ std::unique_ptr<LexerState> NormalState::nextState() const {
 std::unique_ptr<LexerState> NormalState::clone() const {
     auto c = std::make_unique<NormalState>();
     if (pendingState) c->pendingState = pendingState->clone();
-    return c;
-}
-
-// ==================== Function Definition State ====================
-TToken FunctionDefState::readToken(QStringView text, int& pos, const LanguageDefinition& langDef) {
-    if (pos >= text.length()) return TToken(TokenType::None, pos, 0);
-
-    // Skip spaces
-    if (text[pos].isSpace()) {
-        int start = pos;
-        while(pos < text.length() && text[pos].isSpace()) pos++;
-        return TToken(TokenType::Whitespace, start, pos - start);
-    }
-
-    // Capture Name
-    if (text[pos].isLetter() || text[pos] == '_') {
-        int start = pos;
-        while(pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
-
-        QString name = text.mid(start, pos - start).toString();
-
-        // Done with definition, go back to normal
-        pendingState = std::make_unique<NormalState>();
-        return TToken(TokenType::Function, start, pos - start, name);
-    }
-
-    // Abort if we hit something unexpected
-    pendingState = std::make_unique<NormalState>();
-    pos++;
-    return TToken(TokenType::Operator, pos-1, 1, QString(text[pos-1]));
-}
-
-std::unique_ptr<LexerState> FunctionDefState::nextState() const {
-    if(pendingState) return std::move(pendingState);
-    return std::make_unique<FunctionDefState>();
-}
-
-std::unique_ptr<LexerState> FunctionDefState::clone() const {
-    auto c = std::make_unique<FunctionDefState>();
-    if(pendingState) c->pendingState = pendingState->clone();
     return c;
 }
 
@@ -214,10 +163,10 @@ QVector<TToken> TLexer::tokenize(QStringView text, int initialState) {
     QString delim = "\"";
     if (dType == StateMasks::Single) delim = "'";
 
-    switch(type) {
-    case StateMasks::String: currentState = std::make_unique<StringState>(delim, dType); break;
-    case StateMasks::FunctionDef: currentState = std::make_unique<FunctionDefState>(); break;
-    default: currentState = std::make_unique<NormalState>(); break;
+    if (type == StateMasks::String) {
+        currentState = std::make_unique<StringState>(delim, dType);
+    } else {
+        currentState = std::make_unique<NormalState>();
     }
 
     while (pos < text.length()) {

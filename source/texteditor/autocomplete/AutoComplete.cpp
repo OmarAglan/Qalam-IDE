@@ -19,6 +19,8 @@ KeywordStrategy::KeywordStrategy() {
         "توقف", "استمر",
         // Functions (§5)
         "إرجع",
+        // Logical Operators (§8)
+        "و", "أو", "ليس",
         // Entry point
         "الرئيسية"
     };
@@ -112,6 +114,12 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("تعريف (#تعريف)",
                          "#تعريف الاسم القيمة",
                          "تعريف ماكرو (Define)",
+                         CompletionType::Snippet));
+    }
+    if (QString("الغاء_تعريف").contains(p)) {
+        items.push_back(CompletionItem("الغاء_تعريف (#الغاء_تعريف)",
+                         "#الغاء_تعريف الاسم",
+                         "إلغاء تعريف ماكرو (Undef)",
                          CompletionType::Snippet));
     }
     return items;

@@ -44,17 +44,6 @@ public:
     int getStateId() const override { return StateMasks::String | delimId; }
 };
 
-// 3. Function Definition State (captures name after 'دالة')
-class FunctionDefState : public LexerState {
-public:
-    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
-    std::unique_ptr<LexerState> nextState() const override;
-    std::unique_ptr<LexerState> clone() const override;
-
-    mutable std::unique_ptr<LexerState> pendingState;
-    int getStateId() const override { return StateMasks::FunctionDef; }
-};
-
 // ==================== Lexer ====================
 
 class TLexer {

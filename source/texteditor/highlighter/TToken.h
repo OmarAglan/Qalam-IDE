@@ -5,21 +5,19 @@
 // ==================== Constants & Enums ====================
 
 namespace StateMasks {
+const int Normal = 0x0;
+const int String = 0x1;
 const int TypeMask = 0xFF;
 const int DelimMask = 0xFF00;
 
+const int Single = 0x100;      // '
+const int Double = 0x200;      // "
+}
+
 enum StateType {
     Normal = 0,
-    String = 1,
-    FunctionDef = 5
+    String = 1
 };
-
-enum DelimiterType {
-    None = 0,
-    Single = 0x100,      // '
-    Double = 0x200       // "
-};
-}
 
 enum class TokenType {
     None = 0,
