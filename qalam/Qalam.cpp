@@ -1088,7 +1088,7 @@ void Qalam::runBaa() {
     connect(worker, &ProcessWorker::errorReady,
             console, &TConsole::appendPlainTextThreadSafe);
  
-    connect(worker, &ProcessWorker::finished, this, [this](int code){
+    connect(worker, &ProcessWorker::finished, this, [this, console](int code){
         console->appendPlainTextThreadSafe(
             "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
             + QString::number(code) + ")\n"
