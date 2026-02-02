@@ -29,8 +29,8 @@
         <file>resources/maximize.svg</file>
         <file>resources/restore.svg</file>
         <file>resources/close.svg</file>
+    </qresource>
     <qresource prefix="/styles">
         <file>resources/styles/main.qss</file>
-    </qresource>
     </qresource>
 </RCC>
