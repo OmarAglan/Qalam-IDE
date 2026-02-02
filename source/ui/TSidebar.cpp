@@ -16,6 +16,7 @@ void TSidebar::setupUi()
     
     setMinimumWidth(Layout::SidebarMinWidth);
     setMaximumWidth(Layout::SidebarMaxWidth);
+    setLayoutDirection(Qt::RightToLeft);  // RTL for Arabic
     
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -27,14 +28,15 @@ void TSidebar::setupUi()
     m_headerWidget->setFixedHeight(Layout::SidebarHeaderHeight);
     
     QHBoxLayout *headerLayout = new QHBoxLayout(m_headerWidget);
-    headerLayout->setContentsMargins(15, 0, 10, 0);
+    headerLayout->setContentsMargins(10, 0, 15, 0);  // Swapped for RTL
     headerLayout->setSpacing(0);
     
     m_headerTitle = new QLabel(ExplorerLabel.toUpper());
     m_headerTitle->setObjectName("sidebarHeaderTitle");
+    m_headerTitle->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     
-    headerLayout->addWidget(m_headerTitle);
     headerLayout->addStretch();
+    headerLayout->addWidget(m_headerTitle);
     
     m_mainLayout->addWidget(m_headerWidget);
     
@@ -52,6 +54,7 @@ void TSidebar::setupUi()
     
     // Connect signals
     connect(m_explorerView, &TExplorerView::fileDoubleClicked, this, &TSidebar::fileSelected);
+    connect(m_explorerView, &TExplorerView::openFolderRequested, this, &TSidebar::openFolderRequested);
     connect(m_searchView, &TSearchView::resultClicked, this, [this](const QString &path, int, int) {
         emit fileSelected(path);
     });

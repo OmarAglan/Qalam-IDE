@@ -34,6 +34,7 @@ public:
 signals:
     void fileSelected(const QString &filePath);
     void searchRequested(const QString &query);
+    void openFolderRequested();  // Forward from explorer view
 
 private:
     void setupUi();

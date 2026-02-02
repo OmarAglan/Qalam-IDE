@@ -674,6 +674,7 @@ void Qalam::newFile() {
     connect(newEditor, &TEditor::openRequest, this, [this](QString filePath){this->openFile(filePath);});
     connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
     updateWindowTitle();
+    syncOpenEditors();
 }
 
 void Qalam::openFile(QString filePath) {
@@ -739,6 +740,7 @@ void Qalam::openFile(QString filePath) {
             tabWidget->setCurrentWidget(newEditor);
             tabWidget->setTabToolTip(tabWidget->currentIndex(), filePath);
             updateWindowTitle();
+            syncOpenEditors();
 
 
             QSettings settings(Constants::OrgName, Constants::AppName);
@@ -1238,7 +1240,7 @@ void Qalam::closeTab(int index)
 
     }
     tabWidget->removeTab(index);
-
+    syncOpenEditors();
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */
@@ -1344,6 +1346,7 @@ void Qalam::setupNewLayout()
     
     // Connect Sidebar signals
     connect(m_sidebar, &TSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
+    connect(m_sidebar, &TSidebar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
     
     // Connect Status Bar signals
     connect(m_statusBar, &TStatusBar::problemsClicked, this, [this]() {
@@ -1450,6 +1453,15 @@ void Qalam::setupNewLayout()
         m_panelArea->terminal()->setConsoleRTL();
         m_panelArea->terminal()->startCmd();
     }
+    
+    // Sync Open Editors with tab widget
+    connect(tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
+        // Update status bar and breadcrumb handled elsewhere
+        Q_UNUSED(index);
+    });
+    
+    // Sync when tabs are added - populate initial open editors
+    syncOpenEditors();
 }
 
 void Qalam::onActivityViewChanged(int viewType)
@@ -1467,6 +1479,29 @@ void Qalam::onActivityViewChanged(int viewType)
 void Qalam::onSidebarFileSelected(const QString &filePath)
 {
     openFile(filePath);
+}
+
+void Qalam::syncOpenEditors()
+{
+    if (!m_sidebar || !m_sidebar->explorerView()) return;
+    
+    // Clear existing open editors
+    m_sidebar->explorerView()->clearOpenEditors();
+    
+    // Add all open tabs
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+        if (editor) {
+            QString filePath = editor->property("filePath").toString();
+            bool modified = editor->document()->isModified();
+            
+            // Use tab text if no file path (unsaved file)
+            if (filePath.isEmpty()) {
+                filePath = tabWidget->tabText(i);
+            }
+            m_sidebar->explorerView()->addOpenEditor(filePath, modified);
+        }
+    }
 }
 
 

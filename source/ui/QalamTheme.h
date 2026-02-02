@@ -18,16 +18,16 @@ public:
     void apply(QApplication* app);
     QString styleSheet() const;
     
-    // Core Colors
-    QColor background() const { return QColor("#1e1e2e"); }
-    QColor foreground() const { return QColor("#d4d4d4"); }
-    QColor accent() const { return QColor("#4fc3f7"); }
-    QColor border() const { return QColor("#2d2d3d"); }
+    // Core Colors (VSCode Dark Theme)
+    QColor background() const { return QColor("#1e1e1e"); }
+    QColor foreground() const { return QColor("#cccccc"); }
+    QColor accent() const { return QColor("#007acc"); }
+    QColor border() const { return QColor("#3c3c3c"); }
     
     // UI Specifics
-    QColor titleBarBackground() const { return QColor("#1e1e2e"); } // or slightly darker #181825
-    QColor sidebarBackground() const { return QColor("#252533"); }
-    QColor editorBackground() const { return QColor("#1e1e2e"); }
+    QColor titleBarBackground() const { return QColor("#323233"); }
+    QColor sidebarBackground() const { return QColor("#252526"); }
+    QColor editorBackground() const { return QColor("#1e1e1e"); }
     
     // Font
     QFont uiFont() const;

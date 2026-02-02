@@ -36,6 +36,7 @@ public:
 signals:
     void fileDoubleClicked(const QString &filePath);
     void openEditorClicked(const QString &filePath);
+    void openFolderRequested();  // Emitted when "Open Folder" button is clicked
 
 private:
     void setupUi();

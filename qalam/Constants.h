@@ -37,40 +37,40 @@ namespace Constants {
     const QString DefaultFontType = "Kawkab Mono";
 
     // ==========================================================================
-    // UI Colors - Dark Theme Palette
+    // UI Colors - VSCode Dark Theme Palette
     // ==========================================================================
     namespace Colors {
-        // Primary backgrounds
-        constexpr const char* WindowBackground = "#1e202e";
-        constexpr const char* EditorBackground = "#141520";
+        // Primary backgrounds (VSCode Dark+ theme)
+        constexpr const char* WindowBackground = "#1e1e1e";
+        constexpr const char* EditorBackground = "#1e1e1e";
         constexpr const char* SidebarBackground = "#252526";
-        constexpr const char* SidebarHeaderBackground = "#1e202e";
+        constexpr const char* SidebarHeaderBackground = "#252526";
         constexpr const char* ConsoleBackground = "#1e1e1e";
         constexpr const char* MenuBackground = "#252526";
         
-        // Activity Bar
-        constexpr const char* ActivityBarBackground = "#1e202e";
-        constexpr const char* ActivityBarBorder = "#19191c";
+        // Activity Bar (VSCode style)
+        constexpr const char* ActivityBarBackground = "#333333";
+        constexpr const char* ActivityBarBorder = "#252526";
         constexpr const char* IconInactive = "#858585";
         constexpr const char* IconActive = "#ffffff";
         constexpr const char* ActivityIndicator = "#007acc";
         
         // Tab colors
-        constexpr const char* TabBackground = "#2d2d30";
+        constexpr const char* TabBackground = "#2d2d2d";
         constexpr const char* TabActiveBackground = "#1e1e1e";
-        constexpr const char* TabHoverBackground = "#3e3e42";
+        constexpr const char* TabHoverBackground = "#2a2d2e";
         constexpr const char* TabBorder = "#252526";
         
         // Accent colors
         constexpr const char* Accent = "#007acc";
         constexpr const char* AccentHover = "#1c97ea";
         constexpr const char* AccentAlt = "#0078d7";
-        constexpr const char* Selection = "#094771";
+        constexpr const char* Selection = "#264f78";
         constexpr const char* SelectionHighlight = "#add6ff26";
         
         // Button states
-        constexpr const char* ButtonHover = "#4f5357";
-        constexpr const char* ButtonPressed = "#2a2d31";
+        constexpr const char* ButtonHover = "#3e3e42";
+        constexpr const char* ButtonPressed = "#2d2d30";
         constexpr const char* CaptionButtonHover = "#3e3e42";
         constexpr const char* CaptionButtonPressed = "#2d2d32";
         constexpr const char* CloseButtonHover = "#e81123";
@@ -81,7 +81,7 @@ namespace Constants {
         constexpr const char* TextSecondary = "#cccccc";
         constexpr const char* TextMuted = "#858585";
         constexpr const char* TextDisabled = "#5a5a5a";
-        constexpr const char* ConsoleText = "#DEE8FF";
+        constexpr const char* ConsoleText = "#cccccc";
         
         // Status Bar (Blue like VSCode)
         constexpr const char* StatusBarBackground = "#007acc";
@@ -96,7 +96,7 @@ namespace Constants {
         
         // Panel/Console Area
         constexpr const char* PanelBackground = "#1e1e1e";
-        constexpr const char* PanelBorder = "#19191c";
+        constexpr const char* PanelBorder = "#80808059";
         constexpr const char* PanelTabActive = "#1e1e1e";
         constexpr const char* PanelTabInactive = "transparent";
         
@@ -106,20 +106,24 @@ namespace Constants {
         constexpr const char* InfoForeground = "#3794ff";
         
         // Borders
-        constexpr const char* Border = "#454545";
+        constexpr const char* Border = "#3c3c3c";
         constexpr const char* BorderActive = "#007acc";
-        constexpr const char* BorderSubtle = "#2d2d30";
-        constexpr const char* LineNumberBorder = "#10a8f4";
+        constexpr const char* BorderSubtle = "#3c3c3c";
+        constexpr const char* LineNumberBorder = "#007acc";
         
         // Scrollbar
-        constexpr const char* ScrollbarBackground = "#1e1e1e";
-        constexpr const char* ScrollbarThumb = "#424242";
-        constexpr const char* ScrollbarThumbHover = "#4f4f4f";
+        constexpr const char* ScrollbarBackground = "transparent";
+        constexpr const char* ScrollbarThumb = "#79797966";
+        constexpr const char* ScrollbarThumbHover = "#646464b3";
         
         // List/Tree
         constexpr const char* ListHoverBackground = "#2a2d2e";
         constexpr const char* ListActiveBackground = "#094771";
         constexpr const char* ListInactiveBackground = "#37373d";
+        
+        // Title Bar
+        constexpr const char* TitleBarBackground = "#323233";
+        constexpr const char* TitleBarActiveBackground = "#3c3c3c";
     }
 
     // ==========================================================================

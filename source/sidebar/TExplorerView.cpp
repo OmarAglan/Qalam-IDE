@@ -14,6 +14,8 @@ void TExplorerView::setupUi()
 {
     using namespace Constants;
     
+    setLayoutDirection(Qt::RightToLeft);  // RTL for Arabic
+    
     m_mainLayout = new QVBoxLayout(this);
     m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
@@ -76,6 +78,7 @@ void TExplorerView::setupUi()
     QPushButton *openFolderBtn = new QPushButton("فتح مجلد");
     openFolderBtn->setObjectName("openFolderBtn");
     openFolderBtn->setCursor(Qt::PointingHandCursor);
+    connect(openFolderBtn, &QPushButton::clicked, this, &TExplorerView::openFolderRequested);
     
     noFolderLayout->addWidget(noFolderLabel);
     noFolderLayout->addSpacing(10);

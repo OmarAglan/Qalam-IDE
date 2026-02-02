@@ -77,6 +77,12 @@ void TActivityBar::onButtonClicked()
     
     ViewType clickedView = static_cast<ViewType>(btn->property("viewType").toInt());
     
+    // Settings is special - doesn't toggle sidebar, just emits signal
+    if (clickedView == ViewType::Settings) {
+        emit viewToggled(clickedView, true);
+        return;
+    }
+    
     if (clickedView == m_currentView) {
         // Toggle sidebar visibility (clicking active button hides sidebar)
         emit viewToggled(clickedView, false);

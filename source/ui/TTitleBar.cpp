@@ -39,26 +39,29 @@ void TTitleBar::setupUi() {
     connect(m_maximizeBtn, &QPushButton::clicked, this, &TTitleBar::maximizeRestoreClicked);
     connect(m_closeBtn, &QPushButton::clicked, this, &TTitleBar::closeClicked);
 
-    // Build layout correctly once (no delete/recreate)
-    // RTL Layout: Elements added first appear on the right
-    // We want: [Close][Max][Min] ....stretch.... [Title] [Logo] (visual left to right)
-    // In RTL mode, addWidget adds from right to left visually
+    // Build layout in LTR style (like VSCode even for RTL apps)
+    // Layout: [Icon][Menu]...stretch...[Title]...[Min][Max][Close]
     
     QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(10, 0, 10, 0);
-    layout->setSpacing(10);
-    layout->setDirection(QBoxLayout::RightToLeft);
+    layout->setContentsMargins(8, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->setDirection(QBoxLayout::LeftToRight);  // LTR for title bar
     
-    // Add logo and title (will appear on the right in RTL)
+    // Left side: Logo
     layout->addWidget(m_iconLabel);
-    layout->addWidget(m_titleLabel);
-    layout->addStretch();
+    layout->addSpacing(8);
     
-    // Controls layout (no spacing between caption buttons)
+    // Menu will be inserted at index 2 by addMenuBar()
+    
+    // Center: stretch + title + stretch (title centered)
+    layout->addStretch(1);
+    layout->addWidget(m_titleLabel);
+    layout->addStretch(1);
+    
+    // Right side: Window controls (no spacing between caption buttons)
     QHBoxLayout *controlsLayout = new QHBoxLayout();
     controlsLayout->setSpacing(0);
     controlsLayout->setContentsMargins(0, 0, 0, 0);
-    // In RTL: Min, Max, Close order means Close will be leftmost
     controlsLayout->addWidget(m_minimizeBtn);
     controlsLayout->addWidget(m_maximizeBtn);
     controlsLayout->addWidget(m_closeBtn);
@@ -88,15 +91,33 @@ void TTitleBar::setMaximizedState(bool maximized) {
 void TTitleBar::addMenuBar(QWidget *menu) {
     if (!menu) return;
     
-    // Insert menu after title (index 2: Icon=0, Title=1)
-    // Layout is QHBoxLayout.
-    // We access the layout() of this widget.
+    // Insert menu after icon (index 2: Icon=0, Spacing=1, then insert at 2)
     if (QHBoxLayout *l = qobject_cast<QHBoxLayout*>(layout())) {
         l->insertWidget(2, menu);
     }
     
     // Style adjustments for embedded menu
-    menu->setStyleSheet(menu->styleSheet() + "QMenuBar { background: transparent; border: none; }");
+    menu->setStyleSheet(menu->styleSheet() + QString(R"(
+        QMenuBar { 
+            background: transparent; 
+            border: none; 
+            color: %1;
+            font-size: 13px;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
+        }
+        QMenuBar::item { 
+            background: transparent; 
+            padding: 4px 10px; 
+        }
+        QMenuBar::item:selected { 
+            background-color: %2; 
+        }
+        QMenuBar::item:pressed { 
+            background-color: %3; 
+        }
+    )").arg(Constants::Colors::TextSecondary)
+       .arg(Constants::Colors::CaptionButtonHover)
+       .arg(Constants::Colors::Accent));
     menu->setFixedHeight(30);
 }
 

@@ -67,6 +67,7 @@ private:
     int needSave();
     TEditor *currentEditor();
     void setupNewLayout();  // New method for VSCode-like layout
+    void syncOpenEditors();  // Sync Open Editors section with tabs
 
 private:
     QTabWidget *tabWidget{};
