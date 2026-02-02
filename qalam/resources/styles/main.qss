@@ -1,0 +1,60 @@
+/* Global Styles */
+QWidget {
+    color: #dddddd;
+    background-color: #1e202e;
+}
+
+/* Editor Styles */
+TEditor {
+    background-color: #141520;
+    color: #cccccc;
+    font-size: 14pt;
+}
+
+/* Tabs */
+QTabWidget::pane {
+    border: none;
+    background: #141520;
+}
+
+QTabBar::tab {
+    background: #1e1e2e;
+    color: #888888;
+    padding: 8px 16px;
+    border-bottom: 2px solid transparent;
+}
+
+QTabBar::tab:selected {
+    background: #141520;
+    color: #ffffff;
+    border-bottom: 2px solid #10a8f4;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #2d2d3d;
+    border: 1px solid #3d3d4d;
+    border-radius: 4px;
+    padding: 5px 15px;
+}
+
+QPushButton:hover {
+    background-color: #3d3d4d;
+}
+
+/* ScrollBars */
+QScrollBar:vertical {
+    border: none;
+    background: #1e202e;
+    width: 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: #3d3d4d;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}

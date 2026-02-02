@@ -47,7 +47,10 @@ public:
 };
 
 class DynamicWordStrategy : public ICompletionStrategy {
+    QSet<QString> wordIndex;
 public:
     QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &fullText) override;
+    void rebuildIndex(const QString &fullText);
+    void updateIndex(const QString &text); // Incremental update (optional for now)
 };
 

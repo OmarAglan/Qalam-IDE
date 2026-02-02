@@ -9,13 +9,20 @@
 #include <QFileDialog>
 #include <QLockFile>
 #include <QDir>
+#include "Constants.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QCoreApplication::setOrganizationName("Alif");
-    QCoreApplication::setApplicationName("Qalam");
+    QCoreApplication::setOrganizationName(Constants::OrgName);
+    QCoreApplication::setApplicationName(Constants::AppName);
     app.setLayoutDirection(Qt::RightToLeft);
+
+    // Load Central Stylesheet
+    QFile styleFile(":/styles/resources/styles/main.qss");
+    if (styleFile.open(QFile::ReadOnly)) {
+        app.setStyleSheet(styleFile.readAll());
+    }
 
 
     QString lockPath = QDir::tempPath() + "/qalam_ide.lock";

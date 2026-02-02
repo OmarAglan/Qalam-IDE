@@ -10,10 +10,11 @@
 #include <QMenu>
 #include <QAction>
 #include <QFile>
+#include "../../qalam/Constants.h"
+#include "highlighter/ThemeManager.h"
 
 
-TEditor::TEditor(TSettings* setting, QWidget* parent) {
-    Q_UNUSED(parent)
+TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
     setAcceptDrops(true);
     this->setStyleSheet("QPlainTextEdit { background-color: #141520; color: #cccccc; }");
     this->setTabStopDistance(32);
@@ -40,16 +41,16 @@ TEditor::TEditor(TSettings* setting, QWidget* parent) {
     highlightCurrentLine();
 
     // set saved setting font size to the editor
-    QSettings settingsVal("Alif", "Qalam");
-    int savedSize = settingsVal.value("editorFontSize").toInt();
+    QSettings settingsVal(Constants::OrgName, Constants::AppName);
+    int savedSize = settingsVal.value(Constants::SettingsKeyFontSize).toInt();
     updateFontSize(savedSize);
     // set saved setting font type to the editor
-    QString savedFont = settingsVal.value("editorFontType").toString();
+    QString savedFont = settingsVal.value(Constants::SettingsKeyFontType).toString();
     updateFontType(savedFont);
     // set saved setting theme to the editor
-    int savedTheme = settingsVal.value("editorCodeTheme").toInt();
-    savedTheme >= 0 ? savedTheme : savedTheme = 0;
-    std::shared_ptr<SyntaxTheme> theme = setting->getAvailableThemes().at(savedTheme);
+    int savedThemeIdx = settingsVal.value(Constants::SettingsKeyTheme).toInt();
+    if (savedThemeIdx < 0) savedThemeIdx = 0;
+    auto theme = ThemeManager::getThemeByIndex(savedThemeIdx);
     updateHighlighterTheme(theme);
 
     autoSaveTimer = new QTimer(this);
@@ -57,6 +58,21 @@ TEditor::TEditor(TSettings* setting, QWidget* parent) {
     connect(autoSaveTimer, &QTimer::timeout, this, &TEditor::performAutoSave);
 
     connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::startAutoSave);
+    
+    // Initial index build
+    if (dynamicStrategy) {
+        dynamicStrategy->rebuildIndex(this->toPlainText());
+    }
+    
+    // Connect document changes to update the autocomplete index
+    connect(this->document(), &QTextDocument::contentsChange, this, [this](int position, int charsRemoved, int charsAdded) {
+        if (dynamicStrategy && charsAdded > 0) {
+            QTextCursor cursor(this->document());
+            cursor.setPosition(position);
+            cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, charsAdded);
+            dynamicStrategy->updateIndex(cursor.selectedText());
+        }
+    });
 
     installEventFilter(this);
 }
@@ -670,7 +686,9 @@ void TEditor::setupAutoComplete() {
     strategies.push_back(std::make_unique<SnippetStrategy>());
     strategies.push_back(std::make_unique<KeywordStrategy>());
     strategies.push_back(std::make_unique<BuiltinStrategy>());
-    strategies.push_back(std::make_unique<DynamicWordStrategy>());
+    auto dynamic = std::make_unique<DynamicWordStrategy>();
+    dynamicStrategy = dynamic.get();
+    strategies.push_back(std::move(dynamic));
 
     QCompleter *completer = new QCompleter(this);
     setCompleter(completer);

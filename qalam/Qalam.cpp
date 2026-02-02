@@ -3,6 +3,7 @@
 #include "TConsole.h"
 #include "ProcessWorker.h"
 #include "TSearchPanel.h"
+#include "Constants.h"
 
 #include <QThread>
 #include <QDockWidget>
@@ -82,12 +83,17 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     toggleSidebarAction->setChecked(false);
     mainToolBar->addAction(toggleSidebarAction);
 
-    QAction *runToolbarAction = new QAction(this);
-    runToolbarAction->setIcon(QIcon(":/icons/resources/run.svg"));
-    runToolbarAction->setToolTip("تشغيل الملف الحالي");
-
     mainToolBar->addAction(runToolbarAction);
     connect(runToolbarAction, &QAction::triggered, this, &Qalam::runBaa);
+
+    stopToolbarAction = new QAction(this);
+    stopToolbarAction->setIcon(QIcon(":/icons/resources/close.svg"));
+    stopToolbarAction->setToolTip("إيقاف التشغيل");
+    stopToolbarAction->setEnabled(false);
+    mainToolBar->addAction(stopToolbarAction);
+    connect(stopToolbarAction, &QAction::triggered, this, [this](){
+        if (worker) worker->stop();
+    });
     // mainToolBar->addSeparator();
     // mainToolBar->addAction(menuBar->newAction);
 
@@ -202,6 +208,9 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     connect(moveDownShortcut, &QShortcut::activated, this, [this](){
         if (TEditor* editor = currentEditor()) editor->moveLineDown();
     });
+
+    // Style is now managed in main.qss
+    statusBar()->setSizeGripEnabled(false);
 
     // ===================================================================
     //  الخطوة 7: تطبيق التصميم (QSS)
@@ -423,10 +432,10 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
 Qalam::~Qalam() {
 
     if (TEditor* editor = currentEditor()) {
-        QSettings settings("Alif", "Qalam");
-        settings.setValue("editorFontSize", editor->font().pixelSize());
-        settings.setValue("editorFontType", editor->font().family());
-        settings.setValue("editorCodeTheme", setting->getThemeCombo()->currentIndex());
+        QSettings settings(Constants::OrgName, Constants::AppName);
+        settings.setValue(Constants::SettingsKeyFontSize, editor->font().pixelSize());
+        settings.setValue(Constants::SettingsKeyFontType, editor->font().family());
+        settings.setValue(Constants::SettingsKeyTheme, setting->getThemeCombo()->currentIndex());
         settings.sync();
     }
 }
@@ -621,8 +630,8 @@ void Qalam::newFile() {
         if (isNeedSave == 1) this->saveFile();
     }
 
-    TEditor *newEditor = new TEditor(setting, this);
-    tabWidget->addTab(newEditor, "غير معنون");
+    TEditor *newEditor = new TEditor(this);
+    tabWidget->addTab(newEditor, Constants::NewFileLabel);
     tabWidget->setCurrentWidget(newEditor);
 
     connect(newEditor, &TEditor::openRequest, this, [this](QString filePath){this->openFile(filePath);});
@@ -657,7 +666,7 @@ void Qalam::openFile(QString filePath) {
             QString content = in.readAll();
             file.close();
 
-            TEditor *newEditor = new TEditor(setting, this);
+            TEditor *newEditor = new TEditor(this);
             connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
             newEditor->setPlainText(content);
             newEditor->setProperty("filePath", filePath);
@@ -695,14 +704,14 @@ void Qalam::openFile(QString filePath) {
             updateWindowTitle();
 
 
-            QSettings settings("Alif", "Qalam");
-            QStringList recentFiles = settings.value("RecentFiles").toStringList();
+            QSettings settings(Constants::OrgName, Constants::AppName);
+            QStringList recentFiles = settings.value(Constants::SettingsKeyRecentFiles).toStringList();
             recentFiles.removeAll(filePath);
             recentFiles.prepend(filePath);
             while (recentFiles.size() > 10) {
                 recentFiles.removeLast();
             }
-            settings.setValue("RecentFiles", recentFiles);
+            settings.setValue(Constants::SettingsKeyRecentFiles, recentFiles);
         } else {
             QMessageBox::warning(this, "خطأ", "لا يمكن فتح الملف");
         }
@@ -827,25 +836,27 @@ void Qalam::saveFileAs() {
 
 void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
-
+ 
     connect(setting, &TSettings::fontSizeChanged, this, [this](int size){
         for (int i = 0; i < tabWidget->count(); ++i) {
-            qobject_cast<TEditor*>(tabWidget->widget(i))->updateFontSize(size);
+            TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+            if (editor) editor->updateFontSize(size);
         }
     });
     connect(setting, &TSettings::fontTypeChanged, this, [this](QString font){
         for (int i = 0; i < tabWidget->count(); ++i) {
-            qobject_cast<TEditor*>(tabWidget->widget(i))->updateFontType(font);
+            TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+            if (editor) editor->updateFontType(font);
         }
     });
     connect(setting, &TSettings::highlighterThemeChanged, this, [this](int themeIdx){
-        QVector<std::shared_ptr<SyntaxTheme>> availableThemes = setting->getAvailableThemes();
-        std::shared_ptr<SyntaxTheme> theme = availableThemes.at(themeIdx);
+        auto theme = ThemeManager::getThemeByIndex(themeIdx);
         for (int i = 0; i < tabWidget->count(); ++i) {
-            qobject_cast<TEditor*>(tabWidget->widget(i))->updateHighlighterTheme(theme);
+            TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+            if (editor) editor->updateHighlighterTheme(theme);
         }
     });
-
+ 
     setting->show();
 }
 
@@ -1013,22 +1024,24 @@ void Qalam::runBaa() {
     }
 
     consoleTabWidget->setVisible(true);
+ 
+    // Dynamic Compiler Path Logic
+    QSettings settings(Constants::OrgName, Constants::AppName);
+    QString program = settings.value(Constants::SettingsKeyCompilerPath).toString();
 
-    QString program;
-    QString appDir = QCoreApplication::applicationDirPath();
-
+    if (program.isEmpty()) {
+        QString appDir = QCoreApplication::applicationDirPath();
 #if defined(Q_OS_WIN)
-    QString localAlif = QDir(appDir).filePath("baa/baa.exe");
-    qDebug() <<  " -------------------------------------------------------------------------------------------- "  << localAlif <<  " -------------------------------------------------------------------------------------------- ";
-
-    if (QFile::exists(localAlif)) {
-        program = localAlif;
-    } else {
-        program = "baa/baa.exe";
-    }
+        QString localBaa = QDir(appDir).filePath("baa/baa.exe");
+        if (QFile::exists(localBaa)) {
+            program = localBaa;
+        } else {
+            program = "baa/baa.exe"; // Fallback to PATH or relative
+        }
 #elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-    program = QDir(appDir).filePath("baa/baa");
+        program = QDir(appDir).filePath("baa/baa");
 #endif
+    }
 
     if (!QFile::exists(program)) {
         console->clear();
@@ -1044,41 +1057,51 @@ void Qalam::runBaa() {
     QStringList args = { filePath };
     QString workingDir = QFileInfo(filePath).absolutePath();
 
-    if (worker) {
-        worker->finished(0);
-        worker = nullptr;
+    // Ensure previous thread and worker are stopped correctly
+    if (buildThread && buildThread->isRunning()) {
+        if (worker) {
+            worker->stop(); // Stop the process in the worker
+        }
+        buildThread->quit();
+        buildThread->wait(); // Wait for it to finish gracefully
     }
+
     console->clear();
-    console->appendPlainTextThreadSafe("🚀 بدء تشغيل ملف ألف...");
+    console->appendPlainTextThreadSafe("🚀 بدء تشغيل ملف باء...");
     console->appendPlainTextThreadSafe("📄 الملف: " + QFileInfo(filePath).fileName());
 
     worker = new ProcessWorker(program, args, workingDir);
-    QThread *thread = new QThread();
+    buildThread = new QThread(this);
 
-    worker->moveToThread(thread);
-
-    connect(thread, &QThread::started, worker, &ProcessWorker::start);
+    worker->moveToThread(buildThread);
+ 
+    connect(buildThread, &QThread::started, worker, &ProcessWorker::start);
+    connect(buildThread, &QThread::started, this, [this](){
+        stopToolbarAction->setEnabled(true);
+    });
+ 
     connect(worker, &ProcessWorker::outputReady,
             console, &TConsole::appendPlainTextThreadSafe);
     connect(worker, &ProcessWorker::errorReady,
             console, &TConsole::appendPlainTextThreadSafe);
-
+ 
     connect(worker, &ProcessWorker::finished, this, [=](int code){
         console->appendPlainTextThreadSafe(
             "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
             + QString::number(code) + ")\n"
             );
-        thread->quit();
+        stopToolbarAction->setEnabled(false);
+        buildThread->quit();
     });
 
-    // يسببان الخروج من البرنامج عند إعادة تشغيل ملف ألف اكثر من مرة بعد إنتهاء التنفيذ
-    // connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    // connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+    // Cleanup logic: Ensure thread and worker are deleted after the thread finishes
+    connect(buildThread, &QThread::finished, worker, &QObject::deleteLater);
+    connect(buildThread, &QThread::finished, buildThread, &QObject::deleteLater);
 
     connect(console, &TConsole::commandEntered,
             worker, &ProcessWorker::sendInput);
 
-    thread->start();
+    buildThread->start();
 }
 
 //----------------

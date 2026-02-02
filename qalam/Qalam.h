@@ -62,6 +62,7 @@ private:
     TMenuBar *menuBar{};
     TSettings *setting{};
     QAction *toggleSidebarAction{};
+    QAction *stopToolbarAction{};
     QString folderPath{};
     QAbstractItemModel *model{};
 
@@ -76,6 +77,7 @@ private:
     // TConsole *cmdConsole;
     // TConsole *alifConsole;
     ProcessWorker *worker{};
+    QThread *buildThread{};
 
     QLabel *cursorPositionLabel{};
     QLabel *encodingLabel{};

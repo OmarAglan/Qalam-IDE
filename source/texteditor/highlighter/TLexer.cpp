@@ -4,7 +4,7 @@
 
 // ==================== Helpers ====================
 
-static QPair<int, QString> checkStringStart(const QString& text, int pos) {
+static QPair<int, QString> checkStringStart(QStringView text, int pos) {
     int idx = pos;
     while (idx < text.length() && idx < pos + 2 && text[idx].isLetter()) {
         idx++;
@@ -13,7 +13,7 @@ static QPair<int, QString> checkStringStart(const QString& text, int pos) {
         if (end >= text.length()) continue;
         QChar ch = text[end];
         if (ch == '"' || ch == '\'') {
-            QString prefix = text.mid(pos, end - pos).toLower();
+            QString prefix = text.mid(pos, end - pos).toString().toLower();
             bool valid = true;
             for(QChar c : prefix) if(!QString("م").contains(c)) valid = false;
             if(valid) return {end - pos, QString(ch)};
@@ -24,7 +24,7 @@ static QPair<int, QString> checkStringStart(const QString& text, int pos) {
 
 // ==================== Normal State ====================
 
-TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefinition& langDef) {
+TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefinition& langDef) {
     if (pos >= text.length()) return TToken(TokenType::None, pos, 0);
 
     QChar ch = text[pos];
@@ -53,7 +53,7 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
             pos++;
         }
 
-        QString directive = text.mid(start, pos - start);
+        QString directive = text.mid(start, pos - start).toString();
 
         if (langDef.preprocessorSet.contains(directive)) {
             // It's a valid preprocessor directive - highlight the directive part
@@ -70,7 +70,7 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
         int start = pos;
         int prefixLen = strCheck.first;
         QString quote = strCheck.second;
-        QString prefix = text.mid(start, prefixLen).toLower();
+        QString prefix = text.mid(start, prefixLen).toString().toLower();
 
         pos += prefixLen;
         bool isTriple = false;
@@ -110,19 +110,8 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
     if (ch.isLetter() || ch == '_') {
         int start = pos;
         while (pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
-        QString word = text.mid(start, pos - start);
-
-        // Check specific keywords that start blocks
-        /*
-        if (word == "دالة") {
-            pendingState = std::make_unique<FunctionDefState>();
-            return TToken(TokenType::Keyword, start, pos - start, word);
-        }
-        if (word == "صنف") {
-            pendingState = std::make_unique<ClassDefState>();
-            return TToken(TokenType::Keyword, start, pos - start, word);
-        }
-        */
+        QStringView wordView = text.mid(start, pos - start);
+        QString word = wordView.toString();
 
         if (word == "هذا") return TToken(TokenType::Self, start, pos - start, word);
         if (langDef.keywordSet.contains(word)) return TToken(TokenType::Keyword, start, pos - start, word);
@@ -138,7 +127,7 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
         }
 
         // Simple Heuristic for Class types (PascalCase)
-        if (word[0].isUpper()) {
+        if (!word.isEmpty() && word[0].isUpper()) {
             return TToken(TokenType::ClassDef, start, pos - start, word);
         }
 
@@ -148,11 +137,11 @@ TToken NormalState::readToken(const QString& text, int& pos, const LanguageDefin
     // 6. Numbers
     if (ch.isDigit()) {
         int start = pos;
-        if (ch == '0' && pos + 1 < text.length() && text.mid(pos, 2).toLower() == "0x") {
-            auto m = langDef.hexPattern.match(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+        if (ch == '0' && pos + 1 < text.length() && text.mid(pos, 2).compare(u"0x", Qt::CaseInsensitive) == 0) {
+            auto m = langDef.hexPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
             if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         }
-        auto m = langDef.numberPattern.match(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+        auto m = langDef.numberPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
         if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         pos++; return TToken(TokenType::Number, start, 1);
     }
@@ -173,7 +162,7 @@ std::unique_ptr<LexerState> NormalState::clone() const {
 }
 
 // ==================== Function Definition State ====================
-TToken FunctionDefState::readToken(const QString& text, int& pos, const LanguageDefinition& langDef) {
+TToken FunctionDefState::readToken(QStringView text, int& pos, const LanguageDefinition& langDef) {
     if (pos >= text.length()) return TToken(TokenType::None, pos, 0);
 
     // Skip spaces
@@ -219,7 +208,7 @@ std::unique_ptr<LexerState> FunctionDefState::clone() const {
 
 // ==================== Class Definition State ====================
 
-TToken ClassDefState::readToken(const QString& text, int& pos, const LanguageDefinition&) {
+TToken ClassDefState::readToken(QStringView text, int& pos, const LanguageDefinition&) {
     if (pos >= text.length()) return TToken(TokenType::None, pos, 0);
 
     if (text[pos].isSpace()) {
@@ -255,7 +244,7 @@ std::unique_ptr<LexerState> ClassDefState::clone() const {
 
 StringState::StringState(const QString& delim, int id) : delimiter(delim), delimId(id) {}
 
-TToken StringState::readToken(const QString& text, int& pos, const LanguageDefinition&) {
+TToken StringState::readToken(QStringView text, int& pos, const LanguageDefinition&) {
     int start = pos;
     while (pos < text.length()) {
         if (text[pos] == '\\') { pos += 2; continue; }
@@ -280,7 +269,7 @@ std::unique_ptr<LexerState> StringState::clone() const {
 
 TripleStringState::TripleStringState(const QString& delim, int id) : delimiter(delim), delimId(id) {}
 
-TToken TripleStringState::readToken(const QString& text, int& pos, const LanguageDefinition&) {
+TToken TripleStringState::readToken(QStringView text, int& pos, const LanguageDefinition&) {
     int start = pos;
 
     // Search for the delimiter (e.g., """) starting from current position
@@ -323,7 +312,7 @@ std::unique_ptr<LexerState> TripleStringState::clone() const {
 
 FStringState::FStringState(const QString& delim, int id) : delimiter(delim), delimId(id) {}
 
-TToken FStringState::readToken(const QString& text, int& pos, const LanguageDefinition&) {
+TToken FStringState::readToken(QStringView text, int& pos, const LanguageDefinition&) {
     int start = pos;
     while (pos < text.length()) {
         // 1. Check for End Delimiter
@@ -397,7 +386,7 @@ InterpolationState::InterpolationState(const QString& pDelim, int pId, int bal, 
     else innerState = std::make_unique<NormalState>();
 }
 
-TToken InterpolationState::readToken(const QString& text, int& pos, const LanguageDefinition& langDef) {
+TToken InterpolationState::readToken(QStringView text, int& pos, const LanguageDefinition& langDef) {
     if (pos >= text.length()) return TToken(TokenType::None, pos, 0);
 
     // Only interact with braces if the inner state is Normal
@@ -451,7 +440,7 @@ std::unique_ptr<LexerState> InterpolationState::clone() const {
 
 TLexer::TLexer() { finalState = StateMasks::Normal; }
 
-QVector<TToken> TLexer::tokenize(const QString& text, int initialState) {
+QVector<TToken> TLexer::tokenize(QStringView text, int initialState) {
     QVector<TToken> tokens;
     int pos = 0;
 

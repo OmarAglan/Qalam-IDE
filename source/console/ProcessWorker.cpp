@@ -91,6 +91,16 @@ void ProcessWorker::flushBuffers() {
 }
 
 // ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
+void ProcessWorker::stop() {
+    if (process && process->state() == QProcess::Running) {
+        process->terminate(); // أو process->kill(); حسب الحاجة
+        if (!process->waitForFinished(3000)) { // انتظر 3 ثوانٍ
+            process->kill(); // إذا لم يتوقف، اقتله
+        }
+    }
+}
+
+// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::sendInput(const QString &text) {
     if (process && process->state() == QProcess::Running) {
 #if defined(Q_OS_WINDOWS)

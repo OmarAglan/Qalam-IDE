@@ -114,26 +114,42 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
 }
 
 // --- Dynamic Word Strategy ---
-QVector<CompletionItem> DynamicWordStrategy::getSuggestions(const QString &prefix, const QString &fullText) {
+QVector<CompletionItem> DynamicWordStrategy::getSuggestions(const QString &prefix, const QString &) {
     QVector<CompletionItem> items;
     if (prefix.length() < 2) return items;
 
-    static QRegularExpression re("[a-zA-Z0-9_\u0600-\u06FF_0-9]+");
-    QRegularExpressionMatchIterator i = re.globalMatch(fullText);
-
-    QSet<QString> uniqueWords{};
-    while (i.hasNext()) {
-        QString word = i.next().captured(0);
-        // Only add words that match prefix but are not the prefix itself (to avoid duplicates of what we are typing)
+    // Query the pre-built index instead of regex scanning everything
+    for (const auto &word : wordIndex) {
         if (word != prefix && word.startsWith(prefix, Qt::CaseInsensitive)) {
-            uniqueWords.insert(word);
+            items.push_back({word, word, "نص ضمن الملف الحالي", CompletionType::DynamicWord});
         }
     }
 
-    for (const auto &w : uniqueWords) {
-        items.push_back({w, w, "نص ضمن الملف الحالي", CompletionType::DynamicWord});
-    }
-
-
     return items;
+}
+
+void DynamicWordStrategy::rebuildIndex(const QString &fullText) {
+    wordIndex.clear();
+    static QRegularExpression re("[a-zA-Z0-9_\u0600-\u06FF_0-9]+");
+    QRegularExpressionMatchIterator i = re.globalMatch(fullText);
+
+    while (i.hasNext()) {
+        QString word = i.next().captured(0);
+        if (word.length() >= 2) {
+            wordIndex.insert(word);
+        }
+    }
+}
+
+void DynamicWordStrategy::updateIndex(const QString &text) {
+    // Basic implementation: just add new words from the changed text
+    static QRegularExpression re("[a-zA-Z0-9_\u0600-\u06FF_0-9]+");
+    QRegularExpressionMatchIterator i = re.globalMatch(text);
+
+    while (i.hasNext()) {
+        QString word = i.next().captured(0);
+        if (word.length() >= 2) {
+            wordIndex.insert(word);
+        }
+    }
 }

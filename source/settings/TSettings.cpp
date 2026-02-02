@@ -1,4 +1,5 @@
 ﻿#include "TSettings.h"
+#include "../../qalam/Constants.h"
 
 TSettings::TSettings(QWidget* parent) : QWidget(parent) {
     setWindowTitle("الإعدادات");
@@ -43,10 +44,10 @@ TSettings::TSettings(QWidget* parent) : QWidget(parent) {
 
 void TSettings::closeEvent(QCloseEvent* event) {
     Q_UNUSED(event)
-    QSettings settings("Alif", "Qalam");
-    settings.setValue("editorFontSize", fontSpin->value());
-    settings.setValue("editorFontType", fontCombo->currentText());
-    settings.setValue("editorCodeTheme", themeCombo->currentIndex());
+    QSettings settings(Constants::OrgName, Constants::AppName);
+    settings.setValue(Constants::SettingsKeyFontSize, fontSpin->value());
+    settings.setValue(Constants::SettingsKeyFontType, fontCombo->currentText());
+    settings.setValue(Constants::SettingsKeyTheme, themeCombo->currentIndex());
     settings.sync();
 
     // emit windowClosed();
@@ -117,8 +118,8 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     fontSpin->setMinimumHeight(40);
     fontSpin->setMaximumWidth(80);
 
-    QSettings settingsVal("Alif", "Qalam");
-    int savedSize = settingsVal.value("editorFontSize").toInt();
+    QSettings settingsVal(Constants::OrgName, Constants::AppName);
+    int savedSize = settingsVal.value(Constants::SettingsKeyFontSize).toInt();
     savedSize ? fontSpin->setValue(savedSize) : fontSpin->setValue(18);
 
     fontSizeLayout->addRow("حجم الخط: ", fontSpin);
@@ -143,7 +144,7 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     foreach (const QString &family, fontFamilies) {
         fontCombo->addItem(family);
     }
-    QString savedFont = settingsVal.value("editorFontType").toString();
+    QString savedFont = settingsVal.value(Constants::SettingsKeyFontType).toString();
     !savedFont.isEmpty() ? fontCombo->setCurrentText(savedFont) : fontCombo->setCurrentText("Noto Kufi Arabic");
 
     fontFamilyLayout->addRow("نوع الخط: ", fontCombo);
@@ -164,13 +165,13 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     themeCombo->setMinimumHeight(40);
     themeCombo->setMaximumWidth(250);
 
-    setThemes();
     // Populate UI
+    auto availableThemes = ThemeManager::getAvailableThemes();
     for (const auto& theme : availableThemes) {
         themeCombo->addItem(theme->name());
     }
 
-    int savedTheme = settingsVal.value("editorCodeTheme").toInt();
+    int savedTheme = settingsVal.value(Constants::SettingsKeyTheme).toInt();
     savedTheme ? themeCombo->setCurrentIndex(savedTheme) : themeCombo->setCurrentIndex(0);
 
     comboLayout->addRow("مظهر الشيفرة: ", themeCombo);
@@ -189,14 +190,8 @@ QComboBox *TSettings::getThemeCombo() const {
     return themeCombo;
 }
 
-void TSettings::setThemes() {
-    availableThemes.append(std::make_shared<VSCodeDarkTheme>());
-    availableThemes.append(std::make_shared<MonokaiTheme>());
-    availableThemes.append(std::make_shared<OceanicTheme>());
-    availableThemes.append(std::make_shared<QalamGlowTheme>());
-}
 
 QVector<std::shared_ptr<SyntaxTheme>> TSettings::getAvailableThemes() const {
-    return availableThemes;
+    return ThemeManager::getAvailableThemes();
 }
 

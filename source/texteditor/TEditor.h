@@ -15,11 +15,8 @@
 class LineNumberArea;
 
 
-class TEditor : public QPlainTextEdit {
-    Q_OBJECT
-
 public:
-    TEditor(TSettings* setting = nullptr, QWidget* parent = nullptr);
+    TEditor(QWidget* parent = nullptr);
 
     void lineNumberAreaPaintEvent(QPaintEvent* event);
     int lineNumberAreaWidth() const;
@@ -81,6 +78,7 @@ private:
     QCompleter* c{};
     CompletionModel *model{};
     std::vector<std::unique_ptr<ICompletionStrategy>> strategies{};
+    DynamicWordStrategy* dynamicStrategy{};
     QStringList snippetTargets{};
     QString textUnderCursor() const;
     void performCompletion();

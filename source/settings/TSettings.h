@@ -1,7 +1,8 @@
 #pragma once
 
 #include "TFlatButton.h"
-#include "TSyntaxThemes.h"
+#include "TFlatButton.h"
+#include "ThemeManager.h"
 
 #include <QWidget>
 #include <QPushButton>
@@ -22,12 +23,11 @@ class TSettings : public QWidget {
 public:
     explicit TSettings(QWidget* parent = nullptr);
 
-    QVector<std::shared_ptr<SyntaxTheme>> getAvailableThemes() const;
+    QVector<std::shared_ptr<SyntaxTheme>> getAvailableThemes() const { return ThemeManager::getAvailableThemes(); }
 
     // TODO: add getFontCombo() and getFontSpin() to use it to save the settings values
     // instade of using the editor current values to save the values
     QComboBox *getThemeCombo() const;
-    void setThemes();
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -51,5 +51,4 @@ private:
     QComboBox* fontCombo{};
     QComboBox* themeCombo{};
 
-    QVector<std::shared_ptr<SyntaxTheme>> availableThemes{};
 };

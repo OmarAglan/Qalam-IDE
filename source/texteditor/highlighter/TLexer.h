@@ -14,7 +14,7 @@
 class LexerState {
 public:
     virtual ~LexerState() = default;
-    virtual TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) = 0;
+    virtual TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) = 0;
     virtual std::unique_ptr<LexerState> nextState() const = 0;
     // Added clone for robust state copying (prototype pattern)
     virtual std::unique_ptr<LexerState> clone() const = 0;
@@ -24,7 +24,7 @@ public:
 // 1. Normal Code State
 class NormalState : public LexerState {
 public:
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
 
@@ -38,7 +38,7 @@ class StringState : public LexerState {
     int delimId;
 public:
     StringState(const QString& delim, int id);
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
     int getStateId() const override { return StateMasks::String | delimId; }
@@ -50,7 +50,7 @@ class TripleStringState : public LexerState {
     int delimId;
 public:
     TripleStringState(const QString& delim, int id);
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
     mutable std::unique_ptr<LexerState> pendingState;
@@ -63,7 +63,7 @@ class FStringState : public LexerState {
     int delimId;
 public:
     FStringState(const QString& delim, int id);
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
 
@@ -80,7 +80,7 @@ class InterpolationState : public LexerState {
     std::unique_ptr<LexerState> innerState;
 public:
     InterpolationState(const QString& parentDelim, int parentId, int balance = 1, std::unique_ptr<LexerState> inner = nullptr);
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
 
@@ -91,7 +91,7 @@ public:
 // 6. Function Definition State (captures name after 'دالة')
 class FunctionDefState : public LexerState {
 public:
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
 
@@ -102,7 +102,7 @@ public:
 // 7. Class Definition State (captures name after 'class')
 class ClassDefState : public LexerState {
 public:
-    TToken readToken(const QString& text, int& pos, const LanguageDefinition& langDef) override;
+    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
     std::unique_ptr<LexerState> nextState() const override;
     std::unique_ptr<LexerState> clone() const override;
 
@@ -115,7 +115,7 @@ public:
 class TLexer {
 public:
     TLexer();
-    QVector<TToken> tokenize(const QString& text, int initialState);
+    QVector<TToken> tokenize(QStringView text, int initialState);
     int getFinalState() const { return finalState; }
 
 private:

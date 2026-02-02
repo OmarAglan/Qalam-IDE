@@ -19,6 +19,7 @@ signals:
 public slots:
     void start();
     void sendInput(const QString &text);
+    void stop();
 
 private slots:
     void onReadyReadOutput();
