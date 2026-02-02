@@ -1,4 +1,5 @@
 #include "TExplorerView.h"
+#include "../ui/QalamTheme.h"
 #include "Constants.h"
 #include <QScrollArea>
 #include <QFileInfo>
@@ -236,6 +237,7 @@ void TExplorerView::applyStyles()
 {
     using namespace Constants;
     
+    // Use centralized theme with additional explorer-specific styles
     QString styles = QString(R"(
         TExplorerView {
             background-color: %1;

@@ -9,6 +9,7 @@ enum CompletionType {
     Keyword,
     Snippet,
     Builtin,
+    Preprocessor,
     DynamicWord
 };
 
@@ -47,6 +48,13 @@ public:
 
 class SnippetStrategy : public ICompletionStrategy {
 public:
+    QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &text) override;
+};
+
+class PreprocessorStrategy : public ICompletionStrategy {
+    QStringList directives{};
+public:
+    PreprocessorStrategy();
     QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &text) override;
 };
 

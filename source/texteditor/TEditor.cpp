@@ -690,6 +690,7 @@ void TEditor::setupAutoComplete() {
     strategies.push_back(std::make_unique<SnippetStrategy>());
     strategies.push_back(std::make_unique<KeywordStrategy>());
     strategies.push_back(std::make_unique<BuiltinStrategy>());
+    strategies.push_back(std::make_unique<PreprocessorStrategy>());
     auto dynamic = std::make_unique<DynamicWordStrategy>();
     dynamicStrategy = dynamic.get();
     strategies.push_back(std::move(dynamic));

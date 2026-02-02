@@ -1,4 +1,5 @@
 #include "TSidebar.h"
+#include "QalamTheme.h"
 #include "../sidebar/TExplorerView.h"
 #include "../sidebar/TSearchView.h"
 #include "Constants.h"
@@ -100,32 +101,5 @@ void TSidebar::updateHeader()
 
 void TSidebar::applyStyles()
 {
-    using namespace Constants;
-    
-    QString styles = QString(R"(
-        TSidebar {
-            background-color: %1;
-            border-left: 1px solid %2;
-        }
-        
-        #sidebarHeader {
-            background-color: %3;
-            border-bottom: 1px solid %2;
-        }
-        
-        #sidebarHeaderTitle {
-            color: %4;
-            font-size: %5px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            font-family: 'Segoe UI', 'Tajawal', sans-serif;
-        }
-    )")
-    .arg(Colors::SidebarBackground)           // %1
-    .arg(Colors::BorderSubtle)                // %2
-    .arg(Colors::SidebarHeaderBackground)     // %3
-    .arg(Colors::TextSecondary)               // %4
-    .arg(Fonts::SectionHeaderSize);           // %5
-    
-    setStyleSheet(styles);
+    setStyleSheet(QalamTheme::sidebarStyleSheet());
 }

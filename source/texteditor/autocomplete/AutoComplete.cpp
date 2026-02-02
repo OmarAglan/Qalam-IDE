@@ -3,26 +3,43 @@
 #include <QSet>
 
 // --- Keyword Strategy ---
+// Based on Baa Language Specification (LANGUAGE.md)
 KeywordStrategy::KeywordStrategy() {
     keywords = {
-        // Types (§3.1)
-        "صحيح", "نص", "منطقي",
+        // Types (§3.1 - Variables & Types)
+        "صحيح",    // int64_t - Integer type
+        "نص",      // char* - String type
+        "منطقي",   // bool - Boolean type
+
         // Constants (§4)
-        "ثابت",
+        "ثابت",    // const - Constant modifier
+
         // Boolean literals (§3.1)
-        "صواب", "خطأ",
-        // Control flow (§7)
-        "إذا", "وإلا", "طالما", "لكل",
-        // Switch (§7.5)
-        "اختر", "حالة", "افتراضي",
+        "صواب",    // true
+        "خطأ",     // false
+
+        // Control flow - Conditionals (§7.1)
+        "إذا",     // if
+        "وإلا",    // else
+
+        // Control flow - Loops (§7.2, §7.3)
+        "طالما",   // while
+        "لكل",     // for
+
+        // Switch statement (§7.5)
+        "اختر",    // switch
+        "حالة",    // case
+        "افتراضي", // default
+
         // Loop control (§7.4)
-        "توقف", "استمر",
+        "توقف",    // break
+        "استمر",   // continue
+
         // Functions (§5)
-        "إرجع",
-        // Logical Operators (§8)
-        "و", "أو", "ليس",
-        // Entry point
-        "الرئيسية"
+        "إرجع",    // return
+
+        // Entry point (§5.4)
+        "الرئيسية" // main function name
     };
 }
 
@@ -39,9 +56,11 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 }
 
 // --- Built-ins Strategy ---
+// I/O Functions (§6 - Input/Output)
 BuiltinStrategy::BuiltinStrategy() {
     builtins = {
-        "اطبع", "اقرأ"
+        "اطبع",  // print - Output statement (§6.1)
+        "اقرأ"   // read - Input statement (§6.2)
     };
 }
 
@@ -58,70 +77,161 @@ QVector<CompletionItem> BuiltinStrategy::getSuggestions(const QString &prefix, c
 }
 
 // --- Snippet Strategy ---
+// Code templates for common Baa constructs
 QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, const QString &) {
     QVector<CompletionItem> items;
     QString p = prefix.toLower();
 
-    if (QString("الرئيسية").startsWith(p)) {
-        items.push_back(CompletionItem("الرئيسية",
-                         "صحيح الرئيسية() {\n\tإرجع ٠.\n}",
-                         "الدالة الرئيسية للبرنامج",
+    // Main function template (§5.4)
+    if (QString("الرئيسية").startsWith(p) || QString("main").startsWith(p)) {
+        items.push_back(CompletionItem("الرئيسية (دالة)",
+                         "صحيح الرئيسية() {\n\t\n\tإرجع ٠.\n}",
+                         "الدالة الرئيسية - نقطة بداية البرنامج",
                          CompletionType::Snippet));
     }
+
+    // Function template (§5.1)
+    if (QString("دالة").startsWith(p) || QString("function").startsWith(p)) {
+        items.push_back(CompletionItem("دالة جديدة",
+                         "صحيح اسم_الدالة(صحيح معامل) {\n\t\n\tإرجع ٠.\n}",
+                         "قالب دالة جديدة",
+                         CompletionType::Snippet));
+    }
+
+    // If statement (§7.1)
     if (QString("إذا").startsWith(p)) {
-        items.push_back(CompletionItem("إذا",
+        items.push_back(CompletionItem("إذا (شرط)",
                          "إذا (الشرط) {\n\t\n}",
-                         "جملة شرطية",
+                         "جملة شرطية - تنفذ إذا تحقق الشرط",
                          CompletionType::Snippet));
     }
+
+    // If-else statement (§7.1)
+    if (QString("إذا_وإلا").contains(p) || QString("ifelse").startsWith(p)) {
+        items.push_back(CompletionItem("إذا-وإلا",
+                         "إذا (الشرط) {\n\t\n} وإلا {\n\t\n}",
+                         "جملة شرطية مع بديل",
+                         CompletionType::Snippet));
+    }
+
+    // Else clause (§7.1)
     if (QString("وإلا").startsWith(p)) {
         items.push_back(CompletionItem("وإلا",
                          "وإلا {\n\t\n}",
-                         "تتمة الجملة الشرطية",
+                         "تتمة الجملة الشرطية - تنفذ إذا لم يتحقق الشرط",
                          CompletionType::Snippet));
     }
-    if (QString("لكل").startsWith(p)) {
-        items.push_back(CompletionItem("لكل",
+
+    // Else-if clause (§7.1)
+    if (QString("وإلا_إذا").contains(p)) {
+        items.push_back(CompletionItem("وإلا إذا",
+                         "وإلا إذا (الشرط) {\n\t\n}",
+                         "شرط إضافي في الجملة الشرطية",
+                         CompletionType::Snippet));
+    }
+
+    // For loop (§7.3) - note: uses Arabic semicolon ؛
+    if (QString("لكل").startsWith(p) || QString("for").startsWith(p)) {
+        items.push_back(CompletionItem("لكل (حلقة)",
                          "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {\n\t\n}",
-                         "حلقة تكرارية (For)",
+                         "حلقة تكرارية محددة العدد (For)",
                          CompletionType::Snippet));
     }
-    if (QString("طالما").startsWith(p)) {
-        items.push_back(CompletionItem("طالما",
+
+    // While loop (§7.2)
+    if (QString("طالما").startsWith(p) || QString("while").startsWith(p)) {
+        items.push_back(CompletionItem("طالما (حلقة)",
                          "طالما (الشرط) {\n\t\n}",
                          "حلقة تكرارية شرطية (While)",
                          CompletionType::Snippet));
     }
-    if (QString("اختر").startsWith(p)) {
-        items.push_back(CompletionItem("اختر",
-                         "اختر (المتغير) {\n\tحالة القيمة:\n\t\t\n\tافتراضي:\n\t\t\n}",
-                         "جملة الاختيار (Switch)",
+
+    // Switch statement (§7.5)
+    if (QString("اختر").startsWith(p) || QString("switch").startsWith(p)) {
+        items.push_back(CompletionItem("اختر (تحويل)",
+                         "اختر (المتغير) {\n\tحالة ١:\n\t\t\n\t\tتوقف.\n\tحالة ٢:\n\t\t\n\t\tتوقف.\n\tافتراضي:\n\t\t\n\t\tتوقف.\n}",
+                         "جملة الاختيار المتعدد (Switch)",
                          CompletionType::Snippet));
     }
-    if (QString("تضمين").startsWith(p)) {
-        items.push_back(CompletionItem("تضمين (#تضمين)",
-                         "#تضمين \"ملف.baahd\"",
-                         "تضمين ملف خارجي",
+
+    // Array declaration (§3.3)
+    if (QString("مصفوفة").startsWith(p) || QString("array").startsWith(p)) {
+        items.push_back(CompletionItem("مصفوفة",
+                         "صحيح المصفوفة[١٠].",
+                         "تعريف مصفوفة ثابتة الحجم",
                          CompletionType::Snippet));
     }
-    if (QString("إذا_عرف").contains(p)) {
-        items.push_back(CompletionItem("إذا_عرف (#إذا_عرف)",
-                         "#إذا_عرف اسم_الماكرو\n\t\n#نهاية",
-                         "شرط المعالجة القبلية (Ifdef)",
+
+    // Constant declaration (§4)
+    if (QString("ثابت").startsWith(p) || QString("const").startsWith(p)) {
+        items.push_back(CompletionItem("ثابت (متغير)",
+                         "ثابت صحيح الاسم = القيمة.",
+                         "تعريف ثابت لا يمكن تغيير قيمته",
                          CompletionType::Snippet));
     }
-    if (QString("تعريف").startsWith(p)) {
-        items.push_back(CompletionItem("تعريف (#تعريف)",
-                         "#تعريف الاسم القيمة",
-                         "تعريف ماكرو (Define)",
-                         CompletionType::Snippet));
+
+    return items;
+}
+
+// --- Preprocessor Strategy ---
+// Preprocessor directives (§2 - المعالج القبلي)
+PreprocessorStrategy::PreprocessorStrategy() {
+    directives = {
+        "#تضمين",       // include (§2.1)
+        "#تعريف",       // define (§2.2)
+        "#إذا_عرف",     // ifdef (§2.3)
+        "#وإلا",        // else (§2.3)
+        "#نهاية",       // endif (§2.3)
+        "#الغاء_تعريف"  // undef (§2.4)
+    };
+}
+
+QVector<CompletionItem> PreprocessorStrategy::getSuggestions(const QString &prefix, const QString &) {
+    QVector<CompletionItem> items;
+    if (prefix.isEmpty()) return items;
+
+    // Check if prefix starts with # or matches directive name without #
+    bool startsWithHash = prefix.startsWith('#') || prefix.startsWith(QString("#"));
+    QString searchPrefix = prefix;
+
+    for (const auto &d : directives) {
+        bool matches = false;
+
+        if (startsWithHash) {
+            // Match with the # prefix
+            matches = d.startsWith(prefix, Qt::CaseInsensitive);
+        } else {
+            // Match without # (user typing just the Arabic part)
+            QString withoutHash = d.mid(1); // Remove the #
+            matches = withoutHash.startsWith(prefix, Qt::CaseInsensitive);
+        }
+
+        if (matches) {
+            QString desc;
+            QString completion = d;
+
+            if (d == "#تضمين") {
+                desc = "تضمين ملف خارجي (Include)";
+                completion = "#تضمين \"ملف.baahd\"";
+            } else if (d == "#تعريف") {
+                desc = "تعريف ماكرو ثابت (Define)";
+                completion = "#تعريف الاسم القيمة";
+            } else if (d == "#إذا_عرف") {
+                desc = "شرط المعالجة القبلية (Ifdef)";
+                completion = "#إذا_عرف الاسم\n\t\n#نهاية";
+            } else if (d == "#وإلا") {
+                desc = "فرع بديل في شرط المعالجة (Else)";
+            } else if (d == "#نهاية") {
+                desc = "إنهاء شرط المعالجة القبلية (Endif)";
+            } else if (d == "#الغاء_تعريف") {
+                desc = "إلغاء تعريف ماكرو (Undef)";
+                completion = "#الغاء_تعريف الاسم";
+            }
+
+            items.push_back(CompletionItem(d, completion, desc, CompletionType::Preprocessor));
+        }
     }
-    if (QString("الغاء_تعريف").contains(p)) {
-        items.push_back(CompletionItem("الغاء_تعريف (#الغاء_تعريف)",
-                         "#الغاء_تعريف الاسم",
-                         "إلغاء تعريف ماكرو (Undef)",
-                         CompletionType::Snippet));
-    }
+
     return items;
 }
 

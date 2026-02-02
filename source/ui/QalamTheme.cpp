@@ -1,4 +1,5 @@
 #include "QalamTheme.h"
+#include "../../qalam/Constants.h"
 #include <QFontDatabase>
 
 QalamTheme& QalamTheme::instance() {
@@ -9,61 +10,80 @@ QalamTheme& QalamTheme::instance() {
 QalamTheme::QalamTheme() {}
 
 void QalamTheme::apply(QApplication* app) {
-    app->setStyleSheet(styleSheet());
+    app->setStyleSheet(globalStyleSheet());
     app->setFont(uiFont());
 }
 
+// ==========================================================================
+// Fonts
+// ==========================================================================
+
 QFont QalamTheme::uiFont() const {
-    // Priority: Tajawal (Arabic) -> Segoe UI -> Sans Serif
     QStringList families;
     families << "Tajawal" << "Segoe UI" << "Roboto" << "sans-serif";
     
     QFont font;
     font.setFamilies(families);
-    font.setPointSize(10);
+    font.setPointSize(Constants::Fonts::UISize);
     return font;
 }
 
 QFont QalamTheme::codeFont() const {
     QStringList families;
-    families << "Consolas" << "JetBrains Mono" << "Courier New" << "monospace";
+    families << "Kawkab Mono" << "Consolas" << "JetBrains Mono" << "Courier New" << "monospace";
     
     QFont font;
     font.setFamilies(families);
-    font.setPointSize(11);
+    font.setPointSize(Constants::DefaultFontSize);
     font.setFixedPitch(true);
     return font;
 }
 
-QString QalamTheme::styleSheet() const {
-    // VSCode Dark Theme Stylesheet
-    return R"(
-        QMainWindow, QDialog {
-            background-color: #1e1e1e;
-            color: #cccccc;
-        }
+QFont QalamTheme::consoleFont() const {
+    QStringList families;
+    families << "Consolas" << "JetBrains Mono" << "Courier New" << "monospace";
+    
+    QFont font;
+    font.setFamilies(families);
+    font.setPointSize(Constants::Fonts::ConsoleSize);
+    font.setFixedPitch(true);
+    return font;
+}
 
-        QWidget {
-            background-color: transparent;
-            color: #cccccc;
-            font-family: 'Segoe UI', 'Tajawal', sans-serif;
-        }
+// ==========================================================================
+// Color Accessors
+// ==========================================================================
 
-        /* --- Scrollbars (VS Code Style) --- */
+QColor QalamTheme::background() const { return QColor(Constants::Colors::WindowBackground); }
+QColor QalamTheme::foreground() const { return QColor(Constants::Colors::TextSecondary); }
+QColor QalamTheme::accent() const { return QColor(Constants::Colors::Accent); }
+QColor QalamTheme::border() const { return QColor(Constants::Colors::Border); }
+QColor QalamTheme::sidebarBackground() const { return QColor(Constants::Colors::SidebarBackground); }
+QColor QalamTheme::editorBackground() const { return QColor(Constants::Colors::EditorBackground); }
+QColor QalamTheme::statusBarBackground() const { return QColor(Constants::Colors::StatusBarBackground); }
+QColor QalamTheme::titleBarBackground() const { return QColor(Constants::Colors::TitleBarBackground); }
+
+// ==========================================================================
+// Shared Style Components
+// ==========================================================================
+
+QString QalamTheme::scrollbarStyles() {
+    using namespace Constants;
+    return QString(R"(
         QScrollBar:vertical {
             border: none;
-            background: transparent;
-            width: 14px;
+            background: %1;
+            width: %2px;
             margin: 0px;
         }
         QScrollBar::handle:vertical {
-            background: #79797966;
+            background: %3;
             min-height: 20px;
             border-radius: 7px;
             margin: 3px;
         }
         QScrollBar::handle:vertical:hover {
-            background: #646464b3;
+            background: %4;
         }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
             border: none;
@@ -73,69 +93,88 @@ QString QalamTheme::styleSheet() const {
         
         QScrollBar:horizontal {
             border: none;
-            background: transparent;
-            height: 14px;
+            background: %1;
+            height: %2px;
+            margin: 0px;
         }
         QScrollBar::handle:horizontal {
-            background: #79797966;
+            background: %3;
             min-width: 20px;
             border-radius: 7px;
             margin: 3px;
         }
         QScrollBar::handle:horizontal:hover {
-            background: #646464b3;
+            background: %4;
         }
         QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
             border: none;
             background: none;
             width: 0px;
         }
-        
-        /* --- Lists/Trees --- */
-        QListWidget, QTreeWidget, QTreeView {
-            background-color: #252526;
-            border: none;
-            outline: none;
-            color: #cccccc;
-        }
-        QListWidget::item, QTreeWidget::item, QTreeView::item {
-            padding: 4px 8px;
-        }
-        QListWidget::item:hover, QTreeWidget::item:hover, QTreeView::item:hover {
-            background-color: #2a2d2e;
-        }
-        QListWidget::item:selected, QTreeWidget::item:selected, QTreeView::item:selected {
-            background-color: #094771;
-            color: #ffffff;
-        }
+    )")
+    .arg(Colors::ScrollbarBackground)
+    .arg(Layout::ScrollbarWidth + 4) // 14px total
+    .arg(Colors::ScrollbarThumb)
+    .arg(Colors::ScrollbarThumbHover);
+}
 
-        /* --- Menus --- */
+QString QalamTheme::menuStyles() {
+    using namespace Constants;
+    return QString(R"(
         QMenu {
-            background-color: #252526;
-            border: 1px solid #454545;
+            background-color: %1;
+            border: 1px solid %2;
             border-radius: 4px;
             padding: 4px 0px;
         }
         QMenu::item {
             padding: 6px 30px 6px 20px;
+            background-color: transparent;
         }
         QMenu::item:selected {
-            background-color: #094771;
-            color: #ffffff;
+            background-color: %3;
+            color: %4;
         }
         QMenu::separator {
             height: 1px;
-            background: #454545;
+            background: %2;
             margin: 4px 10px;
         }
+        
+        QMenuBar {
+            background-color: transparent;
+            color: %5;
+            border: none;
+        }
+        QMenuBar::item {
+            background-color: transparent;
+            padding: 4px 10px;
+        }
+        QMenuBar::item:selected {
+            background-color: %6;
+        }
+        QMenuBar::item:pressed {
+            background-color: %7;
+        }
+    )")
+    .arg(Colors::MenuBackground)
+    .arg(Colors::Border)
+    .arg(Colors::ListActiveBackground)
+    .arg(Colors::TextPrimary)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::ButtonHover)
+    .arg(Colors::Accent);
+}
 
-        /* --- Buttons --- */
+QString QalamTheme::buttonStyles() {
+    using namespace Constants;
+    return QString(R"(
         QPushButton {
             background-color: #0e639c;
-            color: white;
+            color: %1;
             border: none;
-            padding: 6px 14px;
             border-radius: 2px;
+            padding: 6px 14px;
         }
         QPushButton:hover {
             background-color: #1177bb;
@@ -144,29 +183,622 @@ QString QalamTheme::styleSheet() const {
             background-color: #0d5289;
         }
         QPushButton:disabled {
-            background-color: #3e3e42;
-            color: #6e6e6e;
+            background-color: %2;
+            color: %3;
         }
-        
-        /* --- Line Edits --- */
+    )")
+    .arg(Colors::TextPrimary)
+    .arg(Colors::ButtonHover)
+    .arg(Colors::TextDisabled);
+}
+
+QString QalamTheme::inputStyles() {
+    using namespace Constants;
+    return QString(R"(
         QLineEdit {
             background-color: #3c3c3c;
-            border: 1px solid #3c3c3c;
+            border: 1px solid %1;
             border-radius: 2px;
             padding: 4px 8px;
-            color: #cccccc;
-            selection-background-color: #264f78;
+            color: %2;
+            selection-background-color: %3;
         }
         QLineEdit:focus {
-            border: 1px solid #007acc;
+            border: 1px solid %4;
         }
-        
-        /* --- Tool Tips --- */
-        QToolTip {
-            background-color: #252526;
-            border: 1px solid #454545;
-            color: #cccccc;
+    )")
+    .arg(Colors::Border)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::Selection)
+    .arg(Colors::Accent);
+}
+
+QString QalamTheme::listStyles() {
+    using namespace Constants;
+    return QString(R"(
+        QListWidget, QTreeWidget, QTreeView, QListView {
+            background-color: %1;
+            border: none;
+            outline: none;
+            color: %2;
+        }
+        QListWidget::item, QTreeWidget::item, QTreeView::item, QListView::item {
             padding: 4px 8px;
         }
-    )";
+        QListWidget::item:hover, QTreeWidget::item:hover, QTreeView::item:hover, QListView::item:hover {
+            background-color: %3;
+        }
+        QListWidget::item:selected, QTreeWidget::item:selected, QTreeView::item:selected, QListView::item:selected {
+            background-color: %4;
+            color: %5;
+        }
+        QTreeView::branch {
+            background: transparent;
+        }
+    )")
+    .arg(Colors::SidebarBackground)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::ListHoverBackground)
+    .arg(Colors::ListActiveBackground)
+    .arg(Colors::TextPrimary);
+}
+
+QString QalamTheme::tooltipStyles() {
+    using namespace Constants;
+    return QString(R"(
+        QToolTip {
+            background-color: %1;
+            border: 1px solid %2;
+            color: %3;
+            padding: 4px 8px;
+        }
+    )")
+    .arg(Colors::SidebarBackground)
+    .arg(Colors::Border)
+    .arg(Colors::TextSecondary);
+}
+
+// ==========================================================================
+// Global Stylesheet
+// ==========================================================================
+
+QString QalamTheme::globalStyleSheet() const {
+    using namespace Constants;
+    
+    QString baseStyles = QString(R"(
+        QMainWindow, QDialog {
+            background-color: %1;
+            color: %2;
+        }
+        
+        QWidget {
+            background-color: transparent;
+            color: %2;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
+        }
+        
+        QSplitter::handle {
+            background-color: %3;
+        }
+        QSplitter::handle:horizontal {
+            width: %4px;
+        }
+        QSplitter::handle:vertical {
+            height: %4px;
+        }
+    )")
+    .arg(Colors::WindowBackground)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::Accent)
+    .arg(Layout::SplitterWidth);
+    
+    return baseStyles 
+         + scrollbarStyles() 
+         + menuStyles() 
+         + buttonStyles() 
+         + inputStyles() 
+         + listStyles() 
+         + tooltipStyles();
+}
+
+// ==========================================================================
+// Component-Specific Stylesheets
+// ==========================================================================
+
+QString QalamTheme::activityBarStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TActivityBar {
+            background-color: %1;
+            border-left: 1px solid %2;
+        }
+        
+        TActivityBar QPushButton {
+            background-color: transparent;
+            border: none;
+            border-radius: 0px;
+            padding: 0px;
+            margin: 0px;
+        }
+        
+        TActivityBar QPushButton:hover {
+            background-color: transparent;
+        }
+        
+        TActivityBar QPushButton {
+            opacity: 0.6;
+        }
+        
+        TActivityBar QPushButton:checked {
+            border-left: %3px solid %4;
+            opacity: 1.0;
+        }
+        
+        TActivityBar QPushButton:checked:hover {
+            background-color: transparent;
+        }
+    )")
+    .arg(Colors::ActivityBarBackground)
+    .arg(Colors::ActivityBarBorder)
+    .arg(Layout::ActivityIndicatorWidth)
+    .arg(Colors::ActivityIndicator);
+}
+
+QString QalamTheme::sidebarStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TSidebar {
+            background-color: %1;
+            border-left: 1px solid %2;
+        }
+        
+        #sidebarHeader {
+            background-color: %3;
+            border-bottom: 1px solid %2;
+        }
+        
+        #sidebarHeaderTitle {
+            color: %4;
+            font-size: %5px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
+        }
+    )")
+    .arg(Colors::SidebarBackground)
+    .arg(Colors::BorderSubtle)
+    .arg(Colors::SidebarHeaderBackground)
+    .arg(Colors::TextSecondary)
+    .arg(Fonts::SectionHeaderSize);
+}
+
+QString QalamTheme::explorerViewStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TExplorerView {
+            background-color: %1;
+            border: none;
+        }
+        
+        #openEditorsSection, #folderSection {
+            background-color: %1;
+        }
+        
+        #sectionHeader {
+            background-color: %1;
+            border-bottom: none;
+            padding: 0px;
+        }
+        
+        #sectionToggle {
+            color: %2;
+            font-size: %3px;
+            font-weight: 600;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
+            text-align: right;
+            padding: 4px 8px;
+            background-color: transparent;
+            border: none;
+        }
+        
+        #sectionToggle:hover {
+            background-color: %4;
+        }
+        
+        #openEditorsTree {
+            background-color: %1;
+            border: none;
+            padding: 0px;
+        }
+        
+        #openEditorsTree::item {
+            padding: 2px 8px;
+            height: 22px;
+        }
+        
+        #openEditorsTree::item:hover {
+            background-color: %4;
+        }
+        
+        #openEditorsTree::item:selected {
+            background-color: %5;
+            color: %6;
+        }
+        
+        #fileTreeView {
+            background-color: %1;
+            border: none;
+        }
+        
+        #fileTreeView::item {
+            padding: 2px 4px;
+            height: 22px;
+        }
+        
+        #fileTreeView::item:hover {
+            background-color: %4;
+        }
+        
+        #fileTreeView::item:selected {
+            background-color: %5;
+            color: %6;
+        }
+        
+        #noFolderWidget {
+            background-color: %1;
+        }
+        
+        #noFolderLabel {
+            color: %7;
+            font-size: %8px;
+        }
+        
+        #openFolderBtn {
+            background-color: #0e639c;
+            color: %6;
+            border: none;
+            border-radius: 2px;
+            padding: 6px 12px;
+            font-size: %8px;
+        }
+        
+        #openFolderBtn:hover {
+            background-color: #1177bb;
+        }
+    )")
+    .arg(Colors::SidebarBackground)      // %1
+    .arg(Colors::TextSecondary)          // %2
+    .arg(Fonts::SectionHeaderSize)       // %3
+    .arg(Colors::ListHoverBackground)    // %4
+    .arg(Colors::ListActiveBackground)   // %5
+    .arg(Colors::TextPrimary)            // %6
+    .arg(Colors::TextMuted)              // %7
+    .arg(Fonts::UISize);                 // %8
+}
+
+QString QalamTheme::searchViewStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TSearchView {
+            background-color: %1;
+            border: none;
+        }
+        
+        #searchContainer {
+            background-color: %1;
+            padding: 8px;
+        }
+        
+        #searchInput, #replaceInput {
+            background-color: #3c3c3c;
+            border: 1px solid %2;
+            border-radius: 2px;
+            padding: 4px 8px;
+            color: %3;
+            font-size: %4px;
+        }
+        
+        #searchInput:focus, #replaceInput:focus {
+            border: 1px solid %5;
+        }
+        
+        #searchOptionsContainer {
+            background-color: transparent;
+        }
+        
+        #optionBtn {
+            background-color: transparent;
+            border: 1px solid transparent;
+            border-radius: 2px;
+            padding: 2px 6px;
+            color: %6;
+            font-size: 11px;
+        }
+        
+        #optionBtn:hover {
+            background-color: %7;
+        }
+        
+        #optionBtn:checked {
+            background-color: %8;
+            border: 1px solid %5;
+        }
+        
+        #resultsTree {
+            background-color: %1;
+            border: none;
+            border-top: 1px solid %2;
+        }
+        
+        #resultsTree::item {
+            padding: 2px 8px;
+        }
+        
+        #resultsTree::item:hover {
+            background-color: %7;
+        }
+        
+        #resultsTree::item:selected {
+            background-color: %8;
+            color: %9;
+        }
+        
+        #noResultsLabel {
+            color: %6;
+            padding: 16px;
+        }
+        
+        #replaceBtn, #replaceAllBtn {
+            background-color: transparent;
+            border: 1px solid %2;
+            border-radius: 2px;
+            padding: 4px 8px;
+            color: %3;
+            font-size: 12px;
+        }
+        
+        #replaceBtn:hover, #replaceAllBtn:hover {
+            background-color: %7;
+        }
+    )")
+    .arg(Colors::SidebarBackground)       // %1
+    .arg(Colors::Border)                  // %2
+    .arg(Colors::TextSecondary)           // %3
+    .arg(Fonts::UISize)                   // %4
+    .arg(Colors::Accent)                  // %5
+    .arg(Colors::TextMuted)               // %6
+    .arg(Colors::ListHoverBackground)     // %7
+    .arg(Colors::ListActiveBackground)    // %8
+    .arg(Colors::TextPrimary);            // %9
+}
+
+QString QalamTheme::breadcrumbStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TBreadcrumb {
+            background-color: %1;
+            border-bottom: 1px solid %2;
+        }
+    )")
+    .arg(Colors::BreadcrumbBackground)
+    .arg(Colors::BorderSubtle);
+}
+
+QString QalamTheme::panelAreaStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TPanelArea {
+            background-color: %1;
+            border-top: 1px solid %2;
+        }
+        
+        #panelTabBar {
+            background-color: %1;
+            border-bottom: 1px solid %2;
+        }
+        
+        #panelTab {
+            background-color: transparent;
+            color: %3;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 8px 12px;
+            font-size: %4px;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
+        }
+        
+        #panelTab:hover {
+            color: %5;
+        }
+        
+        #panelTab:checked {
+            color: %5;
+            border-bottom: 2px solid %6;
+        }
+        
+        #panelContent {
+            background-color: %1;
+        }
+        
+        #problemsTree, #outputArea, #terminalWidget {
+            background-color: %1;
+            border: none;
+            color: %7;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: %8px;
+        }
+    )")
+    .arg(Colors::PanelBackground)         // %1
+    .arg(Colors::PanelBorder)             // %2
+    .arg(Colors::TextMuted)               // %3
+    .arg(Fonts::TabSize)                  // %4
+    .arg(Colors::TextPrimary)             // %5
+    .arg(Colors::Accent)                  // %6
+    .arg(Colors::ConsoleText)             // %7
+    .arg(Fonts::ConsoleSize);             // %8
+}
+
+QString QalamTheme::statusBarStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TStatusBar {
+            background-color: %1;
+            border: none;
+        }
+        
+        TStatusBar QLabel {
+            color: %2;
+            font-size: %3px;
+            padding: 0 %4px;
+        }
+        
+        TStatusBar QPushButton {
+            background-color: transparent;
+            color: %2;
+            border: none;
+            padding: 0 %4px;
+            font-size: %3px;
+        }
+        
+        TStatusBar QPushButton:hover {
+            background-color: %5;
+        }
+    )")
+    .arg(Colors::StatusBarBackground)
+    .arg(Colors::StatusBarForeground)
+    .arg(Fonts::StatusBarSize)
+    .arg(Layout::StatusBarItemPadding)
+    .arg(Colors::StatusBarHover);
+}
+
+QString QalamTheme::titleBarStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TTitleBar {
+            background-color: %1;
+        }
+        
+        #titleLabel {
+            color: %2;
+            font-weight: bold;
+            font-family: 'Segoe UI', 'Tajawal';
+        }
+        
+        #captionButton {
+            background-color: transparent;
+            border: none;
+            border-radius: 0px;
+        }
+        
+        #captionButton:hover {
+            background-color: %3;
+        }
+        
+        #captionButton:pressed {
+            background-color: %4;
+        }
+        
+        #closeButton:hover {
+            background-color: %5;
+        }
+        
+        #closeButton:pressed {
+            background-color: %6;
+        }
+    )")
+    .arg(Colors::TitleBarBackground)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::CaptionButtonHover)
+    .arg(Colors::CaptionButtonPressed)
+    .arg(Colors::CloseButtonHover)
+    .arg(Colors::CloseButtonPressed);
+}
+
+QString QalamTheme::editorStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TEditor {
+            background-color: %1;
+            color: %2;
+            border: none;
+            selection-background-color: %3;
+            selection-color: %4;
+        }
+    )")
+    .arg(Colors::EditorBackground)
+    .arg(Colors::TextSecondary)
+    .arg(Colors::Selection)
+    .arg(Colors::TextPrimary);
+}
+
+QString QalamTheme::tabBarStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        QTabWidget::pane {
+            border: none;
+            background: %1;
+        }
+        
+        QTabBar {
+            background-color: %2;
+            border: none;
+        }
+        
+        QTabBar::tab {
+            background: %3;
+            color: %4;
+            padding: 8px 20px;
+            border: none;
+            border-top: 1px solid transparent;
+            min-width: 120px;
+        }
+        
+        QTabBar::tab:selected {
+            background: %1;
+            color: %5;
+            border-top: 1px solid %6;
+        }
+        
+        QTabBar::tab:hover:!selected {
+            background: %7;
+        }
+        
+        QTabBar::close-button {
+            image: url(:/icons/resources/close.svg);
+            background: transparent;
+            border: none;
+            padding: 2px;
+            margin: 2px;
+            subcontrol-position: right;
+        }
+        
+        QTabBar::close-button:hover {
+            background: %8;
+            border-radius: 3px;
+        }
+    )")
+    .arg(Colors::TabActiveBackground)     // %1
+    .arg(Colors::SidebarBackground)       // %2
+    .arg(Colors::TabBackground)           // %3
+    .arg(Colors::TextMuted)               // %4
+    .arg(Colors::TextPrimary)             // %5
+    .arg(Colors::Accent)                  // %6
+    .arg(Colors::TabHoverBackground)      // %7
+    .arg(Colors::ButtonHover);            // %8
+}
+
+QString QalamTheme::consoleStyleSheet() {
+    using namespace Constants;
+    return QString(R"(
+        TConsole {
+            background-color: %1;
+            color: %2;
+            border: none;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: %3px;
+        }
+    )")
+    .arg(Colors::ConsoleBackground)
+    .arg(Colors::ConsoleText)
+    .arg(Fonts::ConsoleSize);
 }

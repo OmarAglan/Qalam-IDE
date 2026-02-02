@@ -1,4 +1,5 @@
 #include "TPanelArea.h"
+#include "QalamTheme.h"
 #include "Constants.h"
 #include "TConsole.h"
 #include <QScrollArea>

@@ -1,4 +1,5 @@
 #include "TBreadcrumb.h"
+#include "QalamTheme.h"
 #include "Constants.h"
 #include <QDir>
 #include <QFileInfo>

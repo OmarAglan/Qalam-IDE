@@ -1,4 +1,5 @@
 #include "TActivityBar.h"
+#include "QalamTheme.h"
 #include "Constants.h"
 #include <QStyle>
 
@@ -117,45 +118,5 @@ void TActivityBar::updateButtonStates()
 
 void TActivityBar::applyStyles()
 {
-    using namespace Constants;
-    
-    QString styles = QString(R"(
-        TActivityBar {
-            background-color: %1;
-            border-left: 1px solid %2;
-        }
-        
-        TActivityBar QPushButton {
-            background-color: transparent;
-            border: none;
-            border-radius: 0px;
-            padding: 0px;
-            margin: 0px;
-        }
-        
-        TActivityBar QPushButton:hover {
-            background-color: transparent;
-        }
-        
-        /* Inactive icon color via opacity simulation - use separate icons or tint */
-        TActivityBar QPushButton {
-            opacity: 0.6;
-        }
-        
-        /* Active state - left border indicator */
-        TActivityBar QPushButton:checked {
-            border-left: %3px solid %4;
-            opacity: 1.0;
-        }
-        
-        TActivityBar QPushButton:checked:hover {
-            background-color: transparent;
-        }
-    )")
-    .arg(Colors::ActivityBarBackground)
-    .arg(Colors::ActivityBarBorder)
-    .arg(Layout::ActivityIndicatorWidth)
-    .arg(Colors::ActivityIndicator);
-    
-    setStyleSheet(styles);
+    setStyleSheet(QalamTheme::activityBarStyleSheet());
 }

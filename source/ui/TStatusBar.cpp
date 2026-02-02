@@ -1,4 +1,5 @@
 #include "TStatusBar.h"
+#include "QalamTheme.h"
 #include "Constants.h"
 #include <QTimer>
 

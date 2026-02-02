@@ -762,8 +762,10 @@ void Qalam::loadFolder(const QString &path)
     this->folderPath = path;
     
     if (!path.isEmpty() && QDir(path).exists()) {
-        fileTreeView->setVisible(true);
-        fileTreeView->setRootIndex(fileSystemModel->index(path));
+        // Only update old fileTreeView if we're using old layout
+        if (fileTreeView && fileTreeView->parent() && fileTreeView->isVisible()) {
+            fileTreeView->setRootIndex(fileSystemModel->index(path));
+        }
         
         // Update new sidebar with folder path and show it
         if (m_sidebar && m_sidebar->explorerView()) {
@@ -787,8 +789,6 @@ void Qalam::loadFolder(const QString &path)
             m_statusBar->setFolderOpen(true);
         }
     } else {
-        fileTreeView->setVisible(false);
-        
         if (m_statusBar) {
             m_statusBar->setFolderOpen(false);
         }
@@ -1367,26 +1367,23 @@ void Qalam::setupNewLayout()
     });
     
     // =========================================================
-    // Rebuild the main layout in RTL style
+    // Rebuild the main layout - RTL for Arabic (Activity Bar on RIGHT)
     // =========================================================
     
     // Create a central widget to hold everything
     QWidget *centralContainer = new QWidget(this);
+    centralContainer->setLayoutDirection(Qt::LeftToRight);  // Use LTR for layout, we control order
+    
     QVBoxLayout *mainVLayout = new QVBoxLayout(centralContainer);
     mainVLayout->setContentsMargins(0, 0, 0, 0);
     mainVLayout->setSpacing(0);
     
-    // Create horizontal layout for Activity Bar + Sidebar + Editor
+    // Create horizontal layout for Editor + Sidebar + Activity Bar
+    // Using LTR direction but adding in order: Editor, Sidebar, ActivityBar
+    // This puts ActivityBar on the RIGHT
     QHBoxLayout *contentLayout = new QHBoxLayout();
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
-    contentLayout->setDirection(QBoxLayout::RightToLeft);  // RTL layout
-    
-    // Add Activity Bar (rightmost in RTL)
-    contentLayout->addWidget(m_activityBar);
-    
-    // Add Sidebar
-    contentLayout->addWidget(m_sidebar);
     
     // Create editor + panel vertical splitter
     QSplitter *editorPanelSplitter = new QSplitter(Qt::Vertical);
@@ -1411,8 +1408,10 @@ void Qalam::setupNewLayout()
     editorPanelSplitter->addWidget(m_panelArea);
     editorPanelSplitter->setSizes({700, 200});
     
-    // Add splitter to content layout (takes remaining space)
-    contentLayout->addWidget(editorPanelSplitter, 1);
+    // Add widgets in order: Editor (left), Sidebar (middle-right), ActivityBar (far right)
+    contentLayout->addWidget(editorPanelSplitter, 1);  // Editor takes stretch
+    contentLayout->addWidget(m_sidebar);                // Sidebar fixed width
+    contentLayout->addWidget(m_activityBar);            // Activity Bar fixed width (rightmost)
     
     // Add content layout to main vertical layout
     mainVLayout->addLayout(contentLayout, 1);

@@ -1,4 +1,5 @@
 #include "TSearchView.h"
+#include "../ui/QalamTheme.h"
 #include "Constants.h"
 #include <QTimer>
 #include <QHeaderView>

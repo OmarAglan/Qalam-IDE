@@ -96,6 +96,7 @@ void TCompletionPopup::currentChanged(const QModelIndex &current, const QModelIn
     case Keyword: typeStr = "محجوزة"; colorStr = "#c678dd"; break;
     case Snippet: typeStr = "كتلة"; colorStr = "#e06c75"; break;
     case Builtin: typeStr = "ضمنية"; colorStr = "#82d448"; break;
+    case Preprocessor: typeStr = "معالج"; colorStr = "#d19a66"; break;
     case DynamicWord: typeStr = "نص"; colorStr = "#abb2bf"; break;
     }
 
@@ -130,10 +131,11 @@ void TModernCompletionDelegate::paint(QPainter *painter, const QStyleOptionViewI
     QString iconText;
 
     switch (type) {
-    case Keyword: iconColor = QColor(198, 120, 221); iconText = "{}"; break;
-    case Snippet: iconColor = QColor(224, 108, 117); iconText = "<>"; break;
-    case Builtin: iconColor = QColor(130, 212, 72); iconText = "()"; break;
-    case DynamicWord: iconColor = QColor(97, 175, 239); iconText = "أب"; break;
+    case Keyword: iconColor = QColor(198, 120, 221); iconText = "{}"; break;      // Purple
+    case Snippet: iconColor = QColor(224, 108, 117); iconText = "<>"; break;      // Red
+    case Builtin: iconColor = QColor(130, 212, 72); iconText = "()"; break;       // Green
+    case Preprocessor: iconColor = QColor(209, 154, 102); iconText = "#"; break;  // Orange
+    case DynamicWord: iconColor = QColor(97, 175, 239); iconText = "أب"; break;   // Blue
     }
 
     // Draw Background
