@@ -44,51 +44,7 @@ public:
     int getStateId() const override { return StateMasks::String | delimId; }
 };
 
-// 3. Triple String State
-class TripleStringState : public LexerState {
-    QString delimiter;
-    int delimId;
-public:
-    TripleStringState(const QString& delim, int id);
-    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
-    std::unique_ptr<LexerState> nextState() const override;
-    std::unique_ptr<LexerState> clone() const override;
-    mutable std::unique_ptr<LexerState> pendingState;
-    int getStateId() const override { return StateMasks::TripleString | delimId; }
-};
-
-// 4. F-String State
-class FStringState : public LexerState {
-    QString delimiter;
-    int delimId;
-public:
-    FStringState(const QString& delim, int id);
-    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
-    std::unique_ptr<LexerState> nextState() const override;
-    std::unique_ptr<LexerState> clone() const override;
-
-    mutable std::unique_ptr<LexerState> pendingState;
-    int getStateId() const override { return StateMasks::FString | delimId; }
-};
-
-// 5. Interpolation State { ... }
-class InterpolationState : public LexerState {
-    QString parentDelimiter;
-    int parentDelimId;
-    int braceBalance;
-    // Holds the state of the code *inside* the interpolation (e.g., Normal, String)
-    std::unique_ptr<LexerState> innerState;
-public:
-    InterpolationState(const QString& parentDelim, int parentId, int balance = 1, std::unique_ptr<LexerState> inner = nullptr);
-    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
-    std::unique_ptr<LexerState> nextState() const override;
-    std::unique_ptr<LexerState> clone() const override;
-
-    mutable std::unique_ptr<LexerState> pendingState;
-    int getStateId() const override { return StateMasks::Interpolation | parentDelimId; }
-};
-
-// 6. Function Definition State (captures name after 'دالة')
+// 3. Function Definition State (captures name after 'دالة')
 class FunctionDefState : public LexerState {
 public:
     TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
@@ -97,17 +53,6 @@ public:
 
     mutable std::unique_ptr<LexerState> pendingState;
     int getStateId() const override { return StateMasks::FunctionDef; }
-};
-
-// 7. Class Definition State (captures name after 'class')
-class ClassDefState : public LexerState {
-public:
-    TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;
-    std::unique_ptr<LexerState> nextState() const override;
-    std::unique_ptr<LexerState> clone() const override;
-
-    mutable std::unique_ptr<LexerState> pendingState;
-    int getStateId() const override { return StateMasks::ClassDef; }
 };
 
 // ==================== Lexer ====================

@@ -11,19 +11,13 @@ const int DelimMask = 0xFF00;
 enum StateType {
     Normal = 0,
     String = 1,
-    FString = 2,
-    TripleString = 3,
-    Interpolation = 4,
-    FunctionDef = 5,
-    ClassDef = 6
+    FunctionDef = 5
 };
 
 enum DelimiterType {
     None = 0,
     Single = 0x100,      // '
-    Double = 0x200,      // "
-    TriSingle = 0x300,   // '''
-    TriDouble = 0x400    // """
+    Double = 0x200       // "
 };
 }
 
@@ -31,19 +25,13 @@ enum class TokenType {
     None = 0,
     Keyword,
     BuiltinFunc,
-    MagicMethod,
-    Decorator,
     Number,
     String,
-    FString,
     Comment,
     Function,
-    ClassDef,
     Operator,
     Identifier,
     Whitespace,
-    MultiLineString,
-    Self,
     Error,
     Preprocessor,
     Separator,

@@ -39,7 +39,6 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 // --- Built-ins Strategy ---
 BuiltinStrategy::BuiltinStrategy() {
     builtins = {
-        // I/O (§6)
         "اطبع", "اقرأ"
     };
 }
@@ -65,12 +64,6 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("الرئيسية",
                          "صحيح الرئيسية() {\n\tإرجع ٠.\n}",
                          "الدالة الرئيسية للبرنامج",
-                         CompletionType::Snippet));
-    }
-    if (QString("صحيح").startsWith(p)) {
-        items.push_back(CompletionItem("دالة (صحيح)",
-                         "صحيح اسم_الدالة() {\n\tإرجع ٠.\n}",
-                         "تعريف دالة ترجع عدد صحيح",
                          CompletionType::Snippet));
     }
     if (QString("إذا").startsWith(p)) {
@@ -121,13 +114,6 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
                          "تعريف ماكرو (Define)",
                          CompletionType::Snippet));
     }
-    if (QString("صنف").startsWith(p)) {
-        items.push_back(CompletionItem("صنف",
-                         "صنف اسم_الصنف {\n\t\n}",
-                         "تعريف صنف جديد (Class)",
-                         CompletionType::Snippet));
-    }
-
     return items;
 }
 
