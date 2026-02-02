@@ -26,10 +26,17 @@ protected:
 
 private:
     // UI Creation Helpers
-    QWidget* createActionLink(const QString &iconPath, const QString &text, void (WelcomeWindow::*slot)());
+    void applyStyles();
+    QWidget* createActionLink(const QString &iconPath, const QString &text, const QString &actionId);
     QVBoxLayout* createStartColumn();
     QVBoxLayout* createRecentColumn();
     void populateRecentProjects();
+    
+    // Settings helpers
+    bool loadShowOnStartup();
+    void saveShowOnStartup(bool show);
+    void clearRecentFiles();
+    void removeFromRecentFiles(const QString &filePath);
 
     // UI Elements
     QListWidget *recentProjectsList;
