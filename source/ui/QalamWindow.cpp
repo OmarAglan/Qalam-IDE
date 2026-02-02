@@ -2,6 +2,8 @@
 #include <QVBoxLayout>
 #include <QApplication>
 #include <QWindow>
+#include <QMenuBar>
+#include <QPushButton>
 #include <dwmapi.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -93,12 +95,21 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
                 // Check if point is within title bar bounds
                 // Note: setMenuWidget puts titlebar at (0,0) usually.
                 if (m_titleBar && m_titleBar->geometry().contains(QPoint(pt.x, pt.y))) {
-                    // Exclude buttons from drag
+                    // Exclude buttons and menu bar from drag
                     QWidget *child = m_titleBar->childAt(pt.x, pt.y);
-                    if (!child || !qobject_cast<QPushButton*>(child)) {
-                        *result = HTCAPTION;
-                        return true;
+                    if (child) {
+                        // If the child is a button or is part of a menu bar, let it handle the event
+                        bool isButton = qobject_cast<QPushButton*>(child);
+                        bool isMenuBar = qobject_cast<QMenuBar*>(child) || (child->parent() && qobject_cast<QMenuBar*>(child->parentWidget()));
+                        
+                        if (isButton || isMenuBar) {
+                            return false; // Let Qt handle it (HTCLIENT result will be returned by default)
+                        }
                     }
+                    
+                    // Otherwise, it's a draggable title bar area
+                    *result = HTCAPTION;
+                    return true;
                 }
                 
                 break;
