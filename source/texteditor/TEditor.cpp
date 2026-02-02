@@ -308,7 +308,7 @@ void TEditor::updateLineNumberAreaWidth() {
     setViewportMargins(mapWidth, 0, numsWidth, 0);
 }
 
-inline void TEditor::updateLineNumberArea(const QRect &rect, int dy) {
+void TEditor::updateLineNumberArea(const QRect &rect, int dy) {
     if (dy)
         lineNumberArea->scroll(0, dy);
     else
@@ -474,7 +474,6 @@ void TEditor::updateFoldRegions() {
             block = block.next();
         }
     }
-    }
     viewport()->update();
 }
 
@@ -507,7 +506,6 @@ void TEditor::toggleFold(int blockNumber) {
                 }
             }
 
-            document()->markContentsDirty(0, document()->characterCount());
             viewport()->update();
             break;
         }

@@ -15,6 +15,9 @@
 class LineNumberArea;
 
 
+class TEditor : public QPlainTextEdit {
+    Q_OBJECT
+
 public:
     TEditor(QWidget* parent = nullptr);
 
@@ -96,7 +99,7 @@ private:
 private slots:
     void updateLineNumberAreaWidth();
     void highlightCurrentLine();
-    inline void updateLineNumberArea(const QRect &rect, int dy);
+    void updateLineNumberArea(const QRect &rect, int dy);
     void insertCompletion(const QString &completion, CompletionType type);
 signals:
     void openRequest(QString filePath);

@@ -177,7 +177,7 @@ TToken FunctionDefState::readToken(QStringView text, int& pos, const LanguageDef
         int start = pos;
         while(pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
 
-        QString name = text.mid(start, pos - start);
+        QString name = text.mid(start, pos - start).toString();
 
         // Done with definition, go back to normal
         pendingState = std::make_unique<NormalState>();
@@ -221,7 +221,7 @@ TToken ClassDefState::readToken(QStringView text, int& pos, const LanguageDefini
         int start = pos;
         while(pos < text.length() && (text[pos].isLetterOrNumber() || text[pos] == '_')) pos++;
         pendingState = std::make_unique<NormalState>();
-        return TToken(TokenType::ClassDef, start, pos - start, text.mid(start, pos - start));
+        return TToken(TokenType::ClassDef, start, pos - start, text.mid(start, pos - start).toString());
     }
 
     pendingState = std::make_unique<NormalState>();
