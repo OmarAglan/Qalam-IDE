@@ -1,4 +1,4 @@
-﻿#include "TEditor.h"
+#include "TEditor.h"
 
 #include <QPainter>
 #include <QTextBlock>
@@ -10,13 +10,15 @@
 #include <QMenu>
 #include <QAction>
 #include <QFile>
-#include "../../qalam/Constants.h"
+#include "Constants.h"
 #include "highlighter/ThemeManager.h"
 
 
 TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
     setAcceptDrops(true);
-    this->setStyleSheet("QPlainTextEdit { background-color: #141520; color: #cccccc; }");
+    this->setStyleSheet(QString("QPlainTextEdit { background-color: %1; color: %2; }")
+        .arg(Constants::Colors::EditorBackground)
+        .arg(Constants::Colors::TextSecondary));
     this->setTabStopDistance(32);
 
     QTextDocument* editorDocument = this->document();
@@ -846,13 +848,25 @@ void TEditor::performCompletion() {
     QPoint widgetPos = this->viewport()->mapTo(this, cr.topRight());
     cr.moveTo(widgetPos);
 
-    // Calculate popup width: Text width + Scrollbar + Padding
-    int popupWidth = std::clamp(35 + 150 + c->popup()->verticalScrollBar()->width() + 65, 295, 355);
+    // Calculate popup width with constants
+    int popupWidth = std::clamp(
+        Constants::Layout::PopupBasePadding + c->popup()->verticalScrollBar()->width(),
+        Constants::Layout::PopupMinWidth,
+        Constants::Layout::PopupMaxWidth);
 
-    // Shift dialog left ---
-    cr.moveLeft(cr.right() - popupWidth - 360);
-
-    // set width
+    // RTL positioning: place popup to the left of cursor
+    // Calculate position based on actual viewport/widget geometry
+    int viewportWidth = viewport()->width();
+    int cursorX = cr.x();
+    
+    // In RTL mode, position popup so it appears to the left of the cursor
+    // Ensure popup stays within visible area
+    int popupX = cursorX - popupWidth;
+    if (popupX < 0) {
+        popupX = 0;  // Don't go past left edge
+    }
+    
+    cr.moveLeft(popupX);
     cr.setWidth(popupWidth);
 
     c->complete(cr);

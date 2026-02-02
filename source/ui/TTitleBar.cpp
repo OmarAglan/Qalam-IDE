@@ -1,22 +1,27 @@
 #include "TTitleBar.h"
 #include "QalamTheme.h"
+#include "Constants.h"
 #include <QPainter>
 #include <QStyleOption>
 
 TTitleBar::TTitleBar(QWidget *parent) : QWidget(parent) {
-    setFixedHeight(40); // Standard title bar height
+    setFixedHeight(Constants::Layout::TitleBarHeight);
     setupUi();
 }
 
 void TTitleBar::setupUi() {
+    using namespace Constants;
+    
     // Logo
     m_iconLabel = new QLabel(this);
-    m_iconLabel->setFixedSize(24, 24);
-    m_iconLabel->setPixmap(QPixmap(":/icons/resources/QalamLogo.ico").scaled(24, 24, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    m_iconLabel->setFixedSize(Layout::IconSize, Layout::IconSize);
+    m_iconLabel->setPixmap(QPixmap(":/icons/resources/QalamLogo.ico").scaled(
+        Layout::IconSize, Layout::IconSize, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     
     // Title
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setStyleSheet("color: #cccccc; font-weight: bold; font-family: 'Segoe UI', 'Tajawal';");
+    m_titleLabel->setStyleSheet(QString("color: %1; font-weight: bold; font-family: 'Segoe UI', 'Tajawal';")
+        .arg(Colors::TextSecondary));
     
     // Window Controls
     m_minimizeBtn = createCaptionButton(":/icons/resources/minimize.svg", "minimizeBtn");
@@ -25,8 +30,10 @@ void TTitleBar::setupUi() {
     
     // Hover style for close button (red)
     m_closeBtn->setStyleSheet(m_closeBtn->styleSheet() + 
-        "QPushButton#closeBtn:hover { background-color: #e81123; border: none; } "
-        "QPushButton#closeBtn:pressed { background-color: #f1707a; border: none; }");
+        QString("QPushButton#closeBtn:hover { background-color: %1; border: none; } "
+                "QPushButton#closeBtn:pressed { background-color: %2; border: none; }")
+        .arg(Colors::CloseButtonHover)
+        .arg(Colors::CloseButtonPressed));
 
     connect(m_minimizeBtn, &QPushButton::clicked, this, &TTitleBar::minimizeClicked);
     connect(m_maximizeBtn, &QPushButton::clicked, this, &TTitleBar::maximizeRestoreClicked);
@@ -94,17 +101,21 @@ void TTitleBar::addMenuBar(QWidget *menu) {
 }
 
 QPushButton* TTitleBar::createCaptionButton(const QString &iconPath, const QString &objName) {
+    using namespace Constants;
+    
     QPushButton *btn = new QPushButton(this);
     btn->setObjectName(objName);
-    btn->setFixedSize(46, 40); // Standard windows caption button width
+    btn->setFixedSize(Layout::CaptionButtonWidth, Layout::CaptionButtonHeight);
     btn->setIcon(QIcon(iconPath));
-    btn->setIconSize(QSize(16, 16));
+    btn->setIconSize(QSize(Layout::CaptionIconSize, Layout::CaptionIconSize));
     
     // Base style for buttons
     btn->setStyleSheet(
-        "QPushButton { background: transparent; border: none; border-radius: 0px; }"
-        "QPushButton:hover { background-color: #3e3e42; }"
-        "QPushButton:pressed { background-color: #2d2d32; }"
+        QString("QPushButton { background: transparent; border: none; border-radius: 0px; }"
+                "QPushButton:hover { background-color: %1; }"
+                "QPushButton:pressed { background-color: %2; }")
+        .arg(Colors::CaptionButtonHover)
+        .arg(Colors::CaptionButtonPressed)
     );
     
     return btn;

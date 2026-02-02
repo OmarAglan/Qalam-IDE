@@ -1,4 +1,5 @@
 #include "TConsole.h"
+#include "Constants.h"
 #include <QVBoxLayout>
 #include <QScrollBar>
 #include <QTextCursor>
@@ -25,11 +26,13 @@ TConsole::TConsole(QWidget *parent)
     m_output->setWordWrapMode(QTextOption::WordWrap);
     // simple monospace font
     QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    f.setPixelSize(15);
+    f.setPixelSize(Constants::Fonts::ConsoleSize);
     m_output->setFont(f);
     m_input->setFont(f);
 
-    setStyleSheet("QWidget {background-color: #03091A; color: #DEE8FF;}");
+    setStyleSheet(QString("QWidget {background-color: %1; color: %2;}")
+        .arg(Constants::Colors::ConsoleBackground)
+        .arg(Constants::Colors::ConsoleText));
 
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0,0,0,0);
@@ -49,7 +52,7 @@ TConsole::TConsole(QWidget *parent)
 
     m_input->installEventFilter(this);
 
-    m_flushTimer->setInterval(25);
+    m_flushTimer->setInterval(Constants::Timing::FlushInterval);
     connect(m_flushTimer, &QTimer::timeout, this, &TConsole::flushPending);
     m_flushTimer->start();
 }

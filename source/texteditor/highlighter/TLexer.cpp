@@ -92,10 +92,12 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
     if (ch.isDigit() || ch == u'٠' || ch == u'١' || ch == u'٢' || ch == u'٣' || ch == u'٤' || ch == u'٥' || ch == u'٦' || ch == u'٧' || ch == u'٨' || ch == u'٩') {
         int start = pos;
         if (ch == '0' && pos + 1 < text.length() && text.mid(pos, 2).compare(u"0x", Qt::CaseInsensitive) == 0) {
-            auto m = langDef.hexPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+            // Use matchView to avoid QString copy (Qt 6.1+)
+            auto m = langDef.hexPattern.matchView(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
             if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         }
-        auto m = langDef.numberPattern.match(text.toString(), start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+        // Use matchView to avoid QString copy (Qt 6.1+)
+        auto m = langDef.numberPattern.matchView(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
         if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         pos++; return TToken(TokenType::Number, start, 1);
     }

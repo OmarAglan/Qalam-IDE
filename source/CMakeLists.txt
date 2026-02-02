@@ -25,6 +25,7 @@ add_library(qalam_core STATIC
 
 target_include_directories(qalam_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../qalam
     texteditor
     texteditor/highlighter
     texteditor/autocomplete
