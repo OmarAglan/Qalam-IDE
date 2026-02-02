@@ -6,6 +6,7 @@
 #include "ProcessWorker.h"
 #include <QSplitter>
 #include <QStatusBar>
+#include <QPointer>
 #include "../ui/QalamWindow.h"
 
 // ...
@@ -77,8 +78,8 @@ private:
 
     // TConsole *cmdConsole;
     // TConsole *alifConsole;
-    ProcessWorker *worker{};
-    QThread *buildThread{};
+    QPointer<ProcessWorker> worker;
+    QThread* buildThread = nullptr;
 
     QLabel *cursorPositionLabel{};
     QLabel *encodingLabel{};

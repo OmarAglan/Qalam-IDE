@@ -19,4 +19,8 @@ namespace Constants {
 
     // UI Strings
     const QString NewFileLabel = "غير معنون";
+
+    // Defaults
+    const int DefaultFontSize = 18;
+    const QString DefaultFontType = "Kawkab Mono";
 }

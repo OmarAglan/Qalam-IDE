@@ -4,12 +4,15 @@
 #include <QWindow>
 #include <QMenuBar>
 #include <QPushButton>
+
+#if defined(Q_OS_WIN)
 #include <dwmapi.h>
 #include <windows.h>
 #include <windowsx.h>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
+#endif
 
 QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
     // 1. Setup Title Bar
@@ -49,14 +52,13 @@ void QalamWindow::setCustomMenuBar(QWidget *menu) {
 }
 
 bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result) {
+#if defined(Q_OS_WIN)
     if (eventType == "windows_generic_MSG") {
         MSG *msg = static_cast<MSG *>(message);
         HWND hwnd = msg->hwnd;
 
         switch (msg->message) {
             case WM_NCCALCSIZE: {
-                // Return 0 to indicate we handle the client area (remove title bar/borders visuals)
-                // but keep the logic of thick frame for resizing.
                 if (msg->wParam == TRUE) {
                     *result = 0;
                     return true;
@@ -64,19 +66,17 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
                 break;
             }
             case WM_NCHITTEST: {
-                // Handle resizing zones
                 long x = GET_X_LPARAM(msg->lParam);
                 long y = GET_Y_LPARAM(msg->lParam);
                 
                 POINT pt = {x, y};
                 ScreenToClient(hwnd, &pt);
 
-                const int borderWidth = 8; // Resize border width
+                const int borderWidth = 8;
                 
                 RECT rw;
                 GetClientRect(hwnd, &rw);
                 
-                // Check borders
                 bool left = pt.x < borderWidth;
                 bool right = pt.x >= rw.right - borderWidth;
                 bool top = pt.y < borderWidth;
@@ -91,31 +91,19 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
                 if (bottom) { *result = HTBOTTOM; return true; }
                 if (top) { *result = HTTOP; return true; }
                 
-                // Title Bar Dragging
-                // Check if point is within title bar bounds
-                // Note: setMenuWidget puts titlebar at (0,0) usually.
                 if (m_titleBar && m_titleBar->geometry().contains(QPoint(pt.x, pt.y))) {
-                    // Exclude buttons and menu bar from drag
                     QWidget *child = m_titleBar->childAt(pt.x, pt.y);
                     if (child) {
-                        // If the child is a button or is part of a menu bar, let it handle the event
                         bool isButton = qobject_cast<QPushButton*>(child);
                         bool isMenuBar = qobject_cast<QMenuBar*>(child) || (child->parent() && qobject_cast<QMenuBar*>(child->parentWidget()));
-                        
-                        if (isButton || isMenuBar) {
-                            return false; // Let Qt handle it (HTCLIENT result will be returned by default)
-                        }
+                        if (isButton || isMenuBar) return false;
                     }
-                    
-                    // Otherwise, it's a draggable title bar area
                     *result = HTCAPTION;
                     return true;
                 }
-                
                 break;
             }
             case WM_SIZE: {
-                // Update maximize button state
                 if (m_titleBar) {
                     m_titleBar->setMaximizedState(windowState() & Qt::WindowMaximized);
                 }
@@ -123,5 +111,6 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
             }
         }
     }
+#endif
     return QMainWindow::nativeEvent(eventType, message, result);
 }

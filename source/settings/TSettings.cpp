@@ -120,7 +120,7 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
 
     QSettings settingsVal(Constants::OrgName, Constants::AppName);
     int savedSize = settingsVal.value(Constants::SettingsKeyFontSize).toInt();
-    savedSize ? fontSpin->setValue(savedSize) : fontSpin->setValue(18);
+    savedSize ? fontSpin->setValue(savedSize) : fontSpin->setValue(Constants::DefaultFontSize);
 
     fontSizeLayout->addRow("حجم الخط: ", fontSpin);
     connect(fontSpin, &QSpinBox::valueChanged, this, &TSettings::fontSizeChanged);
@@ -145,7 +145,7 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
         fontCombo->addItem(family);
     }
     QString savedFont = settingsVal.value(Constants::SettingsKeyFontType).toString();
-    !savedFont.isEmpty() ? fontCombo->setCurrentText(savedFont) : fontCombo->setCurrentText("Noto Kufi Arabic");
+    !savedFont.isEmpty() ? fontCombo->setCurrentText(savedFont) : fontCombo->setCurrentText(Constants::DefaultFontType);
 
     fontFamilyLayout->addRow("نوع الخط: ", fontCombo);
     connect(fontCombo, &QComboBox::currentTextChanged, this, &TSettings::fontTypeChanged);

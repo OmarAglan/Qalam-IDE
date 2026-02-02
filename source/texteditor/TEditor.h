@@ -26,7 +26,7 @@ public:
     QString filePath{};
 
     QString getCurrentLineIndentation(const QTextCursor &cursor) const;
-    void curserIndentation();
+    void cursorIndentation();
 
     void setCompleter(QCompleter *completer);
 

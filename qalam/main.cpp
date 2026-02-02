@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         QStringList fontFamilies{};
         fontFamilies << notoKufi << tajawal << kawkabMono;
         font.setFamilies(fontFamilies);
-        font.setPixelSize(14);
+        font.setPixelSize(14); // General UI font size
         font.setWeight(QFont::Weight::Normal);
         app.setFont(font);
     }

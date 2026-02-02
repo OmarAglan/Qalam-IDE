@@ -247,10 +247,7 @@ bool TEditor::eventFilter(QObject* obj, QEvent* event) {
 
         if (keyEvent->key() == Qt::Key_Return
              or keyEvent->key() == Qt::Key_Enter) {
-            if (keyEvent->modifiers() & Qt::ShiftModifier) {
-                return true;
-            }
-            curserIndentation();
+            cursorIndentation();
             return true;
         }
     }
@@ -590,7 +587,7 @@ void TEditor::dragLeaveEvent(QDragLeaveEvent* event) {
 
 /* ---------------------------------- Indentation ---------------------------------- */
 
-void TEditor::curserIndentation() {
+void TEditor::cursorIndentation() {
     QTextCursor cursor = textCursor();
     QString lineText = cursor.block().text();
     int cursorPosInLine = cursor.positionInBlock();
