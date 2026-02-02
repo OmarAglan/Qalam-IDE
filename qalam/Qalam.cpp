@@ -1,4 +1,4 @@
-﻿#include "Qalam.h"
+#include "Qalam.h"
 #include "TWelcomeWindow.h"
 #include "TConsole.h"
 #include "ProcessWorker.h"
@@ -1060,13 +1060,23 @@ void Qalam::runBaa() {
     QStringList args = { filePath };
     QString workingDir = QFileInfo(filePath).absolutePath();
 
-    // Ensure previous thread and worker are stopped correctly
-    if (buildThread && buildThread->isRunning()) {
+    // Safely clean up existing thread/worker before creating new ones
+    if (buildThread) {
         if (worker) {
-            worker->stop(); // Stop the process in the worker
+            worker->stop();
+            worker = nullptr; // Clear QPointer immediately
         }
         buildThread->quit();
-        buildThread->wait(); // Wait for it to finish gracefully
+        if (!buildThread->wait(3000)) {
+            // Force terminate if it doesn't finish gracefully
+            buildThread->terminate();
+            buildThread->wait();
+        }
+        // Thread will be deleted by deleteLater from previous run, or we delete it now
+        if (buildThread) {
+            buildThread->deleteLater();
+            buildThread = nullptr;
+        }
     }
 
     console->clear();
