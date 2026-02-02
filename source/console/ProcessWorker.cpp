@@ -1,25 +1,24 @@
 #include "ProcessWorker.h"
 #include <QDebug>
+#include <QMutexLocker>
 
 ProcessWorker::ProcessWorker(const QString &program, const QStringList &args, const QString &workingDir)
-    : program(program), args(args), workingDir(workingDir), process(nullptr)
+    : program(program), args(args), workingDir(workingDir), process(nullptr), flushTimer(nullptr)
 {
-    flushTimer = new QTimer(this);
-    flushTimer->setInterval(20);
-    connect(flushTimer, &QTimer::timeout, this, &ProcessWorker::flushBuffers);
+    // Do NOT create timer here - it must be created in the worker thread
+    // Timer will be created in start() which runs in the correct thread
 }
 
 void ProcessWorker::start() {
-    // --- 1) أنشئ الـ QTimer هنا داخل الثريد الخاص بالـ Worker ---
+    // Create timer in the worker thread (correct thread affinity)
     if (!flushTimer) {
         flushTimer = new QTimer(this);
         flushTimer->setInterval(20);
         connect(flushTimer, &QTimer::timeout, this, &ProcessWorker::flushBuffers);
     }
 
-    // --- 2) تأكد أن الـ QProcess له parent (this) حتى يعيش داخل نفس الثريد ---
+    // Clean up any existing process
     if (process) {
-        // لو كان موجودًا من تشغيل سابق، نظفه أول
         disconnect(process, nullptr, this, nullptr);
         process->deleteLater();
         process = nullptr;
@@ -31,79 +30,74 @@ void ProcessWorker::start() {
     process->setWorkingDirectory(workingDir);
     process->setProcessChannelMode(QProcess::SeparateChannels);
 
-    // --- 3) ربط إشارات القراءة ---
+    // Connect read signals
     connect(process, &QProcess::readyReadStandardOutput,
             this, &ProcessWorker::onReadyReadOutput);
     connect(process, &QProcess::readyReadStandardError,
             this, &ProcessWorker::onReadyReadError);
 
-    // --- 4) عند بدء العملية: شغّل التايمر (بدون waitForStarted blocking) ---
+    // Start timer when process starts
     connect(process, &QProcess::started, this, [this]() {
-        // ابدأ التايمر فقط بعد أن تبدأ العملية فعلاً
         if (flushTimer && !flushTimer->isActive())
             flushTimer->start();
     });
 
-    // --- 5) عند الانتهاء: أوقف التايمر وأرسل أي بيانات متبقية ثم أرسل finished ---
+    // Stop timer and emit finished when process ends
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, [this](int code, QProcess::ExitStatus /*status*/) {
                 if (flushTimer && flushTimer->isActive())
                     flushTimer->stop();
 
-                // إرسال أي بيانات متبقية
+                // Flush any remaining buffered data
                 flushBuffers();
 
                 emit finished(code);
             });
 
-    // --- 6) ابدأ العملية بطريقة غير حابسة ---
+    // Start the process (non-blocking)
     process->start();
-
-    // --- 7) إذا لم تبدأ العملية خلال مهلة معقولة، انبه بالخطأ (non-blocking check) ---
-    // هنا نستخدم QTimer أحادي للتحقق بعد مدة قصيرة بدل waitForStarted()
-    QTimer::singleShot(100, this, [this]() {
-        if (!process)
-            return;
-    });
 }
-// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::onReadyReadOutput() {
+    QMutexLocker locker(&bufferMutex);
     QString s = QString::fromLocal8Bit(process->readAllStandardOutput());
     outputBuffer.append(s);
 }
 
-// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::onReadyReadError() {
+    QMutexLocker locker(&bufferMutex);
     QString s = QString::fromLocal8Bit(process->readAllStandardError());
     errorBuffer.append(s);
 }
 
-// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::flushBuffers() {
-    if (!outputBuffer.isEmpty()) {
-        emit outputReady(outputBuffer);
+    QString outCopy, errCopy;
+    {
+        QMutexLocker locker(&bufferMutex);
+        outCopy = outputBuffer;
+        errCopy = errorBuffer;
         outputBuffer.clear();
-    }
-    if (!errorBuffer.isEmpty()) {
-        emit errorReady(errorBuffer);
         errorBuffer.clear();
+    }
+    if (!outCopy.isEmpty()) {
+        emit outputReady(outCopy);
+    }
+    if (!errCopy.isEmpty()) {
+        emit errorReady(errCopy);
     }
 }
 
-// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::stop() {
     if (process && process->state() == QProcess::Running) {
-        process->terminate(); // أو process->kill(); حسب الحاجة
-        if (!process->waitForFinished(3000)) { // انتظر 3 ثوانٍ
-            process->kill(); // إذا لم يتوقف، اقتله
+        process->terminate();
+        if (!process->waitForFinished(3000)) {
+            process->kill();
         }
     }
 }
 
-// ✅ التنفيذ (الكود) يجب أن يكون هنا في ملف .cpp
 void ProcessWorker::sendInput(const QString &text) {
     if (process && process->state() == QProcess::Running) {
-#if defined(Q_OS_WINDOWS)
+#if defined(Q_OS_WIN)
         process->write((text + "\r\n").toLocal8Bit());
 #else
         process->write((text + "\n").toLocal8Bit());

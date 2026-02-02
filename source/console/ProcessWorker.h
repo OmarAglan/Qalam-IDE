@@ -4,6 +4,7 @@
 #include <QStringList>
 #include <QProcess>
 #include <QTimer>
+#include <QMutex>
 
 class ProcessWorker : public QObject
 {
@@ -34,4 +35,5 @@ private:
     QString outputBuffer{};
     QString errorBuffer{};
     QTimer *flushTimer{};
+    QMutex bufferMutex{};  // Mutex for thread-safe buffer access
 };

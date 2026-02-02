@@ -9,9 +9,7 @@
 #include <dwmapi.h>
 #include <windows.h>
 #include <windowsx.h>
-
-#pragma comment(lib, "dwmapi.lib")
-#pragma comment(lib, "user32.lib")
+// Note: Libraries are linked via CMakeLists.txt (dwmapi, user32)
 #endif
 
 QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
@@ -111,6 +109,11 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
             }
         }
     }
+#else
+    // Non-Windows platforms: no custom native event handling needed
+    Q_UNUSED(eventType);
+    Q_UNUSED(message);
+    Q_UNUSED(result);
 #endif
     return QMainWindow::nativeEvent(eventType, message, result);
 }

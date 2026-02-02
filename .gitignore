@@ -13,3 +13,4 @@ DerivedData
 *.pro.user
 /qalam/build
 /build
+/.cache

@@ -66,16 +66,20 @@ void TConsole::startCmd()
 #if defined(Q_OS_WIN)
     m_process->start("cmd.exe");
 #elif defined(Q_OS_MACOS)
-    QStringList args{};
-    args << "-i" << "-l"; // mean (interactive)
+    QStringList args;
+    args << "-i" << "-l"; // Interactive login shell
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("PROMPT_EOL_MARK", ""); // لإزاله علامة "٪" من نهاية السطر الجديد في الطرفية
+    env.insert("PROMPT_EOL_MARK", ""); // Remove '%' mark from zsh
     m_process->setProcessEnvironment(env);
     m_process->start("zsh", args);
 #elif defined(Q_OS_LINUX)
-    QStringList args{};
-    args << "-q" << "-c" << "bash" << "/dev/null"; // mean (interactive)
-    m_process->start("script", args);
+    QStringList args;
+    args << "-i"; // Interactive mode
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("TERM", "dumb"); // Disable advanced terminal features
+    env.insert("PS1", "\\u@\\h:\\w$ "); // Simple prompt
+    m_process->setProcessEnvironment(env);
+    m_process->start("/bin/bash", args);
 #endif
 }
 
@@ -188,17 +192,29 @@ void TConsole::flushPending() {
     {
         QMutexLocker locker(&m_pendingMutex);
         if (m_pending.isEmpty()) return;
-        items = m_pending;
+        items = std::move(m_pending);
         m_pending.clear();
     }
 
+    // Use incremental append instead of rebuilding entire document
+    QTextCursor cursor(m_output->document());
+    cursor.movePosition(QTextCursor::End);
+    
     for (const QString &line : items) {
+        cursor.insertText(line + "\n");
         m_buffer.append(line);
     }
-    while (m_buffer.size() > m_maxLines)
+    
+    // Trim buffer and document if needed
+    while (m_buffer.size() > m_maxLines) {
         m_buffer.pop_front();
-
-    m_output->setPlainText(m_buffer.join("\n"));
+        // Remove first line from document
+        QTextCursor trimCursor(m_output->document());
+        trimCursor.movePosition(QTextCursor::Start);
+        trimCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+        trimCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor); // include newline
+        trimCursor.removeSelectedText();
+    }
 
     if (m_autoscroll) {
         QScrollBar *sb = m_output->verticalScrollBar();
