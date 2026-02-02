@@ -46,8 +46,9 @@ void TActivityBar::setupUi()
     m_mainLayout->addStretch(1);  // Push settings to bottom
     m_mainLayout->addWidget(bottomSection);
     
-    // Default to Explorer view
-    setCurrentView(ViewType::Explorer);
+    // Start with no view selected (sidebar is hidden by default)
+    m_currentView = ViewType::None;
+    updateButtonStates();
 }
 
 QPushButton* TActivityBar::createButton(const QString &iconPath, const QString &tooltip, ViewType view)

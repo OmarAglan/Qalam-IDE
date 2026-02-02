@@ -763,9 +763,16 @@ void Qalam::loadFolder(const QString &path)
         fileTreeView->setVisible(true);
         fileTreeView->setRootIndex(fileSystemModel->index(path));
         
-        // Update new sidebar with folder path
+        // Update new sidebar with folder path and show it
         if (m_sidebar && m_sidebar->explorerView()) {
             m_sidebar->explorerView()->setRootPath(path);
+            m_sidebar->setCurrentView(TActivityBar::ViewType::Explorer);
+            m_sidebar->show();
+        }
+        
+        // Sync activity bar state
+        if (m_activityBar) {
+            m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
         }
         
         // Update breadcrumb project root
