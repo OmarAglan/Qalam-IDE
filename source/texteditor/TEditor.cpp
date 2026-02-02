@@ -474,7 +474,7 @@ void TEditor::updateFoldRegions() {
             block = block.next();
         }
     }
-    document()->markContentsDirty(0, document()->characterCount());
+    }
     viewport()->update();
 }
 
@@ -606,6 +606,12 @@ void TEditor::curserIndentation() {
 
         if (checkPos >= 0 and lineText.at(checkPos) == ':') {
             currentIndentation += "\t";
+        } else {
+            // Also indent after function or class definitions
+            QString trimmed = lineText.trimmed();
+            if (trimmed.startsWith("دالة ") || trimmed.startsWith("صنف ")) {
+                currentIndentation += "\t";
+            }
         }
     }
 
@@ -747,6 +753,23 @@ void TEditor::keyPressEvent(QKeyEvent *e) {
     if (handleAutoPairing(e)) {
         e->accept();
         return;
+    }
+
+    // RTL-Aware Word Navigation (Alt + Arrow Keys)
+    if (e->modifiers() & Qt::AltModifier) {
+        QTextCursor cursor = textCursor();
+        if (e->key() == Qt::Key_Left) {
+            cursor.movePosition(QTextCursor::WordLeft);
+            setTextCursor(cursor);
+            e->accept();
+            return;
+        }
+        if (e->key() == Qt::Key_Right) {
+            cursor.movePosition(QTextCursor::WordRight);
+            setTextCursor(cursor);
+            e->accept();
+            return;
+        }
     }
 
     // Handle Navigation for Live Update (Arrow Keys) ---
