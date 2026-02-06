@@ -4,14 +4,13 @@
 #include "TSearchPanel.h"
 #include "Constants.h"
 
-// VSCode-like UI components
+// VSCode-like UI components (needed to call methods on LayoutManager accessors)
 #include "TActivityBar.h"
 #include "TSidebar.h"
 #include "TStatusBar.h"
 #include "TPanelArea.h"
 #include "TBreadcrumb.h"
 #include "TExplorerView.h"
-#include "TSearchView.h"
 
 #include <QVBoxLayout>
 #include <QMessageBox>
@@ -24,8 +23,6 @@
 #include <QSettings>
 #include <QKeyEvent>
 #include <QInputDialog>
-#include <QSplitter>
-#include <QStatusBar>
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -49,6 +46,8 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     searchBar = new SearchPanel(this);
     searchBar->hide();
 
+    m_layoutManager = new LayoutManager(this, tabWidget, searchBar, this);
+
     // ===================================================================
     // الخطوة 2: إعداد النافذة وشريط القوائم
     // ===================================================================
@@ -69,15 +68,16 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     setting = new TSettings();
 
     // ===================================================================
-    // الخطوة 4: ربط الإشارات والمقابس
+    // الخطوة 4: إعداد التخطيط الجديد (VSCode-like)
+    // ===================================================================
+    m_layoutManager->setupLayout();
+
+    // ===================================================================
+    // الخطوة 5: ربط الإشارات والمقابس
     // ===================================================================
     connectSignals();
     onCurrentTabChanged();
-
-    // ===================================================================
-    // الخطوة 5: إعداد التخطيط الجديد (VSCode-like)
-    // ===================================================================
-    setupNewLayout();
+    syncOpenEditors();
     
     // ===================================================================
     // الخطوة 6: تحميل الملف المبدئي أو استعادة الجلسة السابقة
@@ -207,6 +207,45 @@ void Qalam::connectSignals()
         }
     });
     connect(m_fileManager, &FileManager::openEditorsChanged, this, &Qalam::syncOpenEditors);
+
+    // --- Layout component signals ---
+    auto *activityBar = m_layoutManager->activityBar();
+    auto *sidebar = m_layoutManager->sidebar();
+    auto *panelArea = m_layoutManager->panelArea();
+    auto *statusBar = m_layoutManager->statusBar();
+
+    connect(activityBar, &TActivityBar::viewChanged, this, &Qalam::onActivityViewChanged);
+
+    connect(activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
+        if (view == TActivityBar::ViewType::Settings) {
+            openSettings();
+            return;
+        }
+        if (!visible) {
+            m_layoutManager->sidebar()->hide();
+        } else {
+            m_layoutManager->sidebar()->show();
+            m_layoutManager->sidebar()->setCurrentView(view);
+        }
+    });
+
+    connect(sidebar, &TSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
+    connect(sidebar, &TSidebar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+
+    connect(statusBar, &TStatusBar::problemsClicked, this, [this]() {
+        m_layoutManager->panelArea()->setCurrentTab(TPanelArea::Tab::Problems);
+        m_layoutManager->panelArea()->show();
+    });
+
+    connect(panelArea, &TPanelArea::closeRequested, this, [this]() {
+        m_layoutManager->panelArea()->hide();
+    });
+
+    connect(panelArea, &TPanelArea::tabChanged, this, [this](TPanelArea::Tab tab) {
+        if (tab == TPanelArea::Tab::Terminal and m_layoutManager->panelArea()->terminal()) {
+            m_layoutManager->panelArea()->terminal()->setFocus();
+        }
+    });
 }
 
 void Qalam::closeEvent(QCloseEvent *event) {
@@ -328,54 +367,13 @@ void Qalam::findPrevText() {
 
 void Qalam::toggleConsole()
 {
-    if (!m_panelArea) return;
-
-    bool isVisible = !m_panelArea->isVisible();
-    m_panelArea->setVisible(isVisible);
-
-    if (isVisible) {
-        m_panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
-        if (m_panelArea->terminal()) {
-            m_panelArea->terminal()->setFocus();
-        }
-    } else {
-        if (TEditor* editor = currentEditor()) {
-            editor->setFocus();
-        }
-    }
+    m_layoutManager->toggleConsole(currentEditor());
 }
 
 void Qalam::loadFolder(const QString &path)
 {
     this->folderPath = path;
-    
-    if (!path.isEmpty() && QDir(path).exists()) {
-        // Update sidebar with folder path and show it
-        if (m_sidebar && m_sidebar->explorerView()) {
-            m_sidebar->explorerView()->setRootPath(path);
-            m_sidebar->setCurrentView(TActivityBar::ViewType::Explorer);
-            m_sidebar->show();
-        }
-        
-        // Sync activity bar state
-        if (m_activityBar) {
-            m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
-        }
-        
-        // Update breadcrumb project root
-        if (m_breadcrumb) {
-            m_breadcrumb->setProjectRoot(path);
-        }
-        
-        // Update status bar
-        if (m_statusBar) {
-            m_statusBar->setFolderOpen(true);
-        }
-    } else {
-        if (m_statusBar) {
-            m_statusBar->setFolderOpen(false);
-        }
-    }
+    m_layoutManager->loadFolder(path);
 }
 
 void Qalam::handleOpenFolderMenu()
@@ -388,19 +386,7 @@ void Qalam::handleOpenFolderMenu()
 
 void Qalam::toggleSidebar()
 {
-    if (!m_sidebar) return;
-
-    bool shouldBeVisible = !m_sidebar->isVisible();
-    m_sidebar->setVisible(shouldBeVisible);
-    
-    // Update activity bar state
-    if (m_activityBar) {
-        if (shouldBeVisible) {
-            m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
-        } else {
-            m_activityBar->setCurrentView(TActivityBar::ViewType::None);
-        }
-    }
+    m_layoutManager->toggleSidebar();
 }
 
 void Qalam::openSettings() {
@@ -472,14 +458,14 @@ void Qalam::updateCursorPosition()
         int column = cursor.columnNumber() + 1;
 
         // Update status bar
-        if (m_statusBar) {
-            m_statusBar->setCursorPosition(line, column);
+        if (m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->setCursorPosition(line, column);
         }
         
         // Update breadcrumb with current file
-        if (m_breadcrumb) {
+        if (m_layoutManager->breadcrumb()) {
             QString filePath = editor->property("filePath").toString();
-            m_breadcrumb->setFilePath(filePath);
+            m_layoutManager->breadcrumb()->setFilePath(filePath);
         }
     }
 }
@@ -500,13 +486,14 @@ void Qalam::runBaa() {
     }
 
     // Show the panel area with output tab
-    if (!m_panelArea) return;
-    m_panelArea->setCurrentTab(TPanelArea::Tab::Output);
-    m_panelArea->show();
-    m_panelArea->setCollapsed(false);
+    auto *panelArea = m_layoutManager->panelArea();
+    if (!panelArea) return;
+    panelArea->setCurrentTab(TPanelArea::Tab::Output);
+    panelArea->show();
+    panelArea->setCollapsed(false);
 
     // Delegate build to BuildManager
-    TConsole *console = m_panelArea->terminal();
+    TConsole *console = panelArea->terminal();
     m_buildManager->runBaa(filePath, console);
 }
 
@@ -597,148 +584,9 @@ void Qalam::updateWindowTitle() {
     setWindowModified(editor && editor->document()->isModified());
 }
 
-// ===================================================================
-// VSCode-like Layout Methods
-// ===================================================================
-
-void Qalam::setupNewLayout()
-{
-    // Create the UI components
-    m_activityBar = new TActivityBar(this);
-    m_sidebar = new TSidebar(this);
-    m_statusBar = new TStatusBar(this);
-    m_breadcrumb = new TBreadcrumb(this);
-    m_panelArea = new TPanelArea(this);
-    
-    // Connect Activity Bar signals
-    connect(m_activityBar, &TActivityBar::viewChanged, this, &Qalam::onActivityViewChanged);
-    
-    connect(m_activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
-        if (view == TActivityBar::ViewType::Settings) {
-            openSettings();
-            return;
-        }
-        if (!visible) {
-            m_sidebar->hide();
-        } else {
-            m_sidebar->show();
-            m_sidebar->setCurrentView(view);
-        }
-    });
-    
-    // Connect Sidebar signals
-    connect(m_sidebar, &TSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
-    connect(m_sidebar, &TSidebar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
-    
-    // Connect Status Bar signals
-    connect(m_statusBar, &TStatusBar::problemsClicked, this, [this]() {
-        m_panelArea->setCurrentTab(TPanelArea::Tab::Problems);
-        m_panelArea->show();
-    });
-    
-    // Connect Panel Area signals
-    connect(m_panelArea, &TPanelArea::closeRequested, this, [this]() {
-        m_panelArea->hide();
-    });
-    
-    connect(m_panelArea, &TPanelArea::tabChanged, this, [this](TPanelArea::Tab tab) {
-        if (tab == TPanelArea::Tab::Terminal && m_panelArea->terminal()) {
-            m_panelArea->terminal()->setFocus();
-        }
-    });
-    
-    // =========================================================
-    // Build the main layout - RTL for Arabic (Activity Bar on RIGHT)
-    // =========================================================
-    
-    QWidget *centralContainer = new QWidget(this);
-    centralContainer->setLayoutDirection(Qt::LeftToRight);
-    
-    QVBoxLayout *mainVLayout = new QVBoxLayout(centralContainer);
-    mainVLayout->setContentsMargins(0, 0, 0, 0);
-    mainVLayout->setSpacing(0);
-    
-    // Create horizontal layout for Editor + Sidebar + Activity Bar
-    QHBoxLayout *contentLayout = new QHBoxLayout();
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(0);
-    
-    // Create editor + panel vertical splitter
-    QSplitter *editorPanelSplitter = new QSplitter(Qt::Vertical);
-    editorPanelSplitter->setHandleWidth(1);
-    editorPanelSplitter->setStyleSheet("QSplitter::handle { background: #007acc; }");
-    
-    // Create editor area container with breadcrumb
-    QWidget *editorContainer = new QWidget();
-    QVBoxLayout *editorVLayout = new QVBoxLayout(editorContainer);
-    editorVLayout->setContentsMargins(0, 0, 0, 0);
-    editorVLayout->setSpacing(0);
-    
-    // Add breadcrumb above editor tabs
-    editorVLayout->addWidget(m_breadcrumb);
-    
-    // Add tabs and search bar to editor container
-    editorVLayout->addWidget(tabWidget, 1);
-    editorVLayout->addWidget(searchBar);
-    
-    // Add editor container and panel to splitter
-    editorPanelSplitter->addWidget(editorContainer);
-    editorPanelSplitter->addWidget(m_panelArea);
-    editorPanelSplitter->setSizes({700, 200});
-    
-    // Add widgets: Editor (left), Sidebar (middle-right), ActivityBar (far right)
-    contentLayout->addWidget(editorPanelSplitter, 1);
-    contentLayout->addWidget(m_sidebar);
-    contentLayout->addWidget(m_activityBar);
-    
-    // Add content layout to main vertical layout
-    mainVLayout->addLayout(contentLayout, 1);
-    
-    // Add status bar at bottom
-    mainVLayout->addWidget(m_statusBar);
-    
-    // Set the central widget
-    this->setCentralWidget(centralContainer);
-    
-    // Initial visibility
-    m_activityBar->show();
-    m_sidebar->hide();  // Start collapsed, like VSCode
-    m_statusBar->show();
-    m_breadcrumb->show();
-    m_panelArea->hide();  // Start collapsed, like VSCode
-    
-    // Set initial status bar values
-    m_statusBar->setCursorPosition(1, 1);
-    m_statusBar->setEncoding("UTF-8");
-    m_statusBar->setLineEnding("LF");
-    m_statusBar->setLanguage("Baa");
-    m_statusBar->setFolderOpen(false);
-    
-    // Hide the old QMainWindow status bar
-    QStatusBar* oldStatusBar = this->statusBar();
-    if (oldStatusBar) {
-        oldStatusBar->hide();
-    }
-    
-    // Initialize the panel terminal
-    if (m_panelArea->terminal()) {
-        m_panelArea->terminal()->setConsoleRTL();
-        m_panelArea->terminal()->startCmd();
-    }
-    
-    // Sync when tabs are added - populate initial open editors
-    syncOpenEditors();
-}
-
 void Qalam::onActivityViewChanged(TActivityBar::ViewType view)
 {
-    m_sidebar->setCurrentView(view);
-    m_sidebar->show();
-    
-    // Update the sidebar root path when switching to Explorer
-    if (view == TActivityBar::ViewType::Explorer && !folderPath.isEmpty()) {
-        m_sidebar->explorerView()->setRootPath(folderPath);
-    }
+    m_layoutManager->onActivityViewChanged(view, folderPath);
 }
 
 void Qalam::onSidebarFileSelected(const QString &filePath)
@@ -748,6 +596,7 @@ void Qalam::onSidebarFileSelected(const QString &filePath)
 
 void Qalam::syncOpenEditors()
 {
-    if (not m_sidebar or not m_sidebar->explorerView()) return;
-    m_sessionManager->syncOpenEditors(m_sidebar->explorerView());
+    auto *sidebar = m_layoutManager->sidebar();
+    if (not sidebar or not sidebar->explorerView()) return;
+    m_sessionManager->syncOpenEditors(sidebar->explorerView());
 }

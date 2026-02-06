@@ -6,15 +6,10 @@
 #include "FileManager.h"
 #include "BuildManager.h"
 #include "SessionManager.h"
+#include "LayoutManager.h"
 #include "../ui/QalamWindow.h"
 
 #include "TActivityBar.h"
-
-// Forward declarations for UI components
-class TSidebar;
-class TStatusBar;
-class TPanelArea;
-class TBreadcrumb;
 
 class Qalam : public QalamWindow
 {
@@ -60,7 +55,6 @@ private slots:
 
 private:
     TEditor *currentEditor();
-    void setupNewLayout();
     void connectSignals();
     void syncOpenEditors();
 
@@ -73,14 +67,8 @@ private:
     FileManager *m_fileManager{};
     BuildManager *m_buildManager{};
     SessionManager *m_sessionManager{};
+    LayoutManager *m_layoutManager{};
 
     SearchPanel *searchBar{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
-    
-    // VSCode-like UI components
-    TActivityBar *m_activityBar{};
-    TSidebar *m_sidebar{};
-    TStatusBar *m_statusBar{};
-    TPanelArea *m_panelArea{};
-    TBreadcrumb *m_breadcrumb{};
 };
