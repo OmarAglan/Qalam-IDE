@@ -103,14 +103,14 @@
 **Goal:** Eliminate leaks and fix performance bottlenecks  
 **Effort:** 2-3 days | **Impact:** High
 
-- [ ] 2.1 Remove `toPlainText()` from `performCompletion()` hot path (`TEditor.cpp`)
-- [ ] 2.2 Fix `TSettings` memory leak -- pass `this` as parent or use `unique_ptr` (`Qalam.cpp`)
-- [ ] 2.3 Fix `WelcomeWindow` leak -- set `WA_DeleteOnClose` or parent (`Qalam.cpp`, `main.cpp`)
-- [ ] 2.4 Replace `QStringList::pop_front()` with `QQueue`/`std::deque` in `TConsole`
-- [ ] 2.5 Cache themes in `ThemeManager` (static local)
-- [ ] 2.6 Implement proper shrink logic in `DynamicWordStrategy`
-- [ ] 2.7 Remove redundant `QString value` from `TToken`
-- [ ] 2.8 Fix double hash lookup in `highlightBlock` (use `find()`)
+- [x] 2.1 Remove `toPlainText()` from `performCompletion()` hot path (`TEditor.cpp`)
+- [x] 2.2 Fix `TSettings` memory leak -- pass `this` as parent or use `unique_ptr` (`Qalam.cpp`)
+- [x] 2.3 Fix `WelcomeWindow` leak -- set `WA_DeleteOnClose` or parent (`Qalam.cpp`, `main.cpp`)
+- [x] 2.4 Replace `QStringList::pop_front()` with batch removal in `TConsole`
+- [x] 2.5 Cache themes in `ThemeManager` (static local)
+- [x] 2.6 Implement proper shrink logic in `DynamicWordStrategy`
+- [ ] 2.7 Remove redundant `QString value` from `TToken` *(deferred -- low risk/reward)*
+- [x] 2.8 Fix double hash lookup in `highlightBlock` (use `find()`)
 
 ## Phase 3: Architecture Refactoring
 
@@ -188,7 +188,7 @@
 | Phase | Effort | Impact | Status |
 |-------|--------|--------|--------|
 | Phase 1: Stability | Low (1-2 days) | Critical | **Complete** |
-| Phase 2: Memory/Perf | Low-Medium (2-3 days) | High | Pending |
+| Phase 2: Memory/Perf | Low-Medium (2-3 days) | High | **Complete** |
 | Phase 3: Architecture | Medium (1-2 weeks) | High | Pending |
 | Phase 4: Code Quality | Low (1-2 days) | Medium | Pending |
 | Phase 5: Testing | Medium (1-2 weeks) | High | Pending |

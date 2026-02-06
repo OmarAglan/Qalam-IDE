@@ -1,52 +1,16 @@
 #include "AutoComplete.h"
+#include "../highlighter/TSyntaxDefinition.h"
 #include <QRegularExpression>
 #include <QSet>
 
 // --- Keyword Strategy ---
-// Based on Baa Language Specification (LANGUAGE.md)
-KeywordStrategy::KeywordStrategy() {
-    keywords = {
-        // Types (§3.1 - Variables & Types)
-        "صحيح",    // int64_t - Integer type
-        "نص",      // char* - String type
-        "منطقي",   // bool - Boolean type
-
-        // Constants (§4)
-        "ثابت",    // const - Constant modifier
-
-        // Boolean literals (§3.1)
-        "صواب",    // true
-        "خطأ",     // false
-
-        // Control flow - Conditionals (§7.1)
-        "إذا",     // if
-        "وإلا",    // else
-
-        // Control flow - Loops (§7.2, §7.3)
-        "طالما",   // while
-        "لكل",     // for
-
-        // Switch statement (§7.5)
-        "اختر",    // switch
-        "حالة",    // case
-        "افتراضي", // default
-
-        // Loop control (§7.4)
-        "توقف",    // break
-        "استمر",   // continue
-
-        // Functions (§5)
-        "إرجع",    // return
-
-        // Entry point (§5.4)
-        "الرئيسية" // main function name
-    };
-}
+// Reads from the single source of truth: LanguageDefinition::instance()
 
 QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, const QString &) {
     QVector<CompletionItem> items;
     if (prefix.isEmpty()) return items;
 
+    const auto &keywords = LanguageDefinition::instance().keywordList;
     for (const auto &k : keywords) {
         if (k.startsWith(prefix, Qt::CaseInsensitive)) {
             items.push_back(CompletionItem(k, k, "كلمة محجوزة", CompletionType::Keyword));
@@ -56,18 +20,13 @@ QVector<CompletionItem> KeywordStrategy::getSuggestions(const QString &prefix, c
 }
 
 // --- Built-ins Strategy ---
-// I/O Functions (§6 - Input/Output)
-BuiltinStrategy::BuiltinStrategy() {
-    builtins = {
-        "اطبع",  // print - Output statement (§6.1)
-        "اقرأ"   // read - Input statement (§6.2)
-    };
-}
+// Reads from the single source of truth: LanguageDefinition::instance()
 
 QVector<CompletionItem> BuiltinStrategy::getSuggestions(const QString &prefix, const QString &) {
     QVector<CompletionItem> items{};
     if (prefix.isEmpty()) return items;
 
+    const auto &builtins = LanguageDefinition::instance().builtinList;
     for (const auto &b : builtins) {
         if (b.startsWith(prefix, Qt::CaseInsensitive)) {
             items.push_back(CompletionItem(b, b, "دالة ضمن لغة باء", CompletionType::Builtin));
@@ -174,17 +133,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
 }
 
 // --- Preprocessor Strategy ---
-// Preprocessor directives (§2 - المعالج القبلي)
-PreprocessorStrategy::PreprocessorStrategy() {
-    directives = {
-        "#تضمين",       // include (§2.1)
-        "#تعريف",       // define (§2.2)
-        "#إذا_عرف",     // ifdef (§2.3)
-        "#وإلا",        // else (§2.3)
-        "#نهاية",       // endif (§2.3)
-        "#الغاء_تعريف"  // undef (§2.4)
-    };
-}
+// Reads from the single source of truth: LanguageDefinition::instance()
 
 QVector<CompletionItem> PreprocessorStrategy::getSuggestions(const QString &prefix, const QString &) {
     QVector<CompletionItem> items;
@@ -192,8 +141,8 @@ QVector<CompletionItem> PreprocessorStrategy::getSuggestions(const QString &pref
 
     // Check if prefix starts with # or matches directive name without #
     bool startsWithHash = prefix.startsWith('#') || prefix.startsWith(QString("#"));
-    QString searchPrefix = prefix;
 
+    const auto &directives = LanguageDefinition::instance().preprocessorList;
     for (const auto &d : directives) {
         bool matches = false;
 

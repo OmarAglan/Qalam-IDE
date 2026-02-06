@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 #include <QRegularExpression>
 
 class LanguageDefinition {
@@ -12,7 +13,15 @@ public:
     QRegularExpression numberPattern{};
     QRegularExpression hexPattern{};
 
+    // Lists for iteration (autocomplete, etc.)
+    QStringList keywordList{};
+    QStringList builtinList{};
+    QStringList preprocessorList{};
+
     LanguageDefinition();
+
+    // Singleton accessor -- single source of truth for all language data
+    static const LanguageDefinition& instance();
 };
 
 

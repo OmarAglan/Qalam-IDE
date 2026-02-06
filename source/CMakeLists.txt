@@ -1,6 +1,9 @@
 add_library(qalam_core STATIC
     # Text Editor
     texteditor/TEditor.cpp
+    texteditor/TBracketHandler.cpp
+    texteditor/TAutoSave.cpp
+    texteditor/TSnippetManager.cpp
     texteditor/highlighter/TLexer.cpp
     texteditor/highlighter/TSyntaxDefinition.cpp
     texteditor/highlighter/TSyntaxHighlighter.cpp

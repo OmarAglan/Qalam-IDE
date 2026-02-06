@@ -14,7 +14,10 @@
 #include "highlighter/ThemeManager.h"
 
 
-TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
+TEditor::TEditor(QWidget* parent)
+    : QPlainTextEdit(parent),
+      m_bracketHandler(this),
+      m_snippetManager(this) {
     setAcceptDrops(true);
     this->setStyleSheet(QString("QPlainTextEdit { background-color: %1; color: %2; }")
         .arg(Constants::Colors::EditorBackground)
@@ -55,11 +58,9 @@ TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
     auto theme = ThemeManager::getThemeByIndex(savedThemeIdx);
     updateHighlighterTheme(theme);
 
-    autoSaveTimer = new QTimer(this);
-    autoSaveTimer->setInterval(Constants::Timing::AutoSaveInterval);
-    connect(autoSaveTimer, &QTimer::timeout, this, &TEditor::performAutoSave);
-
-    connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::startAutoSave);
+    // Auto-save (delegated to TAutoSave helper)
+    m_autoSave = new TAutoSave(this, this);
+    connect(this->document(), &QTextDocument::contentsChanged, m_autoSave, &TAutoSave::onContentChanged);
     
     // Initial index build
     if (dynamicStrategy) {
@@ -660,41 +661,20 @@ QString TEditor::getCurrentLineIndentation(const QTextCursor &cursor) const {
 }
 
 
-
+/* ---------------------------------- Auto-Save (delegated) ---------------------------------- */
 
 void TEditor::startAutoSave() {
-    if (!autoSaveTimer->isActive()) {
-        autoSaveTimer->start();
-    }
+    m_autoSave->filePath = this->filePath;
+    m_autoSave->start();
 }
 
 void TEditor::stopAutoSave() {
-    autoSaveTimer->stop();
-}
-
-void TEditor::performAutoSave() {
-    QString path = this->filePath;
-    if (path.isEmpty() || !this->document()->isModified()) return;
-
-    QString backupPath = path + ".~";
-
-    QFile file(backupPath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream out(&file);
-        out << this->toPlainText();
-        file.close();
-    }
+    m_autoSave->stop();
 }
 
 void TEditor::removeBackupFile() {
-    QString path = this->filePath;
-    if (path.isEmpty()) return;
-
-    QString backupPath = path + ".~";
-    if (QFile::exists(backupPath)) {
-        QFile::remove(backupPath);
-    }
-    stopAutoSave();
+    m_autoSave->filePath = this->filePath;
+    m_autoSave->removeBackupFile();
 }
 
 
@@ -770,8 +750,8 @@ void TEditor::focusOutEvent(QFocusEvent *e) {
 
 void TEditor::keyPressEvent(QKeyEvent *e) {
 
-    // handleing Brackets and Quotes
-    if (handleAutoPairing(e)) {
+    // Bracket and quote auto-pairing (delegated to TBracketHandler)
+    if (m_bracketHandler.handleAutoPairing(e)) {
         e->accept();
         return;
     }
@@ -815,17 +795,18 @@ void TEditor::keyPressEvent(QKeyEvent *e) {
         }
     }
 
+    // Snippet navigation (delegated to TSnippetManager)
     if ((e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter)) {
-        if (!snippetTargets.isEmpty()) {
-            if (processSnippetNavigation()) {
+        if (m_snippetManager.hasActiveSnippet()) {
+            if (m_snippetManager.processSnippetNavigation()) {
                 e->accept();
                 return;
             }
         }
     }
 
-    if (e->key() == Qt::Key_Tab && !snippetTargets.isEmpty()) {
-        if (processSnippetNavigation()) {
+    if (e->key() == Qt::Key_Tab && m_snippetManager.hasActiveSnippet()) {
+        if (m_snippetManager.processSnippetNavigation()) {
             e->accept();
             return;
         }
@@ -883,7 +864,6 @@ void TEditor::performCompletion() {
 
     // RTL positioning: place popup to the left of cursor
     // Calculate position based on actual viewport/widget geometry
-    int viewportWidth = viewport()->width();
     int cursorX = cr.x();
     
     // In RTL mode, position popup so it appears to the left of the cursor
@@ -917,7 +897,7 @@ void TEditor::insertCompletion(const QString &completion, CompletionType type) {
         insertBuiltinFunction(completion, tc);
         break;
     case CompletionType::Snippet:
-        insertSnippet(completion, tc);
+        m_snippetManager.insertSnippet(completion, tc);
         break;
     case CompletionType::Keyword:
         insertWord(completion, tc);
@@ -940,210 +920,3 @@ void TEditor::insertBuiltinFunction(const QString& functionName, QTextCursor& tc
     // Perform the insertion
     setTextCursor(tc);
 }
-void TEditor::insertSnippet(const QString& snippet, QTextCursor& tc) {
-    QString textToInsert = snippet;
-
-    // Calculate indentation
-    // Get the full text of the current line to determine indentation
-    QTextBlock block = tc.block();
-    QString lineText = block.text();
-    QString baseIndentation{};
-    for (const QChar &ch : lineText) {
-        if (ch.isSpace()) baseIndentation.append(ch);
-        else break;
-    }
-
-    // Apply indentation to multi-line snippets
-    if (textToInsert.contains('\n')) {
-        QStringList lines = textToInsert.split('\n');
-        // Start from index 1 because index 0 is appended to the current line
-        // (which already has indentation on the left).
-        // Subsequent lines need the base indentation explicitly added.
-        for (int i = 1; i < lines.size(); ++i) {
-            lines[i] = baseIndentation + lines[i];
-        }
-        textToInsert = lines.join('\n');
-    }
-
-    // Perform the insertion
-    tc.insertText(textToInsert);
-    setTextCursor(tc);
-
-    // Reset snippet targets
-    snippetTargets.clear();
-
-    // Setup snippet navigation based on snippet content
-    if (snippet.contains("اسم_الدالة")) {
-        // Function snippet: "صحيح اسم_الدالة(صحيح معامل) {...}"
-        QTextCursor finder = textCursor();
-        finder = document()->find("اسم_الدالة", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "معامل" << "مرر";
-    }
-    else if (snippet.startsWith("صنف")) {
-        QTextCursor finder = textCursor();
-        finder = document()->find("اسم", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "مرر";
-    }
-    else if (snippet.startsWith("إذا")) {
-        // If snippet: "إذا (الشرط) {...}"
-        QTextCursor finder = textCursor();
-        finder = document()->find("الشرط", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "مرر";
-    }
-    else if (snippet.startsWith("لكل")) {
-        // For loop snippet: "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {...}"
-        QTextCursor finder = textCursor();
-        finder = document()->find("س", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "مرر";
-    }
-    else if (snippet.startsWith("طالما")) {
-        // While snippet: "طالما (الشرط) {...}"
-        QTextCursor finder = textCursor();
-        finder = document()->find("الشرط", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "مرر";
-    }
-    else if (snippet.startsWith("حاول")) {
-        QTextCursor finder = textCursor();
-        finder = document()->find("مرر", finder, QTextDocument::FindBackward);
-        if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "مرر";
-    }
-
-}
-
-
-bool TEditor::processSnippetNavigation() {
-    if (snippetTargets.isEmpty()) return false;
-    QString nextTarget = snippetTargets.first();
-    QTextCursor tc = textCursor();
-    QTextCursor found = document()->find(nextTarget, tc);
-    if (!found.isNull()) {
-        setTextCursor(found);
-        snippetTargets.removeFirst();
-        return true;
-    }
-    snippetTargets.clear();
-    return false;
-}
-
-bool TEditor::handleAutoPairing(QKeyEvent* e) {
-    QString text = e->text();
-
-    if (!text.isEmpty()) {
-        QChar typedChar = text.at(0);
-
-        // Handle opening brackets
-        if (typedChar == '(' || typedChar == '[' || typedChar == '{') {
-            QChar closingBracket;
-            if (typedChar == '(') closingBracket = ')';
-            else if (typedChar == '[') closingBracket = ']';
-            else closingBracket = '}';
-
-            return handleBracketCompletion(typedChar, closingBracket);
-        }
-        // Handle quotes
-        else if (typedChar == '\'' || typedChar == '"' || typedChar == '`') {
-                return handleQuoteCompletion(typedChar);
-        }
-        // Handle closing brackets (skip over existing ones)
-        else if (typedChar == ')' || typedChar == ']' || typedChar == '}' ||
-                 typedChar == '\'' || typedChar == '"' || typedChar == '`') {
-            return handleBracketSkip(typedChar);
-        }
-    }
-
-    return false;
-}
-
-bool TEditor::handleBracketCompletion(QChar openingBracket, QChar closingBracket) {
-    QTextCursor cursor = textCursor();
-
-    // Check if there's a selection
-    if (cursor.hasSelection()) {
-        // Wrap selection with brackets
-        QString selectedText = cursor.selectedText();
-        cursor.insertText(openingBracket + selectedText + closingBracket);
-
-        // Move cursor after the opening bracket to select the original text
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, selectedText.length() + 1);
-        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, selectedText.length());
-        setTextCursor(cursor);
-    } else {
-        // Insert both brackets and place cursor between them
-        cursor.insertText(QString(openingBracket) + closingBracket);
-        cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
-        setTextCursor(cursor);
-    }
-
-    return true;
-}
-
-bool TEditor::handleQuoteCompletion(QChar quoteChar) {
-    QTextCursor cursor = textCursor();
-    QTextDocument *doc = document();
-
-    // Get the character at cursor position
-    int pos = cursor.position();
-
-    // Check if there's a selection
-    if (cursor.hasSelection()) {
-        // Wrap selection with quotes
-        QString selectedText = cursor.selectedText();
-        cursor.insertText(quoteChar + selectedText + quoteChar);
-
-        // Move cursor after the opening quote to select the original text
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, selectedText.length() + 1);
-        cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, selectedText.length());
-        setTextCursor(cursor);
-        return true;
-    }
-
-    // Check if next character is the same quote (should skip)
-    QChar nextChar;
-    if (pos < doc->characterCount() - 1) {
-        nextChar = doc->characterAt(pos);
-        if (nextChar == quoteChar) {
-            // Just move cursor over the existing quote
-            cursor.movePosition(QTextCursor::Right);
-            setTextCursor(cursor);
-            return true;
-        }
-    }
-
-    // Check if we're inside a word (for smart quotes)
-    // Note: insideWord could be used for advanced smart quote behavior in future
-    Q_UNUSED(pos)
-    Q_UNUSED(doc)
-
-    // Insert the quote pair
-    cursor.insertText(QString(quoteChar) + quoteChar);
-    cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
-    setTextCursor(cursor);
-
-    return true;
-}
-
-bool TEditor::handleBracketSkip(QChar typedChar) {
-    QTextCursor cursor = textCursor();
-    QTextDocument *doc = document();
-    int pos = cursor.position();
-
-    // Check if the next character matches the typed closing bracket/quote
-    if (pos < doc->characterCount() - 1) {
-        QChar nextChar = doc->characterAt(pos);
-        if (nextChar == typedChar) {
-            // Just move the cursor over the existing bracket/quote
-            cursor.movePosition(QTextCursor::Right);
-            setTextCursor(cursor);
-            return true;
-        }
-    }
-
-    return false;
-}
-

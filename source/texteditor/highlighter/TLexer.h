@@ -54,6 +54,6 @@ public:
     int getFinalState() const { return finalState; }
 
 private:
-    LanguageDefinition langDef{};
+    const LanguageDefinition& langDef;
     int finalState{};
 };

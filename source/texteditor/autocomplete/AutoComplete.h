@@ -33,16 +33,12 @@ public:
 // --- Concrete Strategies ---
 
 class KeywordStrategy : public ICompletionStrategy {
-    QStringList keywords{};
 public:
-    KeywordStrategy();
     QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &text) override;
 };
 
 class BuiltinStrategy : public ICompletionStrategy {
-    QStringList builtins{};
 public:
-    BuiltinStrategy();
     QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &text) override;
 };
 
@@ -52,9 +48,7 @@ public:
 };
 
 class PreprocessorStrategy : public ICompletionStrategy {
-    QStringList directives{};
 public:
-    PreprocessorStrategy();
     QVector<CompletionItem> getSuggestions(const QString &prefix, const QString &text) override;
 };
 

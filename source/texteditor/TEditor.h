@@ -10,6 +10,9 @@
 #include "TSyntaxHighlighter.h"
 #include "AutoComplete.h"
 #include "AutoCompleteUI.h"
+#include "TBracketHandler.h"
+#include "TAutoSave.h"
+#include "TSnippetManager.h"
 
 
 class LineNumberArea;
@@ -41,7 +44,6 @@ public slots:
     void duplicateLine();
     void moveLineUp();
     void moveLineDown();
-    void performAutoSave();
     void updateHighlighterTheme(std::shared_ptr<SyntaxTheme>);
 
 protected:
@@ -73,8 +75,11 @@ private:
     void updateFoldRegions();
     void toggleFold(int blockNum);
 
+    // Extracted helpers
+    TBracketHandler m_bracketHandler;
+    TAutoSave *m_autoSave{};
+    TSnippetManager m_snippetManager;
 
-    QTimer *autoSaveTimer;
     QTimer *m_indexRebuildTimer{};
 
     friend class LineNumberArea;
@@ -83,19 +88,11 @@ private:
     CompletionModel *model{};
     std::vector<std::unique_ptr<ICompletionStrategy>> strategies{};
     DynamicWordStrategy* dynamicStrategy{};
-    QStringList snippetTargets{};
     QString textUnderCursor() const;
     void performCompletion();
-    bool processSnippetNavigation();
     void setupAutoComplete();
     void insertWord(const QString& completion, QTextCursor& tc);
     void insertBuiltinFunction(const QString& functionName, QTextCursor& tc);
-    void insertSnippet(const QString& snippet, QTextCursor& tc);
-    // Bracket auto-completion methods
-    bool handleAutoPairing(QKeyEvent* e);
-    bool handleBracketCompletion(QChar openingBracket, QChar closingBracket);
-    bool handleQuoteCompletion(QChar quoteChar);
-    bool handleBracketSkip(QChar typedChar);
 
 private slots:
     void updateLineNumberAreaWidth();

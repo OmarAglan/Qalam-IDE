@@ -156,7 +156,7 @@ std::unique_ptr<LexerState> StringState::clone() const {
 
 // ==================== Lexer ====================
 
-TLexer::TLexer() { finalState = StateMasks::Normal; }
+TLexer::TLexer() : langDef(LanguageDefinition::instance()) { finalState = StateMasks::Normal; }
 
 QVector<TToken> TLexer::tokenize(QStringView text, int initialState) {
     QVector<TToken> tokens;

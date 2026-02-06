@@ -42,6 +42,12 @@ LanguageDefinition::LanguageDefinition() {
         "#نهاية"       // Endif (§2.3)
     };
 
+    // Populate the lists for autocomplete / iteration
+    keywordList = keywords;
+    builtinList = builtins;
+    preprocessorList = preprocessors;
+
+    // Build the sets for fast lookup (lexer)
     keywordSet = QSet<QString>(keywords.begin(), keywords.end());
     builtinSet = QSet<QString>(builtins.begin(), builtins.end());
     magicSet = QSet<QString>(magics.begin(), magics.end());
@@ -50,4 +56,9 @@ LanguageDefinition::LanguageDefinition() {
     hexPattern = QRegularExpression(R"(\b0[xX][0-9a-fA-F]+\b)");
     // Enhanced number pattern to support Arabic-Indic numerals ٠-٩ (Integers Only)
     numberPattern = QRegularExpression(R"(\b[\d٠-٩]+\b)");
+}
+
+const LanguageDefinition& LanguageDefinition::instance() {
+    static const LanguageDefinition def;
+    return def;
 }
