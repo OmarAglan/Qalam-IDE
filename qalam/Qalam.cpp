@@ -22,14 +22,13 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCoreApplication>
-#include <QTextStream>
 #include <QApplication>
-#include <QHeaderView>
 #include <QSettings>
-#include <QProcess>
 #include <QKeyEvent>
 #include <QTimer>
 #include <QInputDialog>
+#include <QSplitter>
+#include <QStatusBar>
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -46,6 +45,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     tabWidget->setTabsClosable(true);
     tabWidget->setMovable(true);
     menuBar = new TMenuBar(this);
+    m_fileManager = new FileManager(tabWidget, this, this);
 
     searchBar = new SearchPanel(this);
     searchBar->hide();
@@ -77,11 +77,11 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     // ===================================================================
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
     QShortcut* saveShortcut = new QShortcut(QKeySequence::Save, this);
-    connect(saveShortcut, &QShortcut::activated, this, &Qalam::saveFile);
-    connect(menuBar, &TMenuBar::newRequested, this, &Qalam::newFile);
-    connect(menuBar, &TMenuBar::openFileRequested, this, [this](){this->openFile("");});
-    connect(menuBar, &TMenuBar::saveRequested, this, &Qalam::saveFile);
-    connect(menuBar, &TMenuBar::saveAsRequested, this, &Qalam::saveFileAs);
+    connect(saveShortcut, &QShortcut::activated, m_fileManager, &FileManager::saveFile);
+    connect(menuBar, &TMenuBar::newRequested, m_fileManager, &FileManager::newFile);
+    connect(menuBar, &TMenuBar::openFileRequested, this, [this](){m_fileManager->openFile("");});
+    connect(menuBar, &TMenuBar::saveRequested, m_fileManager, &FileManager::saveFile);
+    connect(menuBar, &TMenuBar::saveAsRequested, m_fileManager, &FileManager::saveFileAs);
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
     connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
@@ -93,6 +93,27 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     connect(searchBar, &SearchPanel::findText, this, &Qalam::findText);
     connect(searchBar, &SearchPanel::findPrevious, this, &Qalam::findPrevText);
     connect(searchBar, &SearchPanel::closed, this, &Qalam::hideFindBar);
+    
+    // Connect FileManager signals
+    connect(m_fileManager, &FileManager::fileStateChanged, this, &Qalam::updateWindowTitle);
+    connect(m_fileManager, &FileManager::fileStateChanged, this, [this]() {
+        // Update modification indicator on tab text
+        TEditor *editor = currentEditor();
+        if (editor) {
+            int index = tabWidget->indexOf(editor);
+            if (index != -1) {
+                bool modified = editor->document()->isModified();
+                QString currentText = tabWidget->tabText(index);
+                if (modified and not currentText.endsWith("[*]")) {
+                    tabWidget->setTabText(index, currentText + "[*]");
+                } else if (not modified and currentText.endsWith("[*]")) {
+                    tabWidget->setTabText(index, currentText.left(currentText.length() - 3));
+                }
+            }
+        }
+    });
+    connect(m_fileManager, &FileManager::openEditorsChanged, this, &Qalam::syncOpenEditors);
+    
     onCurrentTabChanged();
 
     QShortcut *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
@@ -129,9 +150,9 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     installEventFilter(this);
 
     if (!filePath.isEmpty()) {
-        openFile(filePath);
+        m_fileManager->openFile(filePath);
     } else {
-        newFile();
+        m_fileManager->newFile();
     }
 }
 
@@ -147,11 +168,11 @@ Qalam::~Qalam() {
 }
 
 void Qalam::closeEvent(QCloseEvent *event) {
-    SaveAction saveResult = needSave();
+    auto saveResult = m_fileManager->needSave();
 
-    if (saveResult == SaveAction::Save) {
-        saveFile();
-    } else if (saveResult == SaveAction::Cancel) {
+    if (saveResult == FileManager::SaveAction::Save) {
+        m_fileManager->saveFile();
+    } else if (saveResult == FileManager::SaveAction::Cancel) {
         event->ignore();
         return;
     }
@@ -282,138 +303,6 @@ void Qalam::toggleConsole()
     }
 }
 
-/* ----------------------------------- File Menu Button ----------------------------------- */
-
-Qalam::SaveAction Qalam::needSave() {
-    if (TEditor* editor = currentEditor()) {
-        if (editor->document()->isModified()) {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle("قلم");
-            msgBox.setText("تم التعديل على الملف.\n"    \
-                           "هل تريد حفظ التغييرات؟");
-            QPushButton *saveButton = msgBox.addButton("حفظ", QMessageBox::AcceptRole);
-            QPushButton *discardButton = msgBox.addButton("تجاهل", QMessageBox::DestructiveRole);
-            QPushButton *cancelButton = msgBox.addButton("إلغاء", QMessageBox::RejectRole);
-            msgBox.setDefaultButton(cancelButton);
-
-            QFont msgFont = this->font();
-            msgFont.setPointSize(10);
-            saveButton->setFont(msgFont);
-            discardButton->setFont(msgFont);
-            cancelButton->setFont(msgFont);
-
-            msgBox.exec();
-
-            QAbstractButton *clickedButton = msgBox.clickedButton();
-            if (clickedButton == saveButton) {
-                return SaveAction::Save;
-            } else if (clickedButton == discardButton) {
-                return SaveAction::Discard;
-            } else if (clickedButton == cancelButton) {
-                return SaveAction::Cancel;
-            }
-        }
-    }
-
-    return SaveAction::Discard;
-}
-
-void Qalam::newFile() {
-
-    TEditor* editor = currentEditor();
-    if (editor) {
-        SaveAction result = needSave();
-        if (result == SaveAction::Cancel) return;
-        if (result == SaveAction::Save) this->saveFile();
-    }
-
-    TEditor *newEditor = new TEditor(this);
-    tabWidget->addTab(newEditor, Constants::NewFileLabel);
-    tabWidget->setCurrentWidget(newEditor);
-
-    connect(newEditor, &TEditor::openRequest, this, [this](QString filePath){this->openFile(filePath);});
-    connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
-    updateWindowTitle();
-    syncOpenEditors();
-}
-
-void Qalam::openFile(QString filePath) {
-    if (currentEditor()) {
-        SaveAction result = needSave();
-        if (result == SaveAction::Cancel) return;
-        if (result == SaveAction::Save) this->saveFile();
-    }
-
-    if (filePath.isEmpty()) {
-        filePath = QFileDialog::getOpenFileName(this, "فتح ملف", "", "ملف باء (*.baa *.baahd);;All Files (*)");
-    }
-
-    if (!filePath.isEmpty()) {
-        for (int i = 0; i < tabWidget->count(); ++i) {
-            TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
-            if (editor && editor->property("filePath").toString() == filePath) {
-                tabWidget->setCurrentIndex(i);
-                return;
-            }
-        }
-
-        QFile file(filePath);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            QString content = in.readAll();
-            file.close();
-
-            TEditor *newEditor = new TEditor(this);
-            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
-            newEditor->setPlainText(content);
-            newEditor->setProperty("filePath", filePath);
-
-
-            QString backupPath = filePath + ".~";
-            if (QFile::exists(backupPath)) {
-                QMessageBox::StandardButton reply;
-                reply = QMessageBox::warning(this, "استعادة ملف",
-                                             "يبدو أن البرنامج أُغلق بشكل غير متوقع.\n"
-                                             "يوجد نسخة محفوظة تلقائيًا أحدث من الملف الأصلي.\n\n"
-                                             "هل تريد استعادتها؟",
-                                             QMessageBox::Yes | QMessageBox::No);
-                if (reply == QMessageBox::Yes) {
-                    QFile backup(backupPath);
-                    if (backup.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                        QTextStream in(&backup);
-                        newEditor->setPlainText(in.readAll());
-                        newEditor->document()->setModified(true);
-                        backup.close();
-                    }
-                } else {
-                    QFile::remove(backupPath);
-                }
-            }
-
-            connect(newEditor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
-
-            QFileInfo fileInfo(filePath);
-            tabWidget->addTab(newEditor, fileInfo.fileName());
-            tabWidget->setCurrentWidget(newEditor);
-            tabWidget->setTabToolTip(tabWidget->currentIndex(), filePath);
-            updateWindowTitle();
-            syncOpenEditors();
-
-
-            QSettings settings(Constants::OrgName, Constants::AppName);
-            QStringList recentFiles = settings.value(Constants::SettingsKeyRecentFiles).toStringList();
-            recentFiles.removeAll(filePath);
-            recentFiles.prepend(filePath);
-            while (recentFiles.size() > 10) {
-                recentFiles.removeLast();
-            }
-            settings.setValue(Constants::SettingsKeyRecentFiles, recentFiles);
-        } else {
-            QMessageBox::warning(this, "خطأ", "لا يمكن فتح الملف");
-        }
-    }
-}
-
 void Qalam::loadFolder(const QString &path)
 {
     this->folderPath = path;
@@ -472,76 +361,6 @@ void Qalam::toggleSidebar()
     }
 }
 
-void Qalam::saveFile() {
-    TEditor *editor = currentEditor();
-    if (!editor) return;
-
-    QString filePath = editor->property("filePath").toString();
-
-    QString content = editor->toPlainText();
-
-    if (filePath.isEmpty()) {
-        saveFileAs();
-        return;
-    } else {
-        QFile file(filePath);
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-            QTextStream out(&file);
-            out << content;
-            file.close();
-            editor->document()->setModified(false);
-
-            int index = tabWidget->indexOf(editor);
-            if (index != -1) {
-                QFileInfo fileInfo(filePath);
-                tabWidget->setTabText(index, fileInfo.fileName());
-            }
-            editor->removeBackupFile();
-            updateWindowTitle();
-            return ;
-        } else {
-            QMessageBox::warning(this, "خطأ", "لا يمكن حفظ الملف");
-            return;
-        }
-    }
-}
-
-void Qalam::saveFileAs() {
-    TEditor *editor = currentEditor();
-    if (!editor) return ;
-
-    QString content = editor->toPlainText();
-    QString currentPath = editor->property("filePath").toString();
-    QString currentName = currentPath.isEmpty() ? "ملف جديد.baa" : QFileInfo(currentPath).fileName();
-    QString fileName = QFileDialog::getSaveFileName(this, "حفظ الملف", currentName, "ملف باء (*.baa);;مكتبة باء(*.baahd);;All Files (*)");
-
-    if (!fileName.isEmpty()) {
-        QFile file(fileName);
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-            QTextStream out(&file);
-            out << content;
-            file.close();
-
-            editor->setProperty("filePath", fileName);
-
-            editor->document()->setModified(false);
-
-            int index = tabWidget->indexOf(editor);
-            if (index != -1) {
-                QFileInfo fileInfo(fileName);
-                tabWidget->setTabText(index, fileInfo.fileName());
-            }
-
-            updateWindowTitle();
-            return ;
-        } else {
-            QMessageBox::warning(this, "خطأ", "لا يمكن حفظ الملف");
-            return ;
-        }
-    }
-    return ;
-}
-
 void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
  
@@ -570,12 +389,12 @@ void Qalam::openSettings() {
 
 
 void Qalam::exitApp() {
-    SaveAction result = needSave();
-    if (result == SaveAction::Cancel) {
+    auto result = m_fileManager->needSave();
+    if (result == FileManager::SaveAction::Cancel) {
         return;
     }
-    else if (result == SaveAction::Save) {
-        this->saveFile();
+    else if (result == FileManager::SaveAction::Save) {
+        m_fileManager->saveFile();
         return;
     }
 
@@ -633,7 +452,7 @@ void Qalam::runBaa() {
     QString filePath = editor->property("filePath").toString();
     if (filePath.isEmpty() || editor->document()->isModified()) {
         QMessageBox::warning(this, "تنبيه", "يجب حفظ الملف قبل التشغيل.");
-        saveFile();
+        m_fileManager->saveFile();
         filePath = editor->property("filePath").toString();
         if (filePath.isEmpty() || editor->document()->isModified()) return;
     }
@@ -749,14 +568,14 @@ void Qalam::closeTab(int index)
     TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(index));
     if (!editor) return;
 
-    if (editor && editor->document()->isModified()) {
-        SaveAction saveResult = needSave();
+    if (editor and editor->document()->isModified()) {
+        auto saveResult = m_fileManager->needSave();
 
-        if (saveResult == SaveAction::Cancel) {
+        if (saveResult == FileManager::SaveAction::Cancel) {
             return;
         }
-        else if (saveResult == SaveAction::Save) {
-            this->saveFile();
+        else if (saveResult == FileManager::SaveAction::Save) {
+            m_fileManager->saveFile();
             return;
         }
 
@@ -814,22 +633,6 @@ void Qalam::updateWindowTitle() {
     }
     setWindowTitle(title);
     setWindowModified(editor && editor->document()->isModified());
-}
-
-void Qalam::onModificationChanged(bool modified) {
-    updateWindowTitle();
-    TEditor* editor = currentEditor();
-    if (editor) {
-        int index = tabWidget->indexOf(editor);
-        if (index != -1) {
-            QString currentText = tabWidget->tabText(index);
-            if (modified && !currentText.endsWith("[*]")) {
-                tabWidget->setTabText(index, currentText + "[*]");
-            } else if (!modified && currentText.endsWith("[*]")) {
-                tabWidget->setTabText(index, currentText.left(currentText.length() - 3));
-            }
-        }
-    }
 }
 
 // ===================================================================
@@ -981,7 +784,7 @@ void Qalam::onActivityViewChanged(int viewType)
 
 void Qalam::onSidebarFileSelected(const QString &filePath)
 {
-    openFile(filePath);
+    m_fileManager->openFile(filePath);
 }
 
 void Qalam::syncOpenEditors()

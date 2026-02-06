@@ -28,6 +28,8 @@ add_library(qalam_core STATIC
     ui/TBreadcrumb.cpp
     ui/TPanelArea.cpp
     ui/TStatusBar.cpp
+    # Managers
+    managers/FileManager.cpp
 )
 
 target_include_directories(qalam_core PUBLIC
@@ -43,6 +45,7 @@ target_include_directories(qalam_core PUBLIC
     settings
     sidebar
     ui
+    managers
 )
 
 target_link_libraries(qalam_core PUBLIC Qt6::Widgets Qt6::Gui Qt6::Core)

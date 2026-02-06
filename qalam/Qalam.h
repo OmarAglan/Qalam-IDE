@@ -4,6 +4,7 @@
 #include "TMenu.h"
 #include "TSearchPanel.h"
 #include "ProcessWorker.h"
+#include "FileManager.h"
 #include <QPointer>
 #include "../ui/QalamWindow.h"
 
@@ -23,21 +24,11 @@ public:
     ~Qalam();
     void loadFolder(const QString &folderPath);
 
-    /// Return values for the save confirmation dialog
-    enum class SaveAction {
-        Cancel,   ///< User cancelled the operation
-        Save,     ///< User chose to save
-        Discard   ///< User chose to discard changes
-    };
-
 protected:
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
+
 private slots:
-    void newFile();
-    void openFile(QString);
-    void saveFile();
-    void saveFileAs();
     void handleOpenFolderMenu();
     void openSettings();
     void exitApp();
@@ -46,7 +37,6 @@ private slots:
     void aboutQalam();
 
     void updateWindowTitle();
-    void onModificationChanged(bool modified);
     void closeTab(int index);
     void toggleSidebar();
 
@@ -68,7 +58,6 @@ private slots:
     void onSidebarFileSelected(const QString &filePath);
 
 private:
-    SaveAction needSave();
     TEditor *currentEditor();
     void setupNewLayout();
     void syncOpenEditors();
@@ -78,6 +67,8 @@ private:
     TMenuBar *menuBar{};
     TSettings *setting{};
     QString folderPath{};
+
+    FileManager *m_fileManager{};
 
     QPointer<ProcessWorker> worker;
     QThread* buildThread = nullptr;
