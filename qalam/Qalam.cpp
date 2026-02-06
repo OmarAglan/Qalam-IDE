@@ -581,9 +581,7 @@ void Qalam::setupNewLayout()
     m_panelArea = new TPanelArea(this);
     
     // Connect Activity Bar signals
-    connect(m_activityBar, &TActivityBar::viewChanged, this, [this](TActivityBar::ViewType view) {
-        onActivityViewChanged(static_cast<int>(view));
-    });
+    connect(m_activityBar, &TActivityBar::viewChanged, this, &Qalam::onActivityViewChanged);
     
     connect(m_activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
         if (view == TActivityBar::ViewType::Settings) {
@@ -702,9 +700,8 @@ void Qalam::setupNewLayout()
     syncOpenEditors();
 }
 
-void Qalam::onActivityViewChanged(int viewType)
+void Qalam::onActivityViewChanged(TActivityBar::ViewType view)
 {
-    auto view = static_cast<TActivityBar::ViewType>(viewType);
     m_sidebar->setCurrentView(view);
     m_sidebar->show();
     

@@ -7,8 +7,9 @@
 #include "BuildManager.h"
 #include "../ui/QalamWindow.h"
 
+#include "TActivityBar.h"
+
 // Forward declarations for UI components
-class TActivityBar;
 class TSidebar;
 class TStatusBar;
 class TPanelArea;
@@ -53,7 +54,7 @@ private slots:
     void goToLine();
     
     // VSCode-like component slots
-    void onActivityViewChanged(int viewType);
+    void onActivityViewChanged(TActivityBar::ViewType view);
     void onSidebarFileSelected(const QString &filePath);
 
 private:

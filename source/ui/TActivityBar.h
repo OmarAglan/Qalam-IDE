@@ -49,3 +49,5 @@ private:
     QVBoxLayout *m_topLayout = nullptr;
     QVBoxLayout *m_bottomLayout = nullptr;
 };
+
+Q_DECLARE_METATYPE(TActivityBar::ViewType)

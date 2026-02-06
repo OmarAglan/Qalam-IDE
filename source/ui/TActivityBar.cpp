@@ -63,7 +63,7 @@ QPushButton* TActivityBar::createButton(const QString &iconPath, const QString &
     btn->setToolTip(tooltip);
     btn->setCheckable(true);
     btn->setCursor(Qt::PointingHandCursor);
-    btn->setProperty("viewType", static_cast<int>(view));
+    btn->setProperty("viewType", QVariant::fromValue(view));
     
     connect(btn, &QPushButton::clicked, this, &TActivityBar::onButtonClicked);
     
@@ -76,7 +76,7 @@ void TActivityBar::onButtonClicked()
     QPushButton *btn = qobject_cast<QPushButton*>(sender());
     if (!btn) return;
     
-    ViewType clickedView = static_cast<ViewType>(btn->property("viewType").toInt());
+    ViewType clickedView = btn->property("viewType").value<ViewType>();
     
     // Settings is special - doesn't toggle sidebar, just emits signal
     if (clickedView == ViewType::Settings) {
