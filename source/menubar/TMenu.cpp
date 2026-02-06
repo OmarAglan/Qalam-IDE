@@ -35,17 +35,17 @@ TMenuBar::TMenuBar(QWidget* parent) {
     helpMenu->setMinimumWidth(200);
 
     //QAction* folderAction = new QAction("فتح مجلد", parent);
-    QAction* newAction = new QAction("جديد", parent);
-    QAction* openFileAction = new QAction("فتح ملف", parent);
-    QAction* openFolderAction = new QAction("فتح مجلد", parent);
-    QAction* saveAction = new QAction("حفظ", parent);
-    QAction* saveAsAction = new QAction("حفظ باسم", parent);
-    QAction* SettingsAction = new QAction("الإعدادات", parent);
-    QAction* exitAction = new QAction("خروج", parent);
+    newAction = new QAction("جديد", parent);
+    openFileAction = new QAction("فتح ملف", parent);
+    openFolderAction = new QAction("فتح مجلد", parent);
+    saveAction = new QAction("حفظ", parent);
+    saveAsAction = new QAction("حفظ باسم", parent);
+    SettingsAction = new QAction("الإعدادات", parent);
+    exitAction = new QAction("خروج", parent);
 
-    QAction* runAction = new QAction("تشغيل", parent);
+    runAction = new QAction("تشغيل", parent);
 
-    QAction* aboutAction = new QAction("عن المحرر", parent);
+    aboutAction = new QAction("عن المحرر", parent);
 
 
     //fileMenu->addAction(folderAction);

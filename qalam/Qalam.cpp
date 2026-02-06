@@ -459,11 +459,11 @@ Qalam::~Qalam() {
 }
 
 void Qalam::closeEvent(QCloseEvent *event) {
-    int saveResult = needSave();
+    SaveAction saveResult = needSave();
 
-    if (saveResult == 1) {
+    if (saveResult == SaveAction::Save) {
         saveFile();
-    } else if (saveResult == 0) {
+    } else if (saveResult == SaveAction::Cancel) {
         event->ignore();
         return;
     }
@@ -624,7 +624,7 @@ void Qalam::toggleConsole()
 
 /* ----------------------------------- File Menu Button ----------------------------------- */
 
-int Qalam::needSave() {
+Qalam::SaveAction Qalam::needSave() {
     if (TEditor* editor = currentEditor()) {
         if (editor->document()->isModified()) {
             QMessageBox msgBox;
@@ -646,25 +646,25 @@ int Qalam::needSave() {
 
             QAbstractButton *clickedButton = msgBox.clickedButton();
             if (clickedButton == saveButton) {
-                return 1;
+                return SaveAction::Save;
             } else if (clickedButton == discardButton) {
-                return 2;
+                return SaveAction::Discard;
             } else if (clickedButton == cancelButton) {
-                return 0;
+                return SaveAction::Cancel;
             }
         }
     }
 
-    return 2;
+    return SaveAction::Discard;
 }
 
 void Qalam::newFile() {
 
     TEditor* editor = currentEditor();
     if (editor) {
-        int isNeedSave = needSave();
-        if (!isNeedSave) return;
-        if (isNeedSave == 1) this->saveFile();
+        SaveAction result = needSave();
+        if (result == SaveAction::Cancel) return;
+        if (result == SaveAction::Save) this->saveFile();
     }
 
     TEditor *newEditor = new TEditor(this);
@@ -679,9 +679,9 @@ void Qalam::newFile() {
 
 void Qalam::openFile(QString filePath) {
     if (currentEditor()) {
-        int isNeedSave = needSave();
-        if (!isNeedSave) return;
-        if (isNeedSave == 1) this->saveFile();
+        SaveAction result = needSave();
+        if (result == SaveAction::Cancel) return;
+        if (result == SaveAction::Save) this->saveFile();
     }
 
     if (filePath.isEmpty()) {
@@ -732,7 +732,6 @@ void Qalam::openFile(QString filePath) {
                 }
             }
 
-            connect(newEditor->document(), &QTextDocument::modificationChanged, this, &Qalam::onModificationChanged);
             connect(newEditor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
 
             QFileInfo fileInfo(filePath);
@@ -800,11 +799,7 @@ void Qalam::handleOpenFolderMenu()
     QString folderPath = QFileDialog::getExistingDirectory(this, "اختر مجلد", QDir::homePath());
     if (folderPath.isEmpty()) return;
 
-    QFileSystemModel *model = new QFileSystemModel(this);
-    model->setFilter(QDir::NoDotAndDotDot | QDir::AllEntries);
-    model->setRootPath(folderPath);
     loadFolder(folderPath);
-
 }
 
 void Qalam::toggleSidebar()
@@ -923,31 +918,31 @@ void Qalam::openSettings() {
             TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
             if (editor) editor->updateFontSize(size);
         }
-    });
+    }, Qt::UniqueConnection);
     connect(setting, &TSettings::fontTypeChanged, this, [this](QString font){
         for (int i = 0; i < tabWidget->count(); ++i) {
             TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
             if (editor) editor->updateFontType(font);
         }
-    });
+    }, Qt::UniqueConnection);
     connect(setting, &TSettings::highlighterThemeChanged, this, [this](int themeIdx){
         auto theme = ThemeManager::getThemeByIndex(themeIdx);
         for (int i = 0; i < tabWidget->count(); ++i) {
             TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
             if (editor) editor->updateHighlighterTheme(theme);
         }
-    });
+    }, Qt::UniqueConnection);
  
     setting->show();
 }
 
 
 void Qalam::exitApp() {
-    int isNeedSave = needSave();
-    if (!isNeedSave) {
+    SaveAction result = needSave();
+    if (result == SaveAction::Cancel) {
         return;
     }
-    else if (isNeedSave == 1) {
+    else if (result == SaveAction::Save) {
         this->saveFile();
         return;
     }
@@ -963,8 +958,15 @@ void Qalam::onCurrentTabChanged()
     updateCursorPosition();
 
     TEditor* editor = currentEditor();
+
+    // Disconnect the previous editor to avoid accumulating connections
+    if (m_lastConnectedEditor) {
+        disconnect(m_lastConnectedEditor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
+    }
+
     if (editor) {
         connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
+        m_lastConnectedEditor = editor;
     }
 }
 
@@ -1228,12 +1230,12 @@ void Qalam::closeTab(int index)
     if (!editor) return;
 
     if (editor && editor->document()->isModified()) {
-        int saveResult = needSave();
+        SaveAction saveResult = needSave();
 
-        if (!saveResult) {
+        if (saveResult == SaveAction::Cancel) {
             return;
         }
-        else if (saveResult == 1) {
+        else if (saveResult == SaveAction::Save) {
             this->saveFile();
             return;
         }
@@ -1452,12 +1454,6 @@ void Qalam::setupNewLayout()
         m_panelArea->terminal()->setConsoleRTL();
         m_panelArea->terminal()->startCmd();
     }
-    
-    // Sync Open Editors with tab widget
-    connect(tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
-        // Update status bar and breadcrumb handled elsewhere
-        Q_UNUSED(index);
-    });
     
     // Sync when tabs are added - populate initial open editors
     syncOpenEditors();

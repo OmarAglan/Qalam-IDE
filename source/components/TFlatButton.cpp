@@ -1,14 +1,14 @@
 #include "TFlatButton.h"
 
 
-TFlatButton::TFlatButton(QWidget *parent, QString lable) {
-    Q_UNUSED(parent)
+TFlatButton::TFlatButton(QWidget *parent, QString label)
+    : QPushButton(parent) {
     setFlat(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setMinimumHeight(30);
     setFont(QFont("Tajawal", 14, QFont::Thin));
     setCursor(Qt::PointingHandCursor);
-    setText(lable);
+    setText(label);
 }
 
 void TFlatButton::enterEvent(QEnterEvent *event) {

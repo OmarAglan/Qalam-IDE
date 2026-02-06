@@ -25,6 +25,13 @@ public:
     ~Qalam();
     void loadFolder(const QString &folderPath);
 
+    /// Return values for the save confirmation dialog
+    enum class SaveAction {
+        Cancel,   ///< User cancelled the operation
+        Save,     ///< User chose to save
+        Discard   ///< User chose to discard changes
+    };
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
@@ -64,7 +71,7 @@ private slots:
     void onSidebarFileSelected(const QString &filePath);
 
 private:
-    int needSave();
+    SaveAction needSave();
     TEditor *currentEditor();
     void setupNewLayout();  // New method for VSCode-like layout
     void syncOpenEditors();  // Sync Open Editors section with tabs
@@ -97,6 +104,7 @@ private:
     QProcess *alifProcess{};
     QProcess *currentBaaProcess{};
     SearchPanel *searchBar{};
+    TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
     
     // New VSCode-like UI components
     TActivityBar *m_activityBar{};
