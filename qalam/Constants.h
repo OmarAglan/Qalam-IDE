@@ -76,6 +76,7 @@ namespace Constants {
         // Selection
         constexpr const char* Selection = "#1f6feb55";
         constexpr const char* SelectionHighlight = "#1f6feb26";
+        constexpr const char* CurrentLineHighlight = "#171824f0"; // rgba(23, 24, 36, 240)
 
         // Inputs
         constexpr const char* InputBackground = "#0d1117";

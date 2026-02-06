@@ -1,4 +1,5 @@
 #include "TSnippetManager.h"
+#include <QTextBlock>
 #include <QTextDocument>
 
 TSnippetManager::TSnippetManager(QPlainTextEdit *editor) : m_editor(editor) {}

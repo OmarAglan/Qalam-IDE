@@ -1,5 +1,6 @@
 #include "TConsole.h"
 #include "Constants.h"
+#include "ui/QalamTheme.h"
 #include <QVBoxLayout>
 #include <QScrollBar>
 #include <QTextCursor>
@@ -30,9 +31,7 @@ TConsole::TConsole(QWidget *parent)
     m_output->setFont(f);
     m_input->setFont(f);
 
-    setStyleSheet(QString("QWidget {background-color: %1; color: %2;}")
-        .arg(Constants::Colors::ConsoleBackground)
-        .arg(Constants::Colors::ConsoleText));
+    setStyleSheet(QalamTheme::consoleStyleSheet());
 
     auto *lay = new QVBoxLayout(this);
     lay->setContentsMargins(0,0,0,0);

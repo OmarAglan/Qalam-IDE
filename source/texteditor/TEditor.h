@@ -13,6 +13,7 @@
 #include "TBracketHandler.h"
 #include "TAutoSave.h"
 #include "TSnippetManager.h"
+#include "Constants.h"
 
 
 class LineNumberArea;
@@ -107,13 +108,12 @@ signals:
 class LineNumberArea : public QWidget {
 public:
     LineNumberArea(TEditor* editor) : QWidget(editor), tEditor(editor) {
-        this->setStyleSheet(
+        this->setStyleSheet(QString(
             "QWidget {"
-            "   border-left: 1px solid #10a8f4;"
+            "   border-left: 1px solid %1;"
             "   border-top-left-radius: 9px;"
             "   border-bottom-left-radius: 9px;"
-            "}"
-        );
+            "}").arg(Constants::Colors::LineNumberBorder));
     }
 
     QSize sizeHint() const override {

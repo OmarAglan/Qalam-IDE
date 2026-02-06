@@ -12,6 +12,7 @@
 #include <QFile>
 #include "Constants.h"
 #include "highlighter/ThemeManager.h"
+#include "ui/QalamTheme.h"
 
 
 TEditor::TEditor(QWidget* parent)
@@ -19,9 +20,7 @@ TEditor::TEditor(QWidget* parent)
       m_bracketHandler(this),
       m_snippetManager(this) {
     setAcceptDrops(true);
-    this->setStyleSheet(QString("QPlainTextEdit { background-color: %1; color: %2; }")
-        .arg(Constants::Colors::EditorBackground)
-        .arg(Constants::Colors::TextSecondary));
+    this->setStyleSheet(QalamTheme::editorStyleSheet());
     this->setTabStopDistance(32);
 
     QTextDocument* editorDocument = this->document();
@@ -296,12 +295,16 @@ void TEditor::contextMenuEvent(QContextMenuEvent *event)
     menu->addAction(duplicateAction);
 
 
-    menu->setStyleSheet(
-        "QMenu { background-color: #252526; color: #cccccc; border: 1px solid #454545; }"
+    menu->setStyleSheet(QString(
+        "QMenu { background-color: %1; color: %2; border: 1px solid %3; }"
         "QMenu::item { padding: 5px 20px; background-color: transparent; }"
-        "QMenu::item:selected { background-color: #094771; color: #ffffff; }"
-        "QMenu::separator { height: 1px; background: #454545; margin: 5px 0; }"
-        );
+        "QMenu::item:selected { background-color: %4; color: %5; }"
+        "QMenu::separator { height: 1px; background: %3; margin: 5px 0; }")
+        .arg(Constants::Colors::MenuBackground)
+        .arg(Constants::Colors::TextSecondary)
+        .arg(Constants::Colors::Border)
+        .arg(Constants::Colors::ListActiveBackground)
+        .arg(Constants::Colors::TextPrimary));
 
     menu->exec(event->globalPos());
 
@@ -364,7 +367,7 @@ void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
         if (block.isVisible() && bottom >= event->rect().top()) {
             QString number = QString::number(blockNumber + 1);
 
-            painter.setPen(QColor(200, 200, 200));
+            painter.setPen(QColor(Constants::Colors::TextMuted));
 
             painter.drawText(12, top, lineNumberArea->width(), fontMetrics().height(),
                                      Qt::AlignRight | Qt::AlignVCenter, number);
@@ -385,7 +388,7 @@ void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
                         << QPoint(lineNumberArea->width() - 6, midY + 4);
                     }
 
-                    painter.setBrush(QColor("#10a8f4"));
+                    painter.setBrush(QColor(Constants::Colors::Accent));
                     painter.setPen(Qt::NoPen);
                     painter.drawPolygon(arrow);
                 }
@@ -405,7 +408,7 @@ void TEditor::highlightCurrentLine() {
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
 
-        QColor lineColor = QColor(23, 24, 36, 240);
+        QColor lineColor = QColor(Constants::Colors::CurrentLineHighlight);
 
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
