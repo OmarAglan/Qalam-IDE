@@ -1,9 +1,63 @@
 #include "TSyntaxDefinition.h"
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 // ==================== Language Definition ====================
 
 LanguageDefinition::LanguageDefinition() {
-    QStringList keywords = {
+    if (!loadFromJson(":/lang/resources/baa-language.json")) {
+        loadDefaults();
+    }
+    buildSets();
+}
+
+bool LanguageDefinition::loadFromJson(const QString &resourcePath) {
+    QFile file(resourcePath);
+    if (!file.open(QIODevice::ReadOnly)) return false;
+
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &err);
+    file.close();
+    if (err.error != QJsonParseError::NoError or !doc.isObject()) return false;
+
+    QJsonObject root = doc.object();
+
+    // Keywords
+    for (const QJsonValue &v : root["keywords"].toArray())
+        keywordList << v.toString();
+
+    // Builtins
+    for (const QJsonValue &v : root["builtins"].toArray())
+        builtinList << v.toString();
+
+    // Preprocessors
+    for (const QJsonValue &v : root["preprocessors"].toArray())
+        preprocessorList << v.toString();
+
+    // Magics (optional)
+    QStringList magics;
+    for (const QJsonValue &v : root["magics"].toArray())
+        magics << v.toString();
+    magicSet = QSet<QString>(magics.begin(), magics.end());
+
+    // Regex patterns
+    QJsonObject patterns = root["patterns"].toObject();
+    hexPattern = QRegularExpression(patterns["hex"].toString(R"(\b0[xX][0-9a-fA-F]+\b)"));
+    numberPattern = QRegularExpression(patterns["number"].toString(R"(\b[\d٠-٩]+\b)"));
+
+    return !keywordList.isEmpty(); // sanity check
+}
+
+void LanguageDefinition::buildSets() {
+    keywordSet = QSet<QString>(keywordList.begin(), keywordList.end());
+    builtinSet = QSet<QString>(builtinList.begin(), builtinList.end());
+    preprocessorSet = QSet<QString>(preprocessorList.begin(), preprocessorList.end());
+}
+
+void LanguageDefinition::loadDefaults() {
+    keywordList = {
         // Types (§3.1)
         "صحيح", "نص", "منطقي",
         // Constants (§4)
@@ -24,16 +78,12 @@ LanguageDefinition::LanguageDefinition() {
         "الرئيسية"
     };
 
-    QStringList builtins = {
+    builtinList = {
         // I/O (§6)
         "اطبع", "اقرأ"
     };
 
-    QStringList magics = {
-        // Reserved for future use or specific magic methods if any
-    };
-
-    QStringList preprocessors = {
+    preprocessorList = {
         "#تضمين",      // Include (§2.1)
         "#تعريف",      // Define (§2.2)
         "#الغاء_تعريف", // Undefine (§2.4)
@@ -42,19 +92,7 @@ LanguageDefinition::LanguageDefinition() {
         "#نهاية"       // Endif (§2.3)
     };
 
-    // Populate the lists for autocomplete / iteration
-    keywordList = keywords;
-    builtinList = builtins;
-    preprocessorList = preprocessors;
-
-    // Build the sets for fast lookup (lexer)
-    keywordSet = QSet<QString>(keywords.begin(), keywords.end());
-    builtinSet = QSet<QString>(builtins.begin(), builtins.end());
-    magicSet = QSet<QString>(magics.begin(), magics.end());
-    preprocessorSet = QSet<QString>(preprocessors.begin(), preprocessors.end());
-
     hexPattern = QRegularExpression(R"(\b0[xX][0-9a-fA-F]+\b)");
-    // Enhanced number pattern to support Arabic-Indic numerals ٠-٩ (Integers Only)
     numberPattern = QRegularExpression(R"(\b[\d٠-٩]+\b)");
 }
 

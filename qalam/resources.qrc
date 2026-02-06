@@ -36,4 +36,7 @@
     <qresource prefix="/styles">
         <file>resources/styles/main.qss</file>
     </qresource>
+    <qresource prefix="/lang">
+        <file>resources/baa-language.json</file>
+    </qresource>
 </RCC>
