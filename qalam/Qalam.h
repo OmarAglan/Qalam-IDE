@@ -59,6 +59,7 @@ private slots:
 private:
     TEditor *currentEditor();
     void setupNewLayout();
+    void connectSignals();
     void syncOpenEditors();
 
 private:

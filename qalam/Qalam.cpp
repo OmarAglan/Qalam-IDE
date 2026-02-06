@@ -1,7 +1,6 @@
 #include "Qalam.h"
 #include "TWelcomeWindow.h"
 #include "TConsole.h"
-#include "ProcessWorker.h"
 #include "TSearchPanel.h"
 #include "Constants.h"
 
@@ -14,7 +13,6 @@
 #include "TExplorerView.h"
 #include "TSearchView.h"
 
-#include <QThread>
 #include <QVBoxLayout>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -25,7 +23,6 @@
 #include <QApplication>
 #include <QSettings>
 #include <QKeyEvent>
-#include <QTimer>
 #include <QInputDialog>
 #include <QSplitter>
 #include <QStatusBar>
@@ -51,9 +48,6 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     searchBar = new SearchPanel(this);
     searchBar->hide();
 
-    QShortcut *findShortcut = new QShortcut(QKeySequence::Find, this);
-    connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
-
     // ===================================================================
     // الخطوة 2: إعداد النافذة وشريط القوائم
     // ===================================================================
@@ -76,69 +70,8 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     // ===================================================================
     // الخطوة 4: ربط الإشارات والمقابس
     // ===================================================================
-    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
-    QShortcut* saveShortcut = new QShortcut(QKeySequence::Save, this);
-    connect(saveShortcut, &QShortcut::activated, m_fileManager, &FileManager::saveFile);
-    connect(menuBar, &TMenuBar::newRequested, m_fileManager, &FileManager::newFile);
-    connect(menuBar, &TMenuBar::openFileRequested, this, [this](){m_fileManager->openFile("");});
-    connect(menuBar, &TMenuBar::saveRequested, m_fileManager, &FileManager::saveFile);
-    connect(menuBar, &TMenuBar::saveAsRequested, m_fileManager, &FileManager::saveFileAs);
-    connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
-    connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
-    connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
-    connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
-    connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
-    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::updateWindowTitle);
-    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::onCurrentTabChanged);
-    connect(searchBar, &SearchPanel::findNext, this, &Qalam::findNextText);
-    connect(searchBar, &SearchPanel::findText, this, &Qalam::findText);
-    connect(searchBar, &SearchPanel::findPrevious, this, &Qalam::findPrevText);
-    connect(searchBar, &SearchPanel::closed, this, &Qalam::hideFindBar);
-    
-    // Connect FileManager signals
-    connect(m_fileManager, &FileManager::fileStateChanged, this, &Qalam::updateWindowTitle);
-    connect(m_fileManager, &FileManager::fileStateChanged, this, [this]() {
-        // Update modification indicator on tab text
-        TEditor *editor = currentEditor();
-        if (editor) {
-            int index = tabWidget->indexOf(editor);
-            if (index != -1) {
-                bool modified = editor->document()->isModified();
-                QString currentText = tabWidget->tabText(index);
-                if (modified and not currentText.endsWith("[*]")) {
-                    tabWidget->setTabText(index, currentText + "[*]");
-                } else if (not modified and currentText.endsWith("[*]")) {
-                    tabWidget->setTabText(index, currentText.left(currentText.length() - 3));
-                }
-            }
-        }
-    });
-    connect(m_fileManager, &FileManager::openEditorsChanged, this, &Qalam::syncOpenEditors);
-    
+    connectSignals();
     onCurrentTabChanged();
-
-    QShortcut *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
-    connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
-
-    QShortcut *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
-    connect(commentShortcut, &QShortcut::activated, this, [this](){
-        if (TEditor* editor = currentEditor()) editor->toggleComment();
-    });
-
-    QShortcut *duplicateShortcut = new QShortcut(QKeySequence("Ctrl+D"), this);
-    connect(duplicateShortcut, &QShortcut::activated, this, [this](){
-        if (TEditor* editor = currentEditor()) editor->duplicateLine();
-    });
-
-    QShortcut *moveUpShortcut = new QShortcut(QKeySequence("Alt+Up"), this);
-    connect(moveUpShortcut, &QShortcut::activated, this, [this](){
-        if (TEditor* editor = currentEditor()) editor->moveLineUp();
-    });
-
-    QShortcut *moveDownShortcut = new QShortcut(QKeySequence("Alt+Down"), this);
-    connect(moveDownShortcut, &QShortcut::activated, this, [this](){
-        if (TEditor* editor = currentEditor()) editor->moveLineDown();
-    });
 
     // ===================================================================
     // الخطوة 5: إعداد التخطيط الجديد (VSCode-like)
@@ -166,6 +99,84 @@ Qalam::~Qalam() {
         settings.setValue(Constants::SettingsKeyTheme, setting->getThemeCombo()->currentIndex());
         settings.sync();
     }
+}
+
+// ===================================================================
+// ربط جميع الإشارات والمقابس في مكان واحد
+// ===================================================================
+void Qalam::connectSignals()
+{
+    // --- Keyboard shortcuts ---
+    auto *findShortcut = new QShortcut(QKeySequence::Find, this);
+    connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
+
+    auto *saveShortcut = new QShortcut(QKeySequence::Save, this);
+    connect(saveShortcut, &QShortcut::activated, m_fileManager, &FileManager::saveFile);
+
+    auto *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
+    connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
+
+    auto *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
+    connect(commentShortcut, &QShortcut::activated, this, [this](){
+        if (TEditor* editor = currentEditor()) editor->toggleComment();
+    });
+
+    auto *duplicateShortcut = new QShortcut(QKeySequence("Ctrl+D"), this);
+    connect(duplicateShortcut, &QShortcut::activated, this, [this](){
+        if (TEditor* editor = currentEditor()) editor->duplicateLine();
+    });
+
+    auto *moveUpShortcut = new QShortcut(QKeySequence("Alt+Up"), this);
+    connect(moveUpShortcut, &QShortcut::activated, this, [this](){
+        if (TEditor* editor = currentEditor()) editor->moveLineUp();
+    });
+
+    auto *moveDownShortcut = new QShortcut(QKeySequence("Alt+Down"), this);
+    connect(moveDownShortcut, &QShortcut::activated, this, [this](){
+        if (TEditor* editor = currentEditor()) editor->moveLineDown();
+    });
+
+    // --- Menu bar signals ---
+    connect(menuBar, &TMenuBar::newRequested, m_fileManager, &FileManager::newFile);
+    connect(menuBar, &TMenuBar::openFileRequested, this, [this](){ m_fileManager->openFile(""); });
+    connect(menuBar, &TMenuBar::saveRequested, m_fileManager, &FileManager::saveFile);
+    connect(menuBar, &TMenuBar::saveAsRequested, m_fileManager, &FileManager::saveFileAs);
+    connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
+    connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
+    connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
+    connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
+    connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+
+    // --- Tab widget signals ---
+    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
+    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::updateWindowTitle);
+    connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::onCurrentTabChanged);
+
+    // --- Search bar signals ---
+    connect(searchBar, &SearchPanel::findNext, this, &Qalam::findNextText);
+    connect(searchBar, &SearchPanel::findText, this, &Qalam::findText);
+    connect(searchBar, &SearchPanel::findPrevious, this, &Qalam::findPrevText);
+    connect(searchBar, &SearchPanel::closed, this, &Qalam::hideFindBar);
+
+    // --- FileManager signals ---
+    connect(m_fileManager, &FileManager::fileStateChanged, this, &Qalam::updateWindowTitle);
+    connect(m_fileManager, &FileManager::fileStateChanged, this, [this]() {
+        // Update modification indicator on tab text
+        TEditor *editor = currentEditor();
+        if (editor) {
+            int index = tabWidget->indexOf(editor);
+            if (index != -1) {
+                bool modified = editor->document()->isModified();
+                QString currentText = tabWidget->tabText(index);
+                if (modified and not currentText.endsWith("[*]")) {
+                    tabWidget->setTabText(index, currentText + "[*]");
+                } else if (not modified and currentText.endsWith("[*]")) {
+                    tabWidget->setTabText(index, currentText.left(currentText.length() - 3));
+                }
+            }
+        }
+    });
+    connect(m_fileManager, &FileManager::openEditorsChanged, this, &Qalam::syncOpenEditors);
 }
 
 void Qalam::closeEvent(QCloseEvent *event) {
