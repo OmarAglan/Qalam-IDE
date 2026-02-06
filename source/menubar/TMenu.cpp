@@ -25,16 +25,12 @@ TMenuBar::TMenuBar(QWidget* parent) {
     )");
 
     QMenu* fileMenu = addMenu("ملف");
-    //QMenu* editMenu = addMenu("تحرير");
     QMenu* runMenu = addMenu("تشغيل");
     QMenu* helpMenu = addMenu("مساعدة");
 
     fileMenu->setMinimumWidth(200);
-    //editMenu->setMinimumWidth(200);
     runMenu->setMinimumWidth(200);
     helpMenu->setMinimumWidth(200);
-
-    //QAction* folderAction = new QAction("فتح مجلد", parent);
     newAction = new QAction("جديد", parent);
     openFileAction = new QAction("فتح ملف", parent);
     openFolderAction = new QAction("فتح مجلد", parent);
@@ -48,8 +44,6 @@ TMenuBar::TMenuBar(QWidget* parent) {
     aboutAction = new QAction("عن المحرر", parent);
 
 
-    //fileMenu->addAction(folderAction);
-    //fileMenu->addSeparator();
     fileMenu->addAction(newAction);
     fileMenu->addAction(openFileAction);
     fileMenu->addAction(openFolderAction);
@@ -91,7 +85,6 @@ TMenuBar::TMenuBar(QWidget* parent) {
         }
 )";
     fileMenu->setStyleSheet(style);
-    //editMenu->setStyleSheet(style);
     runMenu->setStyleSheet(style);
     helpMenu->setStyleSheet(style);
 

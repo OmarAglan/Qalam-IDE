@@ -4,12 +4,10 @@
 #include "TMenu.h"
 #include "TSearchPanel.h"
 #include "ProcessWorker.h"
-#include <QSplitter>
-#include <QStatusBar>
 #include <QPointer>
 #include "../ui/QalamWindow.h"
 
-// Forward declarations for new UI components
+// Forward declarations for UI components
 class TActivityBar;
 class TSidebar;
 class TStatusBar;
@@ -49,7 +47,6 @@ private slots:
 
     void updateWindowTitle();
     void onModificationChanged(bool modified);
-    void onFileTreeDoubleClicked(const QModelIndex &index);
     void closeTab(int index);
     void toggleSidebar();
 
@@ -66,47 +63,29 @@ private slots:
 
     void goToLine();
     
-    // New component slots
+    // VSCode-like component slots
     void onActivityViewChanged(int viewType);
     void onSidebarFileSelected(const QString &filePath);
 
 private:
     SaveAction needSave();
     TEditor *currentEditor();
-    void setupNewLayout();  // New method for VSCode-like layout
-    void syncOpenEditors();  // Sync Open Editors section with tabs
+    void setupNewLayout();
+    void syncOpenEditors();
 
 private:
     QTabWidget *tabWidget{};
     TMenuBar *menuBar{};
     TSettings *setting{};
-    QAction *toggleSidebarAction{};
-    QAction *runToolbarAction{};
-    QAction *stopToolbarAction{};
     QString folderPath{};
-    QAbstractItemModel *model{};
 
-    QSplitter *mainSplitter{};
-    QTreeView *fileTreeView{};
-    QFileSystemModel *fileSystemModel{};
-
-    QSplitter *editorSplitter{};
-    // TConsole *console;
-    QTabWidget *consoleTabWidget{};
-
-    // TConsole *cmdConsole;
-    // TConsole *alifConsole;
     QPointer<ProcessWorker> worker;
     QThread* buildThread = nullptr;
 
-    QLabel *cursorPositionLabel{};
-    QLabel *encodingLabel{};
-    QProcess *alifProcess{};
-    QProcess *currentBaaProcess{};
     SearchPanel *searchBar{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
     
-    // New VSCode-like UI components
+    // VSCode-like UI components
     TActivityBar *m_activityBar{};
     TSidebar *m_sidebar{};
     TStatusBar *m_statusBar{};

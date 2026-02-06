@@ -1,7 +1,6 @@
 #pragma once
 
 #include "TFlatButton.h"
-#include "TFlatButton.h"
 #include "ThemeManager.h"
 
 #include <QWidget>

@@ -5,7 +5,7 @@
 #include "TSearchPanel.h"
 #include "Constants.h"
 
-// New VSCode-like UI components
+// VSCode-like UI components
 #include "TActivityBar.h"
 #include "TSidebar.h"
 #include "TStatusBar.h"
@@ -15,7 +15,6 @@
 #include "TSearchView.h"
 
 #include <QThread>
-#include <QDockWidget>
 #include <QVBoxLayout>
 #include <QMessageBox>
 #include <QFileDialog>
@@ -25,11 +24,9 @@
 #include <QCoreApplication>
 #include <QTextStream>
 #include <QApplication>
-#include <QToolBar>
 #include <QHeaderView>
 #include <QSettings>
 #include <QProcess>
-#include <QStyleFactory>
 #include <QKeyEvent>
 #include <QTimer>
 #include <QInputDialog>
@@ -49,19 +46,12 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     tabWidget->setTabsClosable(true);
     tabWidget->setMovable(true);
     menuBar = new TMenuBar(this);
-    mainSplitter = new QSplitter(Qt::Horizontal, this);
-    fileTreeView = new QTreeView(this);
-    fileSystemModel = new QFileSystemModel(this);
-
-    editorSplitter = new QSplitter(Qt::Vertical, this);
-
 
     searchBar = new SearchPanel(this);
     searchBar->hide();
 
     QShortcut *findShortcut = new QShortcut(QKeySequence::Find, this);
     connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
-
 
     // ===================================================================
     // الخطوة 2: إعداد النافذة وشريط القوائم
@@ -76,110 +66,16 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     int height = screenGeo.size().height() - margin;
     this->setGeometry(x, y, width, height);
     this->setCustomMenuBar(menuBar);
-    // ===================================================================
-    //  الخطوة 3: إعداد شريط الأدوات وزر تبديل الشريط (قديم - سيتم استبداله بـ Activity Bar)
-    // ===================================================================
-    QToolBar *mainToolBar = new QToolBar("Main Toolbar", this);
-    mainToolBar->setObjectName("mainToolBar");
-    mainToolBar->setMovable(false);
-    mainToolBar->setIconSize(QSize(25, 25));
-    mainToolBar->setStyleSheet("QToolButton:hover {background-color: #334466;}");
-    this->addToolBar(Qt::RightToolBarArea, mainToolBar);
-    mainToolBar->hide();  // Hidden - replaced by Activity Bar
-
-    toggleSidebarAction = new QAction(this);
-    toggleSidebarAction->setIcon(QIcon(":/icons/resources/panel-right-open.svg"));
-    toggleSidebarAction->setCheckable(true);
-    toggleSidebarAction->setChecked(false);
-    mainToolBar->addAction(toggleSidebarAction);
-
-    runToolbarAction = new QAction(this);
-    runToolbarAction->setIcon(QIcon(":/icons/resources/run.svg"));
-    runToolbarAction->setToolTip("تشغيل (F5)");
-    mainToolBar->addAction(runToolbarAction);
-    connect(runToolbarAction, &QAction::triggered, this, &Qalam::runBaa);
-
-    stopToolbarAction = new QAction(this);
-    stopToolbarAction->setIcon(QIcon(":/icons/resources/close.svg"));
-    stopToolbarAction->setToolTip("إيقاف التشغيل");
-    stopToolbarAction->setEnabled(false);
-    mainToolBar->addAction(stopToolbarAction);
-    connect(stopToolbarAction, &QAction::triggered, this, [this](){
-        if (worker) worker->stop();
-    });
-    // mainToolBar->addSeparator();
-    // mainToolBar->addAction(menuBar->newAction);
-
 
     // ===================================================================
-    // الخطوة 4: إعداد الشريط الجانبي
+    // الخطوة 3: إعداد الإعدادات
     // ===================================================================
-    fileTreeView->setModel(fileSystemModel);
-    fileTreeView->header()->setVisible(false);
-    fileTreeView->setStyleSheet("QTreeView { background: #03091A; } ");
-    fileTreeView->hideColumn(1);
-    fileTreeView->hideColumn(2);
-    fileTreeView->hideColumn(3);
-    fileSystemModel->setRootPath(QDir::homePath());
-    fileTreeView->setRootIndex(fileSystemModel->index(QDir::homePath()));
-    fileTreeView->setVisible(false);
-
-    // ===================================================================
-    // الخطوة 5: تجميع الواجهة (الفاصل)
-    // ===================================================================
-    mainSplitter->addWidget(fileTreeView);
-    mainSplitter->addWidget(tabWidget);
-    mainSplitter->setSizes({200, 700});
-    this->setCentralWidget(mainSplitter);
-
-    // ===================================================================
-
     setting = new TSettings();
 
     // ===================================================================
-
-    consoleTabWidget = new QTabWidget(this);
-    consoleTabWidget->setObjectName("consoleTabWidget");
-    consoleTabWidget->setDocumentMode(true);
-
-    TConsole *cmdConsole = new TConsole(this);
-    QString terminalName = "طرفية (CMD)";
-#if defined(Q_OS_LINUX)
-    terminalName = "طرفية (Bash)";
-#elif defined(Q_OS_MACOS)
-    terminalName = "طرفية (Zsh)";
-#endif
-
-    consoleTabWidget->addTab(cmdConsole, terminalName);
-    cmdConsole->setConsoleRTL();
-    cmdConsole->startCmd();
-
-
-    editorSplitter->addWidget(tabWidget);
-    editorSplitter->addWidget(searchBar);
-    editorSplitter->addWidget(consoleTabWidget);
-    editorSplitter->setSizes({1000, 200});
-
-    consoleTabWidget->hide();
-
-    mainSplitter->addWidget(fileTreeView);
-    mainSplitter->addWidget(editorSplitter);
-    mainSplitter->setSizes({200, 700});
-    this->setCentralWidget(mainSplitter);
-
+    // الخطوة 4: ربط الإشارات والمقابس
     // ===================================================================
-
-    cursorPositionLabel = new QLabel(this);
-    cursorPositionLabel->setStyleSheet("QLabel{ color: white }");
-    cursorPositionLabel->setText("UTF-8  السطر: 1  العمود: 1");
-    statusBar()->addPermanentWidget(cursorPositionLabel);
-
-    // ===================================================================
-    // الخطوة 6: ربط الإشارات والمقابس
-    // ===================================================================
-    connect(fileTreeView, &QTreeView::doubleClicked, this, &Qalam::onFileTreeDoubleClicked);
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
-    connect(toggleSidebarAction, &QAction::triggered, this, &Qalam::toggleSidebar);
     QShortcut* saveShortcut = new QShortcut(QKeySequence::Save, this);
     connect(saveShortcut, &QShortcut::activated, this, &Qalam::saveFile);
     connect(menuBar, &TMenuBar::newRequested, this, &Qalam::newFile);
@@ -222,221 +118,13 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
         if (TEditor* editor = currentEditor()) editor->moveLineDown();
     });
 
-    // Style is now managed in main.qss
-    statusBar()->setSizeGripEnabled(false);
-
     // ===================================================================
-    //  الخطوة 7: تطبيق التصميم (QSS)
-    // ===================================================================
-    QString styleSheet = R"(
-        QMainWindow { background-color: #1e202e;font-size: 12px;  }
-
-        /* --- تصميم شريط القوائم --- */
-        QMenuBar {
-            background-color: #1e202e; /* نفس لون الخلفية */
-            color: #cccccc;
-        }
-        QMenuBar::item {
-            background-color: transparent;
-            padding: 4px 10px;
-        }
-        QMenuBar::item:selected {
-            background-color: #3e3e42;
-        }
-        QMenuBar::item:pressed {
-            background-color: #007acc;
-        }
-
-        /* --- تصميم شريط الأدوات --- */
-        QToolBar {
-            background-color: #1e202e;
-            border: none;
-            /*  زيادة الحشو حول الشريط لجعله أعرض قليلاً */
-            padding: 5px;
-            spacing: 10px; /* مسافة بين كل زر والآخر */
-        }
-
-        /* تصميم أزرار شريط الأدوات */
-        QToolBar QToolButton {
-            background-color: transparent;
-            border: none;
-            border-radius: 6px; /* حواف دائرية ناعمة */
-
-            /*  أهم جزء: تحديد حجم مربع الزر ليكون كبيراً ومربعاً */
-            min-width: 40px;
-            max-width: 40px;
-            min-height: 40px;
-            max-height: 40px;
-
-            /*  ضبط الحشو لضمان توسط الأيقونة (30px) داخل الزر (40px) */
-            /* 40 - 30 = 10، يعني 5 بكسل من كل جهة */
-            padding: 0px;
-            margin: 0px;
-        }
-
-        QToolBar QToolButton:hover {
-            background-color: #4f5357;
-        }
-
-        QToolBar QToolButton:pressed {
-            background-color: #2a2d31;
-        }
-
-        QToolBar QToolButton:checked {
-            background-color: #0078d7; /* اللون الأزرق */
-        }
-
-        /* --- تصميم الشريط الجانبي --- */
-        QTreeView { background-color: #232629; border: none; color: #cccccc;font-size: 10pt; }
-        QTreeView::item { padding: 5px 3px; border-radius: 3px; }
-        QTreeView::item:selected:active { background-color: #094771; color: #ffffff; }
-        QTreeView::item:selected:!active { background-color: #3a3d41; }
-        QTreeView::branch { background: transparent; }
-
-        /* --- تصميم الفاصل --- */
-        QSplitter::handle {
-            background-color: #094771;
-            width: 1px;
-        }
-        QSplitter::handle:horizontal {
-            width: 1px;
-        }
-        QSplitter::handle:vertical {
-            height: 1px;
-        }
-
-        /* --- تصميم التبويبات --- */
-        QTabWidget#MainTabs::pane {
-            border: none;
-            background-color: #1e202e;
-        }
-        QTabWidget#MainTabs QTabBar { /* شريط التبويبات نفسه */
-            background-color: #1e202e;
-            border: none;
-            qproperty-drawBase: 0;
-            margin: 0px;
-            padding: 0px;
-        }
-       QTabWidget#MainTabs QTabBar::tab {
-            background: #2d2d30;
-            font-size: 12px !important;
-            color: #909090;
-            min-height: 25px;
-            padding: 0px 0px;
-            border: none;
-            border-top: 1px solid #444444;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-        }
-       QTabWidget#MainTabs QTabBar::tab:selected {
-            background: #1e1e1e;
-            color: #ffffff;
-            border-top: 1px solid #007acc;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-        }
-        QTabWidget#MainTabs QTabBar::tab:hover:!selected {
-            background: #3e3e42;
-        }
-        QTabWidget#MainTabs QTabBar::close-button {
-            image: url(:/icons/resources/close.svg);
-            background: transparent;
-            border: none;
-            subcontrol-position: right;
-            subcontrol-origin: padding;
-            border-radius: 3px;
-            padding: 1px;
-            margin-right: 2px;
-            min-width: 12px;
-            min-height: 12px;
-        }
-        QTabWidget#MainTabs QTabBar::close-button:hover { background: #5a5a5f; }
-
-        QStatusBar {
-            background-color: #333333;
-            color: #cccccc;
-            // border-top: 1px solid #4f4f4f;
-            font-size: 6pt;
-        }
-
-        QMenu {
-            background-color: #252526;
-            border: 1px solid #454545;
-            color: #cccccc;
-            padding: 5px 0;
-        }
-        QMenu::item {
-            background-color: transparent;
-            padding: 5px 20px 5px 20px;
-        }
-        QMenu::item:selected {
-            background-color: #094771;
-            color: #ffffff;
-        }
-        QMenu::separator {
-            height: 1px;
-            background: #454545;
-            margin: 4px 0px;
-        }
-
-    )";
-    tabWidget->setStyleSheet(styleSheet);
-    tabWidget->setTabsClosable(true);
-    tabWidget->setStyleSheet(R"(
-    QTabWidget#MainTabs QTabWidget::pane {
-        border: none;
-        background-color: #1e202e;
-    }
-    QTabWidget#MainTabs QTabBar {
-        font-size: 9pt;
-        background-color: #1e202e;
-        border: none;
-        qproperty-drawBase: 0;
-        margin: 0px;
-        padding: 0px;
-    }
-    QTabWidget#MainTabs QTabBar::tab {
-        background: #2d2d30;
-        color: #909090;
-        padding: 0px 8px;
-        border: none;
-        border-top: 1px solid #444444;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
-    }
-    QTabWidget#MainTabs QTabBar::tab:selected {
-        background: #1e1e1e;
-        color: #ffffff;
-        border-top: 1px solid #007acc;
-    }
-    QTabWidget#MainTabs QTabBar::tab:hover:!selected {
-        background: #3e3e42;
-    }
-    QTabWidget#MainTabs QTabBar::close-button {
-            image: url(:/icons/resources/close.svg);
-            background: transparent;
-            border: none;
-            subcontrol-position: right;
-            subcontrol-origin: padding;
-            border-radius: 3px;
-            padding: 1px;
-            margin-right: 2px;
-            min-width: 6px;
-            min-height: 6px;
-        }
-        QTabWidget#MainTabs QTabBar::close-button:hover { background: #5a5a5f; }
-
-)");
-    this->setStyleSheet(styleSheet);
-
-
-    // ===================================================================
-    // الخطوة 8: إعداد المكونات الجديدة (VSCode-like)
+    // الخطوة 5: إعداد التخطيط الجديد (VSCode-like)
     // ===================================================================
     setupNewLayout();
     
     // ===================================================================
-    // الخطوة 9: تحميل الملف المبدئي أو إنشاء تبويب جديد
+    // الخطوة 6: تحميل الملف المبدئي أو إنشاء تبويب جديد
     // ===================================================================
     installEventFilter(this);
 
@@ -489,7 +177,6 @@ void Qalam::goToLine()
     if (!editor) return;
 
     bool ok;
-    // أقصى رقم هو عدد أسطر الملف الحالي
     int maxLine = editor->blockCount();
 
     int lineNumber = QInputDialog::getInt(this, "الذهاب إلى سطر",
@@ -497,12 +184,11 @@ void Qalam::goToLine()
                                           1, 1, maxLine, 1, &ok);
 
     if (ok) {
-        // نقل المؤشر
         QTextCursor cursor = editor->textCursor();
-        cursor.setPosition(0); // ارجع للبداية
-        cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, lineNumber - 1); // تحرك للأسفل
+        cursor.setPosition(0);
+        cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, lineNumber - 1);
         editor->setTextCursor(cursor);
-        editor->centerCursor(); // اجعل السطر في وسط الشاشة
+        editor->centerCursor();
         editor->setFocus();
     }
 }
@@ -529,12 +215,10 @@ void Qalam::findText() {
     QTextDocument::FindFlags flags;
     if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
 
-    // البحث للأمام
     editor->moveCursor(QTextCursor::Start);
     bool found = editor->find(text, flags);
 
     if (!found) {
-        // يمكن إضافة وميض أحمر أو صوت هنا ليدل على عدم العثور
         QApplication::beep();
     }
 }
@@ -549,15 +233,12 @@ void Qalam::findNextText() {
     QTextDocument::FindFlags flags;
     if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
 
-    // البحث للأمام
     bool found = editor->find(text, flags);
 
     if (!found) {
-        // إذا لم يجد، حاول البحث من البداية (Wrap around)
         editor->moveCursor(QTextCursor::Start);
         found = editor->find(text, flags);
         if (!found) {
-            // يمكن إضافة وميض أحمر أو صوت هنا ليدل على عدم العثور
             QApplication::beep();
         }
     }
@@ -570,13 +251,12 @@ void Qalam::findPrevText() {
     QString text = searchBar->getText();
     if (text.isEmpty()) return;
 
-    QTextDocument::FindFlags flags = QTextDocument::FindBackward; // البحث للخلف
+    QTextDocument::FindFlags flags = QTextDocument::FindBackward;
     if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
 
     bool found = editor->find(text, flags);
 
     if (!found) {
-        // Wrap around (من النهاية)
         editor->moveCursor(QTextCursor::End);
         found = editor->find(text, flags);
         if (!found) QApplication::beep();
@@ -585,40 +265,20 @@ void Qalam::findPrevText() {
 
 void Qalam::toggleConsole()
 {
-    // Use new panel area if available
-    if (m_panelArea) {
-        bool isVisible = !m_panelArea->isVisible();
-        m_panelArea->setVisible(isVisible);
-        
-        if (isVisible) {
-            m_panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
-            if (m_panelArea->terminal()) {
-                m_panelArea->terminal()->setFocus();
-            }
-        } else {
-            if (TEditor* editor = currentEditor()) {
-                editor->setFocus();
-            }
-        }
-        return;
-    }
-    
-    // Fallback to old console tab widget
-    bool isVisible = !consoleTabWidget->isVisible();
-    consoleTabWidget->setVisible(isVisible);
+    if (!m_panelArea) return;
+
+    bool isVisible = !m_panelArea->isVisible();
+    m_panelArea->setVisible(isVisible);
 
     if (isVisible) {
-        int totalHeight = editorSplitter->height();
-        int consoleHeight = 250;
-        int searchBarHeight = searchBar->isVisible() ? searchBar->height() : 0;
-
-        int editorHeight = totalHeight - consoleHeight - searchBarHeight;
-
-        editorSplitter->setSizes({editorHeight, 45, consoleHeight});
-
-        if (QWidget* w = consoleTabWidget->currentWidget()) w->setFocus();
+        m_panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
+        if (m_panelArea->terminal()) {
+            m_panelArea->terminal()->setFocus();
+        }
     } else {
-        if (TEditor* editor = currentEditor()) editor->setFocus();
+        if (TEditor* editor = currentEditor()) {
+            editor->setFocus();
+        }
     }
 }
 
@@ -696,7 +356,6 @@ void Qalam::openFile(QString filePath) {
                 return;
             }
         }
-        // -----------------------------------------
 
         QFile file(filePath);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -722,12 +381,11 @@ void Qalam::openFile(QString filePath) {
                     QFile backup(backupPath);
                     if (backup.open(QIODevice::ReadOnly | QIODevice::Text)) {
                         QTextStream in(&backup);
-                        newEditor->setPlainText(in.readAll()); // استبدل النص بنسخة الطوارئ
-                        newEditor->document()->setModified(true); // نعتبره معدلاً ليقوم المستخدم بحفظه
+                        newEditor->setPlainText(in.readAll());
+                        newEditor->document()->setModified(true);
                         backup.close();
                     }
                 } else {
-                    // إذا رفض المستخدم، احذف النسخة الاحتياطية القديمة
                     QFile::remove(backupPath);
                 }
             }
@@ -761,12 +419,7 @@ void Qalam::loadFolder(const QString &path)
     this->folderPath = path;
     
     if (!path.isEmpty() && QDir(path).exists()) {
-        // Only update old fileTreeView if we're using old layout
-        if (fileTreeView && fileTreeView->parent() && fileTreeView->isVisible()) {
-            fileTreeView->setRootIndex(fileSystemModel->index(path));
-        }
-        
-        // Update new sidebar with folder path and show it
+        // Update sidebar with folder path and show it
         if (m_sidebar && m_sidebar->explorerView()) {
             m_sidebar->explorerView()->setRootPath(path);
             m_sidebar->setCurrentView(TActivityBar::ViewType::Explorer);
@@ -804,37 +457,18 @@ void Qalam::handleOpenFolderMenu()
 
 void Qalam::toggleSidebar()
 {
-    // Toggle the new sidebar
-    if (m_sidebar) {
-        bool shouldBeVisible = !m_sidebar->isVisible();
-        m_sidebar->setVisible(shouldBeVisible);
-        
-        // Update activity bar state
-        if (m_activityBar) {
-            if (shouldBeVisible) {
-                m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
-            } else {
-                m_activityBar->setCurrentView(TActivityBar::ViewType::None);
-            }
-        }
-    }
+    if (!m_sidebar) return;
+
+    bool shouldBeVisible = !m_sidebar->isVisible();
+    m_sidebar->setVisible(shouldBeVisible);
     
-    // Also toggle old file tree for backward compatibility
-    bool shouldBeVisible = !fileTreeView->isVisible();
-    fileTreeView->setVisible(shouldBeVisible);
-    toggleSidebarAction->setChecked(shouldBeVisible);
-
-    if (shouldBeVisible && fileTreeView->rootIndex() == QModelIndex()) {
-        QString homePath = QDir::homePath();
-        fileTreeView->setRootIndex(fileSystemModel->index(homePath));
-    }
-}
-
-void Qalam::onFileTreeDoubleClicked(const QModelIndex &index)
-{
-    const QString filePath = fileSystemModel->filePath(index);
-    if (!fileSystemModel->isDir(index)) {
-        openFile(filePath);
+    // Update activity bar state
+    if (m_activityBar) {
+        if (shouldBeVisible) {
+            m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
+        } else {
+            m_activityBar->setCurrentView(TActivityBar::ViewType::None);
+        }
     }
 }
 
@@ -843,7 +477,6 @@ void Qalam::saveFile() {
     if (!editor) return;
 
     QString filePath = editor->property("filePath").toString();
-    // --------------------------------------------------------
 
     QString content = editor->toPlainText();
 
@@ -890,7 +523,6 @@ void Qalam::saveFileAs() {
             file.close();
 
             editor->setProperty("filePath", fileName);
-            // ---------------------------------------------------
 
             editor->document()->setModified(false);
 
@@ -978,9 +610,7 @@ void Qalam::updateCursorPosition()
         int line = cursor.blockNumber() + 1;
         int column = cursor.columnNumber() + 1;
 
-        cursorPositionLabel->setText(QString("UTF-8    السطر: %1   العمود: %2 ").arg(line).arg(column));
-        
-        // Update new status bar
+        // Update status bar
         if (m_statusBar) {
             m_statusBar->setCursorPosition(line, column);
         }
@@ -990,77 +620,11 @@ void Qalam::updateCursorPosition()
             QString filePath = editor->property("filePath").toString();
             m_breadcrumb->setFilePath(filePath);
         }
-    } else {
-        cursorPositionLabel->setText("");
     }
 }
 
 
 /* ----------------------------------- Run Menu Button ----------------------------------- */
-
-// void Qalam::runAlif() {
-//     QString program{};
-//     QStringList args{};
-//     QString command{};
-//     TEditor *editor = currentEditor(); // ✅ احصل على المحرر النشط
-//     QStringList arguments{editor->filePath};
-//     QString workingDirectory = QCoreApplication::applicationDirPath();
-
-//     if (editor->filePath.isEmpty() or (currentEditor() && currentEditor()->document()->isModified())) {
-//         QMessageBox::warning(nullptr, "تنبيه", "قم بحفظ الملف لتشغيله");
-//         return;
-//     }
-
-// #if defined(Q_OS_WINDOWS)
-//     // Windows: Start cmd.exe with /K to keep the window open
-//     program = "cmd.exe";
-//     command = "alif\\alif.exe";
-//     args << "/C" << "start" << program << "/K" << command << arguments;
-// #elif defined(Q_OS_LINUX)
-//     // Linux: Use x-terminal-emulator with -e to execute the command
-//     program = "x-terminal-emulator";
-//     command = "./alif/alif";
-//     if (!arguments.isEmpty()) {
-//         command += " " + arguments.join(" ");
-//     }
-//     command += "; exec bash";
-//     args << "-e" << "bash" << "-c" << command;
-// #elif defined(Q_OS_MACOS)
-//     // macOS: Use AppleScript to run the command in Terminal.app
-//     program = "osascript";
-//     command = "./alif/alif";
-
-//     // Escape each part for shell execution
-//     QStringList allParts = QStringList() << command << arguments;
-//     QStringList escapedShellParts;
-//     for (const QString &part : allParts) {
-//         QString escaped = part;
-//         escaped.replace("'", "'\"'\"'"); // Escape single quotes for AppleScript
-//         escapedShellParts << "'" + escaped + "'";
-//     }
-//     QString shellCommand = escapedShellParts.join(" ");
-
-//     // Escape double quotes for AppleScript
-//     QString escapedAppleScriptCommand = shellCommand.replace("\"", "\\\"");
-
-//     // Construct AppleScript
-//     QString script = QString(
-//                          "tell application \"Terminal\"\n"
-//                          "    activate\n"
-//                          "    do script \"cd '%1' && %2\"\n"
-//                          "end tell"
-//                          ).arg(workingDirectory, escapedAppleScriptCommand);
-
-//     args << "-e" << script;
-// #endif
-
-//     QProcess* process = new QProcess(this);
-//     process->setWorkingDirectory(workingDirectory);
-
-//     process->start(program, args);
-// }
-
-//----------------
 
 void Qalam::runBaa() {
     TEditor *editor = currentEditor();
@@ -1074,52 +638,14 @@ void Qalam::runBaa() {
         if (filePath.isEmpty() || editor->document()->isModified()) return;
     }
 
-    // Use new TPanelArea's terminal if available, fallback to old consoleTabWidget
-    TConsole *console = nullptr;
-    
-    if (m_panelArea) {
-        // Use new panel area terminal
-        console = m_panelArea->terminal();
-        m_panelArea->setCurrentTab(TPanelArea::Tab::Output);
-        m_panelArea->show();
-        m_panelArea->setCollapsed(false);
-        
-        // Ensure panel area has enough height in splitter
-        if (editorSplitter && m_panelArea->height() < 150) {
-            int totalHeight = editorSplitter->height();
-            int panelHeight = 250;
-            int searchBarHeight = (searchBar && searchBar->isVisible()) ? searchBar->height() : 0;
-            int editorHeight = totalHeight - panelHeight - searchBarHeight;
-            editorSplitter->setSizes({editorHeight, searchBarHeight > 0 ? 45 : 0, panelHeight});
-        }
-    } else {
-        // Fallback to old consoleTabWidget
-        for (int i = 0; i < consoleTabWidget->count(); i++) {
-            auto *tab = consoleTabWidget->widget(i);
-            if (tab->objectName() == "interactiveConsole")
-                console = qobject_cast<TConsole*>(tab);
-        }
-        
-        if (!console) {
-            console = new TConsole(this);
-            console->setObjectName("interactiveConsole");
-            consoleTabWidget->addTab(console, "مخرجات باء");
-            console->setConsoleRTL();
-        }
+    // Use TPanelArea's terminal
+    if (!m_panelArea) return;
 
-        consoleTabWidget->setCurrentWidget(console);
+    TConsole *console = m_panelArea->terminal();
+    m_panelArea->setCurrentTab(TPanelArea::Tab::Output);
+    m_panelArea->show();
+    m_panelArea->setCollapsed(false);
 
-        if (!consoleTabWidget->isVisible() || consoleTabWidget->height() < 50) {
-            int totalHeight = editorSplitter->height();
-            int consoleHeight = 250;
-            int searchBarHeight = (searchBar && searchBar->isVisible()) ? searchBar->height() : 0;
-            int editorHeight = totalHeight - consoleHeight - searchBarHeight;
-            editorSplitter->setSizes({editorHeight, 45, consoleHeight});
-        }
-
-        consoleTabWidget->setVisible(true);
-    }
- 
     // Dynamic Compiler Path Logic
     QSettings settings(Constants::OrgName, Constants::AppName);
     QString program = settings.value(Constants::SettingsKeyCompilerPath).toString();
@@ -1156,15 +682,13 @@ void Qalam::runBaa() {
     if (buildThread) {
         if (worker) {
             worker->stop();
-            worker = nullptr; // Clear QPointer immediately
+            worker = nullptr;
         }
         buildThread->quit();
         if (!buildThread->wait(3000)) {
-            // Force terminate if it doesn't finish gracefully
             buildThread->terminate();
             buildThread->wait();
         }
-        // Thread will be deleted by deleteLater from previous run, or we delete it now
         if (buildThread) {
             buildThread->deleteLater();
             buildThread = nullptr;
@@ -1181,10 +705,7 @@ void Qalam::runBaa() {
     worker->moveToThread(buildThread);
  
     connect(buildThread, &QThread::started, worker, &ProcessWorker::start);
-    connect(buildThread, &QThread::started, this, [this](){
-        stopToolbarAction->setEnabled(true);
-    });
- 
+
     connect(worker, &ProcessWorker::outputReady,
             console, &TConsole::appendPlainTextThreadSafe);
     connect(worker, &ProcessWorker::errorReady,
@@ -1195,7 +716,6 @@ void Qalam::runBaa() {
             "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
             + QString::number(code) + ")\n"
             );
-        stopToolbarAction->setEnabled(false);
         buildThread->quit();
     });
 
@@ -1281,7 +801,6 @@ void Qalam::updateWindowTitle() {
         title = "قلم";
     } else {
         QString filePath = editor->property("filePath").toString();
-        // --------------------------------------------------------
 
         if (filePath.isEmpty()) {
             title = "غير معنون";
@@ -1294,13 +813,12 @@ void Qalam::updateWindowTitle() {
         title += " - قلم";
     }
     setWindowTitle(title);
-    setWindowModified(editor && editor->document()->isModified()); // تحديث علامة التعديل للنافذة
+    setWindowModified(editor && editor->document()->isModified());
 }
 
 void Qalam::onModificationChanged(bool modified) {
-    updateWindowTitle(); // استدعِ الدالة لتحديث علامة [*]
-    // قد تحتاج أيضًا لتحديث اسم التبويب نفسه لإضافة [*]
-    TEditor* editor = currentEditor(); // الحصول على المحرر المرتبط بالإشارة
+    updateWindowTitle();
+    TEditor* editor = currentEditor();
     if (editor) {
         int index = tabWidget->indexOf(editor);
         if (index != -1) {
@@ -1315,12 +833,12 @@ void Qalam::onModificationChanged(bool modified) {
 }
 
 // ===================================================================
-// New VSCode-like Layout Methods
+// VSCode-like Layout Methods
 // ===================================================================
 
 void Qalam::setupNewLayout()
 {
-    // Create the new UI components
+    // Create the UI components
     m_activityBar = new TActivityBar(this);
     m_sidebar = new TSidebar(this);
     m_statusBar = new TStatusBar(this);
@@ -1334,7 +852,6 @@ void Qalam::setupNewLayout()
     
     connect(m_activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
         if (view == TActivityBar::ViewType::Settings) {
-            // Settings opens a dialog, doesn't toggle sidebar
             openSettings();
             return;
         }
@@ -1362,27 +879,23 @@ void Qalam::setupNewLayout()
     });
     
     connect(m_panelArea, &TPanelArea::tabChanged, this, [this](TPanelArea::Tab tab) {
-        // Focus the appropriate widget when tab changes
         if (tab == TPanelArea::Tab::Terminal && m_panelArea->terminal()) {
             m_panelArea->terminal()->setFocus();
         }
     });
     
     // =========================================================
-    // Rebuild the main layout - RTL for Arabic (Activity Bar on RIGHT)
+    // Build the main layout - RTL for Arabic (Activity Bar on RIGHT)
     // =========================================================
     
-    // Create a central widget to hold everything
     QWidget *centralContainer = new QWidget(this);
-    centralContainer->setLayoutDirection(Qt::LeftToRight);  // Use LTR for layout, we control order
+    centralContainer->setLayoutDirection(Qt::LeftToRight);
     
     QVBoxLayout *mainVLayout = new QVBoxLayout(centralContainer);
     mainVLayout->setContentsMargins(0, 0, 0, 0);
     mainVLayout->setSpacing(0);
     
     // Create horizontal layout for Editor + Sidebar + Activity Bar
-    // Using LTR direction but adding in order: Editor, Sidebar, ActivityBar
-    // This puts ActivityBar on the RIGHT
     QHBoxLayout *contentLayout = new QHBoxLayout();
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
@@ -1410,10 +923,10 @@ void Qalam::setupNewLayout()
     editorPanelSplitter->addWidget(m_panelArea);
     editorPanelSplitter->setSizes({700, 200});
     
-    // Add widgets in order: Editor (left), Sidebar (middle-right), ActivityBar (far right)
-    contentLayout->addWidget(editorPanelSplitter, 1);  // Editor takes stretch
-    contentLayout->addWidget(m_sidebar);                // Sidebar fixed width
-    contentLayout->addWidget(m_activityBar);            // Activity Bar fixed width (rightmost)
+    // Add widgets: Editor (left), Sidebar (middle-right), ActivityBar (far right)
+    contentLayout->addWidget(editorPanelSplitter, 1);
+    contentLayout->addWidget(m_sidebar);
+    contentLayout->addWidget(m_activityBar);
     
     // Add content layout to main vertical layout
     mainVLayout->addLayout(contentLayout, 1);
@@ -1421,15 +934,10 @@ void Qalam::setupNewLayout()
     // Add status bar at bottom
     mainVLayout->addWidget(m_statusBar);
     
-    // Set the new central widget
+    // Set the central widget
     this->setCentralWidget(centralContainer);
     
-    // Hide old components (replaced by new ones)
-    fileTreeView->hide();
-    consoleTabWidget->hide();
-    editorSplitter->hide();
-    
-    // Show the new components
+    // Initial visibility
     m_activityBar->show();
     m_sidebar->hide();  // Start collapsed, like VSCode
     m_statusBar->show();
@@ -1498,5 +1006,3 @@ void Qalam::syncOpenEditors()
         }
     }
 }
-
-
