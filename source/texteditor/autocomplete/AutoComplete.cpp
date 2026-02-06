@@ -46,7 +46,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("الرئيسية (دالة)",
                          "صحيح الرئيسية() {\n\t\n\tإرجع ٠.\n}",
                          "الدالة الرئيسية - نقطة بداية البرنامج",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Main));
     }
 
     // Function template (§5.1)
@@ -54,7 +54,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("دالة جديدة",
                          "صحيح اسم_الدالة(صحيح معامل) {\n\t\n\tإرجع ٠.\n}",
                          "قالب دالة جديدة",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Function));
     }
 
     // If statement (§7.1)
@@ -62,7 +62,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("إذا (شرط)",
                          "إذا (الشرط) {\n\t\n}",
                          "جملة شرطية - تنفذ إذا تحقق الشرط",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::If));
     }
 
     // If-else statement (§7.1)
@@ -70,7 +70,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("إذا-وإلا",
                          "إذا (الشرط) {\n\t\n} وإلا {\n\t\n}",
                          "جملة شرطية مع بديل",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::IfElse));
     }
 
     // Else clause (§7.1)
@@ -78,7 +78,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("وإلا",
                          "وإلا {\n\t\n}",
                          "تتمة الجملة الشرطية - تنفذ إذا لم يتحقق الشرط",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Else));
     }
 
     // Else-if clause (§7.1)
@@ -86,7 +86,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("وإلا إذا",
                          "وإلا إذا (الشرط) {\n\t\n}",
                          "شرط إضافي في الجملة الشرطية",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::ElseIf));
     }
 
     // For loop (§7.3) - note: uses Arabic semicolon ؛
@@ -94,7 +94,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("لكل (حلقة)",
                          "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {\n\t\n}",
                          "حلقة تكرارية محددة العدد (For)",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::ForLoop));
     }
 
     // While loop (§7.2)
@@ -102,7 +102,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("طالما (حلقة)",
                          "طالما (الشرط) {\n\t\n}",
                          "حلقة تكرارية شرطية (While)",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::WhileLoop));
     }
 
     // Switch statement (§7.5)
@@ -110,7 +110,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("اختر (تحويل)",
                          "اختر (المتغير) {\n\tحالة ١:\n\t\t\n\t\tتوقف.\n\tحالة ٢:\n\t\t\n\t\tتوقف.\n\tافتراضي:\n\t\t\n\t\tتوقف.\n}",
                          "جملة الاختيار المتعدد (Switch)",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Switch));
     }
 
     // Array declaration (§3.3)
@@ -118,7 +118,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("مصفوفة",
                          "صحيح المصفوفة[١٠].",
                          "تعريف مصفوفة ثابتة الحجم",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Array));
     }
 
     // Constant declaration (§4)
@@ -126,7 +126,7 @@ QVector<CompletionItem> SnippetStrategy::getSuggestions(const QString &prefix, c
         items.push_back(CompletionItem("ثابت (متغير)",
                          "ثابت صحيح الاسم = القيمة.",
                          "تعريف ثابت لا يمكن تغيير قيمته",
-                         CompletionType::Snippet));
+                         CompletionType::Snippet, SnippetId::Constant));
     }
 
     return items;

@@ -734,12 +734,14 @@ void TEditor::setCompleter(QCompleter *completer) {
                     // Get the type from the model
                     CompletionType type = static_cast<CompletionType>(
                         index.data(Qt::UserRole + 2).toInt());
+                    SnippetId snippetId = static_cast<SnippetId>(
+                        index.data(Qt::UserRole + 3).toInt());
                     // Get the full completion item
                     QString completionText = index.data(Qt::EditRole).toString();
-                    insertCompletion(completionText, type);
+                    insertCompletion(completionText, type, snippetId);
                 } else {
                     // Fallback to just the string without type
-                    insertCompletion(completion, CompletionType::DynamicWord);
+                    insertCompletion(completion, CompletionType::DynamicWord, SnippetId::None);
                 }
             });
 }
@@ -888,7 +890,7 @@ QString TEditor::textUnderCursor() const {
     return tc.selectedText();
 }
 
-void TEditor::insertCompletion(const QString &completion, CompletionType type) {
+void TEditor::insertCompletion(const QString &completion, CompletionType type, SnippetId snippetId) {
     if (c->widget() != this) return;
     QTextCursor tc = textCursor();
 
@@ -900,7 +902,7 @@ void TEditor::insertCompletion(const QString &completion, CompletionType type) {
         insertBuiltinFunction(completion, tc);
         break;
     case CompletionType::Snippet:
-        m_snippetManager.insertSnippet(completion, tc);
+        m_snippetManager.insertSnippet(completion, tc, snippetId);
         break;
     case CompletionType::Keyword:
         insertWord(completion, tc);

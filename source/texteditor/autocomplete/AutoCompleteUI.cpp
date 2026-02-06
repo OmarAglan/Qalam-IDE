@@ -11,7 +11,7 @@ void CompletionModel::updateData(const std::vector<CompletionItem>& items) {
     beginResetModel();
     m_data.clear();
     for (const auto& item : items) {
-        m_data.push_back({item.label, item.completion, item.description, item.type});
+        m_data.push_back({item.label, item.completion, item.description, item.type, item.snippetId});
     }
     endResetModel();
 }
@@ -29,6 +29,7 @@ QVariant CompletionModel::data(const QModelIndex &index, int role) const {
     // Custom roles for the delegate
     if (role == Qt::UserRole + 1) return item.description;
     if (role == Qt::UserRole + 2) return static_cast<int>(item.type);
+    if (role == Qt::UserRole + 3) return static_cast<int>(item.snippetId);
 
     return QVariant();
 }

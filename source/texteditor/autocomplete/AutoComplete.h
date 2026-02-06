@@ -13,14 +13,35 @@ enum CompletionType {
     DynamicWord
 };
 
+// Identifies which snippet template is being inserted,
+// so TSnippetManager can set up the correct placeholder navigation.
+enum class SnippetId {
+    None = 0,
+    Function,
+    Class,
+    If,
+    IfElse,
+    Else,
+    ElseIf,
+    ForLoop,
+    WhileLoop,
+    Switch,
+    Array,
+    Constant,
+    Main
+};
+
 struct CompletionItem {
     QString label;
     QString completion;
     QString description; // New field for the UI
     CompletionType type;
+    SnippetId snippetId{SnippetId::None};
 
-    CompletionItem(QString l = "", QString c = "", QString d = "", CompletionType t = CompletionType::Keyword)
-        : label(l), completion(c), description(d), type(t) {}
+    CompletionItem(QString l = "", QString c = "", QString d = "",
+                   CompletionType t = CompletionType::Keyword,
+                   SnippetId sid = SnippetId::None)
+        : label(l), completion(c), description(d), type(t), snippetId(sid) {}
 };
 
 // Abstract Strategy Interface

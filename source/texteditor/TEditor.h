@@ -99,7 +99,7 @@ private slots:
     void updateLineNumberAreaWidth();
     void highlightCurrentLine();
     void updateLineNumberArea(const QRect &rect, int dy);
-    void insertCompletion(const QString &completion, CompletionType type);
+    void insertCompletion(const QString &completion, CompletionType type, SnippetId snippetId);
 signals:
     void openRequest(QString filePath);
 };

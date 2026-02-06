@@ -18,6 +18,7 @@ public:
         QString completion;
         QString description;
         CompletionType type;
+        SnippetId snippetId{SnippetId::None};
     };
 
     explicit CompletionModel(QObject *parent = nullptr);
