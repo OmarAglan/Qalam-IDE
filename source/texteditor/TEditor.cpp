@@ -56,7 +56,7 @@ TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
     updateHighlighterTheme(theme);
 
     autoSaveTimer = new QTimer(this);
-    autoSaveTimer->setInterval(60000);
+    autoSaveTimer->setInterval(Constants::Timing::AutoSaveInterval);
     connect(autoSaveTimer, &QTimer::timeout, this, &TEditor::performAutoSave);
 
     connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::startAutoSave);
@@ -158,7 +158,7 @@ void TEditor::toggleComment()
     bool shouldComment = false;
 
     QTextBlock block = document()->findBlockByNumber(startBlock);
-    if (!block.text().trimmed().startsWith("#")) {
+    if (!block.text().trimmed().startsWith("//")) {
         shouldComment = true;
     }
 
@@ -168,13 +168,20 @@ void TEditor::toggleComment()
 
         if (shouldComment) {
             lineCursor.movePosition(QTextCursor::StartOfBlock);
-            lineCursor.insertText("#");
+            lineCursor.insertText("// ");
         } else {
             QString text = block.text();
-            int idx = text.indexOf("#");
-            lineCursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, idx);
-            lineCursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, 1);
-            lineCursor.removeSelectedText();
+            int idx = text.indexOf("//");
+            if (idx >= 0) {
+                lineCursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, idx);
+                int removeCount = 2;
+                // Also remove trailing space after //
+                if (idx + 2 < text.length() and text.at(idx + 2) == ' ') {
+                    removeCount = 3;
+                }
+                lineCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, removeCount);
+                lineCursor.removeSelectedText();
+            }
         }
     }
 
@@ -651,10 +658,10 @@ void TEditor::stopAutoSave() {
 }
 
 void TEditor::performAutoSave() {
-    QString filePath = this->property("filePath").toString();
-    if (filePath.isEmpty() || !this->document()->isModified()) return;
+    QString path = this->filePath;
+    if (path.isEmpty() || !this->document()->isModified()) return;
 
-    QString backupPath = filePath + ".~";
+    QString backupPath = path + ".~";
 
     QFile file(backupPath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -665,10 +672,10 @@ void TEditor::performAutoSave() {
 }
 
 void TEditor::removeBackupFile() {
-    QString filePath = this->property("filePath").toString();
-    if (filePath.isEmpty()) return;
+    QString path = this->filePath;
+    if (path.isEmpty()) return;
 
-    QString backupPath = filePath + ".~";
+    QString backupPath = path + ".~";
     if (QFile::exists(backupPath)) {
         QFile::remove(backupPath);
     }
@@ -909,7 +916,7 @@ void TEditor::insertWord(const QString& completion, QTextCursor& tc) {
 void TEditor::insertBuiltinFunction(const QString& functionName, QTextCursor& tc) {
     tc.insertText(functionName);
     tc.insertText("()");
-    tc.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+    tc.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
 
     // Perform the insertion
     setTextCursor(tc);
@@ -947,45 +954,43 @@ void TEditor::insertSnippet(const QString& snippet, QTextCursor& tc) {
     snippetTargets.clear();
 
     // Setup snippet navigation based on snippet content
-    if (snippet.startsWith("دالة")) {
+    if (snippet.contains("اسم_الدالة")) {
+        // Function snippet: "صحيح اسم_الدالة(صحيح معامل) {...}"
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("اسم", finder);
+        finder = document()->find("اسم_الدالة", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "معاملات" << "مرر";
+        snippetTargets << "معامل" << "مرر";
     }
     else if (snippet.startsWith("صنف")) {
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("اسم", finder);
+        finder = document()->find("اسم", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
         snippetTargets << "مرر";
     }
-    else if (snippet.startsWith("اذا")) {
+    else if (snippet.startsWith("إذا")) {
+        // If snippet: "إذا (الشرط) {...}"
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("الشرط", finder);
+        finder = document()->find("الشرط", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
         snippetTargets << "مرر";
     }
     else if (snippet.startsWith("لكل")) {
+        // For loop snippet: "لكل (صحيح س = ٠؛ س < ١٠؛ س++) {...}"
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("عنصر", finder);
+        finder = document()->find("س", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
-        snippetTargets << "العناصر" << "مرر";
+        snippetTargets << "مرر";
     }
-    else if (snippet.startsWith("بينما")) {
+    else if (snippet.startsWith("طالما")) {
+        // While snippet: "طالما (الشرط) {...}"
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("الشرط", finder);
+        finder = document()->find("الشرط", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
         snippetTargets << "مرر";
     }
     else if (snippet.startsWith("حاول")) {
         QTextCursor finder = textCursor();
-        finder.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, textToInsert.length());
-        finder = document()->find("مرر", finder);
+        finder = document()->find("مرر", finder, QTextDocument::FindBackward);
         if (!finder.isNull()) setTextCursor(finder);
         snippetTargets << "مرر";
     }
@@ -1052,7 +1057,7 @@ bool TEditor::handleBracketCompletion(QChar openingBracket, QChar closingBracket
     } else {
         // Insert both brackets and place cursor between them
         cursor.insertText(QString(openingBracket) + closingBracket);
-        cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+        cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
         setTextCursor(cursor);
     }
 
@@ -1085,7 +1090,7 @@ bool TEditor::handleQuoteCompletion(QChar quoteChar) {
         nextChar = doc->characterAt(pos);
         if (nextChar == quoteChar) {
             // Just move cursor over the existing quote
-            cursor.movePosition(QTextCursor::Left);
+            cursor.movePosition(QTextCursor::Right);
             setTextCursor(cursor);
             return true;
         }
@@ -1098,7 +1103,7 @@ bool TEditor::handleQuoteCompletion(QChar quoteChar) {
 
     // Insert the quote pair
     cursor.insertText(QString(quoteChar) + quoteChar);
-    cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, 1);
+    cursor.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
     setTextCursor(cursor);
 
     return true;
@@ -1114,7 +1119,7 @@ bool TEditor::handleBracketSkip(QChar typedChar) {
         QChar nextChar = doc->characterAt(pos);
         if (nextChar == typedChar) {
             // Just move the cursor over the existing bracket/quote
-            cursor.movePosition(QTextCursor::Left);
+            cursor.movePosition(QTextCursor::Right);
             setTextCursor(cursor);
             return true;
         }

@@ -35,6 +35,10 @@ public:
     explicit TPanelArea(QWidget* parent = nullptr);
     ~TPanelArea() override = default;
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
+public:
     /// Set the active tab
     void setCurrentTab(Tab tab);
     Tab currentTab() const;

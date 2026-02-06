@@ -131,18 +131,23 @@ StringState::StringState(const QString& delim, int id) : delimiter(delim), delim
 TToken StringState::readToken(QStringView text, int& pos, const LanguageDefinition&) {
     int start = pos;
     while (pos < text.length()) {
-        if (text[pos] == '\\') { pos += 2; continue; }
+        if (text[pos] == '\\') { pos = qMin(pos + 2, static_cast<int>(text.length())); continue; }
         if (text.mid(pos).startsWith(delimiter)) {
             pos += delimiter.length();
+            m_terminated = true;
             return TToken(TokenType::String, start, pos - start);
         }
         pos++;
     }
+    m_terminated = false;
     return TToken(TokenType::String, start, pos - start);
 }
 
 std::unique_ptr<LexerState> StringState::nextState() const {
-    return std::make_unique<NormalState>();
+    if (m_terminated) {
+        return std::make_unique<NormalState>();
+    }
+    return std::make_unique<StringState>(delimiter, delimId);
 }
 
 std::unique_ptr<LexerState> StringState::clone() const {

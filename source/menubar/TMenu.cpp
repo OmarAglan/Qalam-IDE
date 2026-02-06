@@ -1,6 +1,6 @@
 #include "TMenu.h"
 
-TMenuBar::TMenuBar(QWidget* parent) {
+TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     parent->setStyleSheet(R"(
         QMenuBar {

@@ -4,6 +4,7 @@
 #include "TConsole.h"
 #include <QScrollArea>
 #include <QTextEdit>
+#include <QMouseEvent>
 
 TPanelArea::TPanelArea(QWidget* parent)
     : QWidget(parent)
@@ -271,6 +272,23 @@ void TPanelArea::setCollapsed(bool collapsed)
     m_collapsed = collapsed;
     m_stackedWidget->setVisible(!collapsed);
     emit collapseToggled(collapsed);
+}
+
+bool TPanelArea::eventFilter(QObject* watched, QEvent* event)
+{
+    if (event->type() == QEvent::MouseButtonRelease) {
+        QWidget* widget = qobject_cast<QWidget*>(watched);
+        if (widget) {
+            QString file = widget->property("file").toString();
+            int line = widget->property("line").toInt();
+            int column = widget->property("column").toInt();
+            if (!file.isEmpty()) {
+                emit problemClicked(file, line, column);
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void TPanelArea::applyStyles()

@@ -36,6 +36,7 @@ public:
 class StringState : public LexerState {
     QString delimiter;
     int delimId;
+    mutable bool m_terminated{false};
 public:
     StringState(const QString& delim, int id);
     TToken readToken(QStringView text, int& pos, const LanguageDefinition& langDef) override;

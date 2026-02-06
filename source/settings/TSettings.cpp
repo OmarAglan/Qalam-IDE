@@ -1,4 +1,4 @@
-﻿#include "TSettings.h"
+#include "TSettings.h"
 #include "../../qalam/Constants.h"
 
 TSettings::TSettings(QWidget* parent) : QWidget(parent) {
@@ -135,7 +135,9 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     QStringList fontFamilies{};
     for (int i = 0; i < 3; i++) {
         QStringList font = QFontDatabase::applicationFontFamilies(i);
-        fontFamilies.append(font.at(0));
+        if (!font.isEmpty()) {
+            fontFamilies.append(font.at(0));
+        }
     }
 
     // QStringList fontFamilies = QFontDatabase::families();

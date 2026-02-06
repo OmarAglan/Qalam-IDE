@@ -270,7 +270,7 @@ bool Qalam::eventFilter(QObject *object, QEvent *event)
             return true;
         }
     }
-    return QMainWindow::eventFilter(object, event);
+    return QalamWindow::eventFilter(object, event);
 }
 
 void Qalam::goToLine()
@@ -423,7 +423,6 @@ void Qalam::exitApp() {
     }
     else if (result == FileManager::SaveAction::Save) {
         m_fileManager->saveFile();
-        return;
     }
 
     WelcomeWindow *welcome = new WelcomeWindow();
