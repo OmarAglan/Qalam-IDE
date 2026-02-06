@@ -4,6 +4,7 @@
 #include <QTimer>
 #include <QHeaderView>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 TSearchView::TSearchView(QWidget *parent)
     : QWidget(parent)
@@ -142,9 +143,26 @@ void TSearchView::onSearchTextChanged()
 void TSearchView::onSearchTriggered()
 {
     QString query = m_searchInput->text();
-    if (query.length() >= 2) {
-        emit searchRequested(query, m_caseSensitive, m_wholeWord, m_useRegex);
+    if (query.length() < 2) return;
+
+    // Validate regex before emitting
+    if (m_useRegex) {
+        QRegularExpression re(query);
+        if (not re.isValid()) {
+            m_searchInput->setStyleSheet(
+                m_searchInput->styleSheet() +
+                "QLineEdit { border-color: #f44747; }"
+            );
+            m_resultSummary->setText("تعبير نمطي غير صالح: " + re.errorString());
+            m_resultSummary->show();
+            return;
+        }
     }
+
+    // Reset input border to normal
+    m_searchInput->setStyleSheet("");
+
+    emit searchRequested(query, m_caseSensitive, m_wholeWord, m_useRegex);
 }
 
 void TSearchView::onResultItemClicked(QTreeWidgetItem *item, int column)

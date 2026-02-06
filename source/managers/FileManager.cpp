@@ -102,6 +102,29 @@ void FileManager::openFile(QString filePath)
         }
     }
 
+    // File size safety check
+    constexpr qint64 WarnThreshold = 10 * 1024 * 1024;   // 10 MB
+    constexpr qint64 RejectThreshold = 50 * 1024 * 1024;  // 50 MB
+    QFileInfo fileCheck(filePath);
+    qint64 fileSize = fileCheck.size();
+
+    if (fileSize > RejectThreshold) {
+        QMessageBox::warning(m_parentWindow, "ملف كبير جداً",
+            QString("حجم الملف (%1 MB) يتجاوز الحد المسموح (50 MB).\n"
+                    "لا يمكن فتح هذا الملف.")
+                .arg(fileSize / (1024 * 1024)));
+        return;
+    }
+
+    if (fileSize > WarnThreshold) {
+        auto reply = QMessageBox::question(m_parentWindow, "ملف كبير",
+            QString("حجم الملف (%1 MB) كبير وقد يؤثر على الأداء.\n"
+                    "هل تريد المتابعة؟")
+                .arg(fileSize / (1024 * 1024)),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes) return;
+    }
+
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن فتح الملف");
