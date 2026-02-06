@@ -108,7 +108,32 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
         return TToken(TokenType::Separator, pos - 1, 1, QString(ch));
     }
 
-    // 8. Operators
+    // 8. Multi-character operators (look-ahead for second character)
+    if (pos + 1 < text.length()) {
+        QChar next = text[pos + 1];
+        // Two-character operators: ==, !=, <=, >=, &&, ||, ++, --, +=, -=, *=, /=, %=, <<, >>
+        if ((ch == '=' and next == '=') or
+            (ch == '!' and next == '=') or
+            (ch == '<' and next == '=') or
+            (ch == '>' and next == '=') or
+            (ch == '&' and next == '&') or
+            (ch == '|' and next == '|') or
+            (ch == '+' and next == '+') or
+            (ch == '-' and next == '-') or
+            (ch == '+' and next == '=') or
+            (ch == '-' and next == '=') or
+            (ch == '*' and next == '=') or
+            (ch == '/' and next == '=') or
+            (ch == '%' and next == '=') or
+            (ch == '<' and next == '<') or
+            (ch == '>' and next == '>')) {
+            int start = pos;
+            pos += 2;
+            return TToken(TokenType::Operator, start, 2, text.mid(start, 2).toString());
+        }
+    }
+
+    // 9. Single-character operators (fallback)
     pos++;
     return TToken(TokenType::Operator, pos - 1, 1, QString(ch));
 }

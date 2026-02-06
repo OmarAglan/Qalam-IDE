@@ -117,13 +117,13 @@
 **Goal:** Improve maintainability and reduce coupling  
 **Effort:** 1-2 weeks | **Impact:** High
 
-- [ ] 3.1 Single source of truth for keywords -- `AutoComplete` strategies read from `LanguageDefinition`
-- [ ] 3.2 Decompose `TEditor` into: `BracketPairing`, `CodeFolding`, `AutoSaveManager`, `SnippetManager`, `EditorAutoComplete`
-- [ ] 3.3 Complete `QalamTheme` adoption -- migrate all hardcoded CSS to centralized theme
-- [ ] 3.4 Move find/replace logic out of `Qalam` into `SearchPanel` or `SearchController`
-- [ ] 3.5 Make `LanguageDefinition` data-driven (load from config files)
-- [ ] 3.6 Fix snippet matching -- use IDs/enum instead of `startsWith()` on content
-- [ ] 3.7 Improve lexer multi-char operators -- lex `==`, `!=`, `<=`, `>=` as single tokens
+- [x] 3.1 Single source of truth for keywords -- `AutoComplete` strategies read from `LanguageDefinition`
+- [x] 3.2 Decompose `TEditor` into: `BracketPairing`, `CodeFolding`, `AutoSaveManager`, `SnippetManager`, `EditorAutoComplete`
+- [x] 3.3 Complete `QalamTheme` adoption -- migrate all hardcoded CSS to centralized theme
+- [x] 3.4 Move find/replace logic out of `Qalam` into `SearchPanel` or `SearchController`
+- [x] 3.5 Make `LanguageDefinition` data-driven (load from config files)
+- [x] 3.6 Fix snippet matching -- use IDs/enum instead of `startsWith()` on content
+- [x] 3.7 Improve lexer multi-char operators -- lex `==`, `!=`, `<=`, `>=` as single tokens
 
 ## Phase 4: Code Quality & Tooling
 
@@ -189,7 +189,7 @@
 |-------|--------|--------|--------|
 | Phase 1: Stability | Low (1-2 days) | Critical | **Complete** |
 | Phase 2: Memory/Perf | Low-Medium (2-3 days) | High | **Complete** |
-| Phase 3: Architecture | Medium (1-2 weeks) | High | Pending |
+| Phase 3: Architecture | Medium (1-2 weeks) | High | **Complete** |
 | Phase 4: Code Quality | Low (1-2 days) | Medium | Pending |
 | Phase 5: Testing | Medium (1-2 weeks) | High | Pending |
 | Phase 6: CI/CD | Low-Medium (2-3 days) | High | Pending |
