@@ -43,9 +43,6 @@ private slots:
 
     void showFindBar();
     void hideFindBar();
-    void findText();
-    void findNextText();
-    void findPrevText();
 
     void goToLine();
     

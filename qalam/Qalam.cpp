@@ -183,9 +183,8 @@ void Qalam::connectSignals()
     connect(tabWidget, &QTabWidget::currentChanged, this, &Qalam::onCurrentTabChanged);
 
     // --- Search bar signals ---
-    connect(searchBar, &SearchPanel::findNext, this, &Qalam::findNextText);
-    connect(searchBar, &SearchPanel::findText, this, &Qalam::findText);
-    connect(searchBar, &SearchPanel::findPrevious, this, &Qalam::findPrevText);
+    // Search logic is now handled internally by SearchPanel.
+    // We only need to connect the close signal and sync the active editor.
     connect(searchBar, &SearchPanel::closed, this, &Qalam::hideFindBar);
 
     // --- FileManager signals ---
@@ -296,6 +295,7 @@ void Qalam::goToLine()
 }
 
 void Qalam::showFindBar() {
+    searchBar->setEditor(currentEditor());
     searchBar->show();
     searchBar->setFocusToInput();
 }
@@ -304,64 +304,6 @@ void Qalam::hideFindBar() {
     searchBar->hide();
     if (TEditor* editor = currentEditor()) {
         editor->setFocus();
-    }
-}
-
-void Qalam::findText() {
-    TEditor* editor = currentEditor();
-    if (!editor) return;
-
-    QString text = searchBar->getText();
-    if (text.isEmpty()) return;
-
-    QTextDocument::FindFlags flags;
-    if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
-
-    editor->moveCursor(QTextCursor::Start);
-    bool found = editor->find(text, flags);
-
-    if (!found) {
-        QApplication::beep();
-    }
-}
-
-void Qalam::findNextText() {
-    TEditor* editor = currentEditor();
-    if (!editor) return;
-
-    QString text = searchBar->getText();
-    if (text.isEmpty()) return;
-
-    QTextDocument::FindFlags flags;
-    if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
-
-    bool found = editor->find(text, flags);
-
-    if (!found) {
-        editor->moveCursor(QTextCursor::Start);
-        found = editor->find(text, flags);
-        if (!found) {
-            QApplication::beep();
-        }
-    }
-}
-
-void Qalam::findPrevText() {
-    TEditor* editor = currentEditor();
-    if (!editor) return;
-
-    QString text = searchBar->getText();
-    if (text.isEmpty()) return;
-
-    QTextDocument::FindFlags flags = QTextDocument::FindBackward;
-    if (searchBar->isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
-
-    bool found = editor->find(text, flags);
-
-    if (!found) {
-        editor->moveCursor(QTextCursor::End);
-        found = editor->find(text, flags);
-        if (!found) QApplication::beep();
     }
 }
 
@@ -446,6 +388,9 @@ void Qalam::onCurrentTabChanged()
     if (editor) {
         connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
         m_lastConnectedEditor = editor;
+
+        // Keep search panel pointing at the active editor
+        searchBar->setEditor(editor);
     }
 }
 

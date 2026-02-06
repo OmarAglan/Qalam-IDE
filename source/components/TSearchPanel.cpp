@@ -1,4 +1,7 @@
 #include "TSearchPanel.h"
+#include "Constants.h"
+#include <QApplication>
+#include <QTextDocument>
 #include <QStyle>
 
 SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
@@ -10,25 +13,37 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
     // 2. إنشاء المكونات
     searchInput = new QLineEdit(this);
     searchInput->setPlaceholderText("بحث...");
-    searchInput->setStyleSheet("border: 1px solid #3e3e42; background: #252526; color: #cccccc; padding: 4px;");
+    searchInput->setStyleSheet(QString(
+        "border: 1px solid %1; background: %2; color: %3; padding: 4px;")
+        .arg(Constants::Colors::Border)
+        .arg(Constants::Colors::SidebarBackground)
+        .arg(Constants::Colors::TextSecondary));
 
     btnNext = new QPushButton("التالي", this);
     btnPrev = new QPushButton("السابق", this);
 
     // أزرار صغيرة
-    QString btnStyle = "QPushButton { background: transparent; border: none; color: #cccccc; padding: 4px; } QPushButton:hover { background: #334466; border-radius: 7px; }";
+    QString btnStyle = QString(
+        "QPushButton { background: transparent; border: none; color: %1; padding: 4px; }"
+        "QPushButton:hover { background: %2; border-radius: 7px; }")
+        .arg(Constants::Colors::TextSecondary)
+        .arg(Constants::Colors::ListActiveBackground);
     btnNext->setStyleSheet(btnStyle);
     btnPrev->setStyleSheet(btnStyle);
 
     // زر الإغلاق (X)
     btnClose = new QPushButton(this);
     btnClose->setIcon(QIcon(":/icons/resources/close.svg"));
-    btnClose->setStyleSheet("QPushButton { background: transparent; border: none; color: white; } QPushButton:hover { background: #334466; border-radius: 7px; }");
-    btnClose->setFixedSize(35,35);
+    btnClose->setStyleSheet(QString(
+        "QPushButton { background: transparent; border: none; color: %1; }"
+        "QPushButton:hover { background: %2; border-radius: 7px; }")
+        .arg(Constants::Colors::TextPrimary)
+        .arg(Constants::Colors::ListActiveBackground));
+    btnClose->setFixedSize(35, 35);
 
     checkCase = new QCheckBox("Aa", this); // Case Sensitive
     checkCase->setToolTip("مطبقة حالة الأحرف");
-    checkCase->setStyleSheet("color: #cccccc;");
+    checkCase->setStyleSheet(QString("color: %1;").arg(Constants::Colors::TextSecondary));
 
     // 3. إضافة المكونات للتخطيط
     layout->addWidget(btnClose);
@@ -39,19 +54,80 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
     layout->addStretch(); // فراغ في النهاية
 
     // 4. الخلفية واللون
-    QString styleSheet = "background-color: #1e202e; border-top: 1px solid #3e3e42;";
+    setStyleSheet(QString("background-color: %1; border-top: 1px solid %2;")
+        .arg(Constants::Colors::EditorBackground)
+        .arg(Constants::Colors::Border));
     setFixedHeight(45);
 
-    this->setStyleSheet(styleSheet);
-
-    // 5. ربط الإشارات
-    connect(btnNext, &QPushButton::clicked, this, &SearchPanel::findNext);
-    connect(btnPrev, &QPushButton::clicked, this, &SearchPanel::findPrevious);
+    // 5. ربط الإشارات — search logic is handled internally
+    connect(btnNext, &QPushButton::clicked, this, &SearchPanel::performFindNext);
+    connect(btnPrev, &QPushButton::clicked, this, &SearchPanel::performFindPrev);
     connect(btnClose, &QPushButton::clicked, this, &SearchPanel::closed);
 
     // البحث عند الضغط على Enter في مربع النص
-    connect(searchInput, &QLineEdit::returnPressed, this, &SearchPanel::findNext);
-    connect(searchInput, &QLineEdit::textChanged, this, &SearchPanel::findText);
+    connect(searchInput, &QLineEdit::returnPressed, this, &SearchPanel::performFindNext);
+    connect(searchInput, &QLineEdit::textChanged, this, &SearchPanel::performFind);
+}
+
+void SearchPanel::setEditor(QPlainTextEdit *editor) {
+    m_editor = editor;
+}
+
+void SearchPanel::performFind() {
+    if (!m_editor) return;
+
+    QString text = getText();
+    if (text.isEmpty()) return;
+
+    QTextDocument::FindFlags flags;
+    if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+
+    m_editor->moveCursor(QTextCursor::Start);
+    bool found = m_editor->find(text, flags);
+
+    if (!found) {
+        QApplication::beep();
+    }
+}
+
+void SearchPanel::performFindNext() {
+    if (!m_editor) return;
+
+    QString text = getText();
+    if (text.isEmpty()) return;
+
+    QTextDocument::FindFlags flags;
+    if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+
+    bool found = m_editor->find(text, flags);
+
+    if (!found) {
+        // Wrap around to start
+        m_editor->moveCursor(QTextCursor::Start);
+        found = m_editor->find(text, flags);
+        if (!found) {
+            QApplication::beep();
+        }
+    }
+}
+
+void SearchPanel::performFindPrev() {
+    if (!m_editor) return;
+
+    QString text = getText();
+    if (text.isEmpty()) return;
+
+    QTextDocument::FindFlags flags = QTextDocument::FindBackward;
+    if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+
+    bool found = m_editor->find(text, flags);
+
+    if (!found) {
+        // Wrap around to end
+        m_editor->moveCursor(QTextCursor::End);
+        found = m_editor->find(text, flags);
+        if (!found) QApplication::beep();
+    }
 }
 
 QString SearchPanel::getText() const { return searchInput->text(); }

@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QHBoxLayout>
+#include <QPlainTextEdit>
 
 class SearchPanel : public QWidget {
     Q_OBJECT
@@ -17,11 +18,17 @@ public:
     bool isWholeWord() const;
     void setFocusToInput();
 
+    // Set the editor that search operations apply to.
+    // Called by Qalam whenever the active tab changes.
+    void setEditor(QPlainTextEdit *editor);
+
 signals:
-    void findText();
-    void findNext();
-    void findPrevious();
     void closed();
+
+private slots:
+    void performFind();
+    void performFindNext();
+    void performFindPrev();
 
 private:
     QLineEdit *searchInput;
@@ -30,4 +37,6 @@ private:
     QPushButton *btnClose;
     QCheckBox *checkCase;
     QCheckBox *checkWord;
+
+    QPlainTextEdit *m_editor{};
 };
