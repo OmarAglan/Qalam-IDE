@@ -3,9 +3,8 @@
 #include "TEditor.h"
 #include "TMenu.h"
 #include "TSearchPanel.h"
-#include "ProcessWorker.h"
 #include "FileManager.h"
-#include <QPointer>
+#include "BuildManager.h"
 #include "../ui/QalamWindow.h"
 
 // Forward declarations for UI components
@@ -69,9 +68,7 @@ private:
     QString folderPath{};
 
     FileManager *m_fileManager{};
-
-    QPointer<ProcessWorker> worker;
-    QThread* buildThread = nullptr;
+    BuildManager *m_buildManager{};
 
     SearchPanel *searchBar{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect

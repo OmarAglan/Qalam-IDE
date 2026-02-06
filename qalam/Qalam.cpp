@@ -46,6 +46,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     tabWidget->setMovable(true);
     menuBar = new TMenuBar(this);
     m_fileManager = new FileManager(tabWidget, this, this);
+    m_buildManager = new BuildManager(this);
 
     searchBar = new SearchPanel(this);
     searchBar->hide();
@@ -450,102 +451,22 @@ void Qalam::runBaa() {
     if (!editor) return;
 
     QString filePath = editor->property("filePath").toString();
-    if (filePath.isEmpty() || editor->document()->isModified()) {
+    if (filePath.isEmpty() or editor->document()->isModified()) {
         QMessageBox::warning(this, "تنبيه", "يجب حفظ الملف قبل التشغيل.");
         m_fileManager->saveFile();
         filePath = editor->property("filePath").toString();
-        if (filePath.isEmpty() || editor->document()->isModified()) return;
+        if (filePath.isEmpty() or editor->document()->isModified()) return;
     }
 
-    // Use TPanelArea's terminal
+    // Show the panel area with output tab
     if (!m_panelArea) return;
-
-    TConsole *console = m_panelArea->terminal();
     m_panelArea->setCurrentTab(TPanelArea::Tab::Output);
     m_panelArea->show();
     m_panelArea->setCollapsed(false);
 
-    // Dynamic Compiler Path Logic
-    QSettings settings(Constants::OrgName, Constants::AppName);
-    QString program = settings.value(Constants::SettingsKeyCompilerPath).toString();
-
-    if (program.isEmpty()) {
-        QString appDir = QCoreApplication::applicationDirPath();
-#if defined(Q_OS_WIN)
-        QString localBaa = QDir(appDir).filePath("baa/baa.exe");
-        if (QFile::exists(localBaa)) {
-            program = localBaa;
-        } else {
-            program = "baa/baa.exe"; // Fallback to PATH or relative
-        }
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-        program = QDir(appDir).filePath("baa/baa");
-#endif
-    }
-
-    if (!QFile::exists(program)) {
-        console->clear();
-        console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم باء!");
-        console->appendPlainTextThreadSafe("المسار المتوقع: " + program);
-
-#if defined(Q_OS_LINUX)
-        console->appendPlainTextThreadSafe("تأكد من أن ملف 'alif' موجود ولديه صلاحية التنفيذ (chmod +x).");
-#endif
-        return;
-    }
-
-    QStringList args = { filePath };
-    QString workingDir = QFileInfo(filePath).absolutePath();
-
-    // Safely clean up existing thread/worker before creating new ones
-    if (buildThread) {
-        if (worker) {
-            worker->stop();
-            worker = nullptr;
-        }
-        buildThread->quit();
-        if (!buildThread->wait(3000)) {
-            buildThread->terminate();
-            buildThread->wait();
-        }
-        if (buildThread) {
-            buildThread->deleteLater();
-            buildThread = nullptr;
-        }
-    }
-
-    console->clear();
-    console->appendPlainTextThreadSafe("🚀 بدء تشغيل ملف باء...");
-    console->appendPlainTextThreadSafe("📄 الملف: " + QFileInfo(filePath).fileName());
-
-    worker = new ProcessWorker(program, args, workingDir);
-    buildThread = new QThread(this);
-
-    worker->moveToThread(buildThread);
- 
-    connect(buildThread, &QThread::started, worker, &ProcessWorker::start);
-
-    connect(worker, &ProcessWorker::outputReady,
-            console, &TConsole::appendPlainTextThreadSafe);
-    connect(worker, &ProcessWorker::errorReady,
-            console, &TConsole::appendPlainTextThreadSafe);
- 
-    connect(worker, &ProcessWorker::finished, this, [this, console](int code){
-        console->appendPlainTextThreadSafe(
-            "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
-            + QString::number(code) + ")\n"
-            );
-        buildThread->quit();
-    });
-
-    // Cleanup logic: Ensure thread and worker are deleted after the thread finishes
-    connect(buildThread, &QThread::finished, worker, &QObject::deleteLater);
-    connect(buildThread, &QThread::finished, buildThread, &QObject::deleteLater);
-
-    connect(console, &TConsole::commandEntered,
-            worker, &ProcessWorker::sendInput);
-
-    buildThread->start();
+    // Delegate build to BuildManager
+    TConsole *console = m_panelArea->terminal();
+    m_buildManager->runBaa(filePath, console);
 }
 
 //----------------

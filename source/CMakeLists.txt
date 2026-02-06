@@ -30,6 +30,7 @@ add_library(qalam_core STATIC
     ui/TStatusBar.cpp
     # Managers
     managers/FileManager.cpp
+    managers/BuildManager.cpp
 )
 
 target_include_directories(qalam_core PUBLIC
