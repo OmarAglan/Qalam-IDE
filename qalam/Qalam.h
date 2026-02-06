@@ -5,6 +5,7 @@
 #include "TSearchPanel.h"
 #include "FileManager.h"
 #include "BuildManager.h"
+#include "SessionManager.h"
 #include "../ui/QalamWindow.h"
 
 #include "TActivityBar.h"
@@ -71,6 +72,7 @@ private:
 
     FileManager *m_fileManager{};
     BuildManager *m_buildManager{};
+    SessionManager *m_sessionManager{};
 
     SearchPanel *searchBar{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect

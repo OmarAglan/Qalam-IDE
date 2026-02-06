@@ -16,6 +16,12 @@ namespace Constants {
     const QString SettingsKeyPanelHeight = "panelHeight";
     const QString SettingsKeyShowWelcome = "ShowWelcomeOnStartup";
 
+    // Session Keys
+    const QString SessionKeyOpenFiles = "session/openFiles";
+    const QString SessionKeyActiveTab = "session/activeTabIndex";
+    const QString SessionKeyFolderPath = "session/folderPath";
+    const QString SessionKeyWindowGeometry = "session/windowGeometry";
+
     // File Extensions
     const QString ProjectExtension = ".baa";
     const QString HeaderExtension = ".baahd";

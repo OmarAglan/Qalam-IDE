@@ -44,6 +44,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     menuBar = new TMenuBar(this);
     m_fileManager = new FileManager(tabWidget, this, this);
     m_buildManager = new BuildManager(this);
+    m_sessionManager = new SessionManager(tabWidget, this);
 
     searchBar = new SearchPanel(this);
     searchBar->hide();
@@ -79,26 +80,55 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     setupNewLayout();
     
     // ===================================================================
-    // الخطوة 6: تحميل الملف المبدئي أو إنشاء تبويب جديد
+    // الخطوة 6: تحميل الملف المبدئي أو استعادة الجلسة السابقة
     // ===================================================================
     installEventFilter(this);
 
     if (!filePath.isEmpty()) {
+        // Explicit file passed (e.g. command-line argument or double-click)
         m_fileManager->openFile(filePath);
     } else {
-        m_fileManager->newFile();
+        // Try to restore previous session
+        auto session = m_sessionManager->restoreSession();
+
+        // Restore window geometry
+        if (not session.windowGeometry.isEmpty()) {
+            restoreGeometry(session.windowGeometry);
+        }
+
+        // Restore folder
+        if (not session.folderPath.isEmpty()) {
+            loadFolder(session.folderPath);
+        }
+
+        // Restore open files
+        bool restoredAny = false;
+        for (const QString &file : session.openFiles) {
+            if (QFile::exists(file)) {
+                m_fileManager->openFile(file);
+                restoredAny = true;
+            }
+        }
+
+        // Restore active tab
+        if (restoredAny and session.activeTabIndex >= 0
+            and session.activeTabIndex < tabWidget->count()) {
+            tabWidget->setCurrentIndex(session.activeTabIndex);
+        }
+
+        // If nothing was restored, create a new empty tab
+        if (not restoredAny) {
+            m_fileManager->newFile();
+        }
     }
 }
 
 Qalam::~Qalam() {
+    // Save session state
+    m_sessionManager->saveSession(folderPath, saveGeometry());
 
-    if (TEditor* editor = currentEditor()) {
-        QSettings settings(Constants::OrgName, Constants::AppName);
-        settings.setValue(Constants::SettingsKeyFontSize, editor->font().pixelSize());
-        settings.setValue(Constants::SettingsKeyFontType, editor->font().family());
-        settings.setValue(Constants::SettingsKeyTheme, setting->getThemeCombo()->currentIndex());
-        settings.sync();
-    }
+    // Save user preferences
+    m_sessionManager->savePreferences(currentEditor(), setting->getThemeCombo()->currentIndex());
 }
 
 // ===================================================================
@@ -718,23 +748,6 @@ void Qalam::onSidebarFileSelected(const QString &filePath)
 
 void Qalam::syncOpenEditors()
 {
-    if (!m_sidebar || !m_sidebar->explorerView()) return;
-    
-    // Clear existing open editors
-    m_sidebar->explorerView()->clearOpenEditors();
-    
-    // Add all open tabs
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(i));
-        if (editor) {
-            QString filePath = editor->property("filePath").toString();
-            bool modified = editor->document()->isModified();
-            
-            // Use tab text if no file path (unsaved file)
-            if (filePath.isEmpty()) {
-                filePath = tabWidget->tabText(i);
-            }
-            m_sidebar->explorerView()->addOpenEditor(filePath, modified);
-        }
-    }
+    if (not m_sidebar or not m_sidebar->explorerView()) return;
+    m_sessionManager->syncOpenEditors(m_sidebar->explorerView());
 }

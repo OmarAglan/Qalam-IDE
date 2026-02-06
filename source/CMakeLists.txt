@@ -31,6 +31,7 @@ add_library(qalam_core STATIC
     # Managers
     managers/FileManager.cpp
     managers/BuildManager.cpp
+    managers/SessionManager.cpp
 )
 
 target_include_directories(qalam_core PUBLIC
