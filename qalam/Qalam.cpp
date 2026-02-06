@@ -65,7 +65,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     // ===================================================================
     // الخطوة 3: إعداد الإعدادات
     // ===================================================================
-    setting = new TSettings();
+    setting = new TSettings(this);
 
     // ===================================================================
     // الخطوة 4: إعداد التخطيط الجديد (VSCode-like)
@@ -426,6 +426,7 @@ void Qalam::exitApp() {
     }
 
     WelcomeWindow *welcome = new WelcomeWindow();
+    welcome->setAttribute(Qt::WA_DeleteOnClose);
     welcome->show();
     this->close();
 }

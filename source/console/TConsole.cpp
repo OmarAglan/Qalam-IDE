@@ -208,14 +208,19 @@ void TConsole::flushPending() {
         m_buffer.append(line);
     }
     
-    // Trim buffer and document if needed
-    while (m_buffer.size() > m_maxLines) {
-        m_buffer.pop_front();
-        // Remove first line from document
+    // Trim buffer and document if needed (batch removal instead of O(n^2) pop_front loop)
+    int excess = m_buffer.size() - m_maxLines;
+    if (excess > 0) {
+        m_buffer = m_buffer.mid(excess);
+
+        // Remove the first 'excess' lines from the document in one operation
         QTextCursor trimCursor(m_output->document());
         trimCursor.movePosition(QTextCursor::Start);
-        trimCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-        trimCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor); // include newline
+        for (int i = 0; i < excess; ++i) {
+            trimCursor.movePosition(QTextCursor::Down, QTextCursor::KeepAnchor);
+        }
+        // Select to start of the next line (include trailing newline)
+        trimCursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
         trimCursor.removeSelectedText();
     }
 

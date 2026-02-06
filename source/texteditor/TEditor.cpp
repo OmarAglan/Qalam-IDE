@@ -66,6 +66,17 @@ TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
         dynamicStrategy->rebuildIndex(this->toPlainText());
     }
     
+    // Debounced timer to rebuild word index when text is deleted
+    // (so the index shrinks and doesn't grow forever)
+    m_indexRebuildTimer = new QTimer(this);
+    m_indexRebuildTimer->setSingleShot(true);
+    m_indexRebuildTimer->setInterval(2000); // 2 seconds after last deletion
+    connect(m_indexRebuildTimer, &QTimer::timeout, this, [this]() {
+        if (dynamicStrategy) {
+            dynamicStrategy->rebuildIndex(this->toPlainText());
+        }
+    });
+
     // Connect document changes to update the autocomplete index
     connect(this->document(), &QTextDocument::contentsChange, this, [this](int position, int charsRemoved, int charsAdded) {
         if (dynamicStrategy && charsAdded > 0) {
@@ -73,6 +84,10 @@ TEditor::TEditor(QWidget* parent) : QPlainTextEdit(parent) {
             cursor.setPosition(position);
             cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, charsAdded);
             dynamicStrategy->updateIndex(cursor.selectedText());
+        }
+        // Schedule a full rebuild when text is deleted so stale words are pruned
+        if (dynamicStrategy && charsRemoved > 0) {
+            m_indexRebuildTimer->start();
         }
     });
 
@@ -836,10 +851,14 @@ void TEditor::performCompletion() {
     }
 
     std::vector<CompletionItem> allSuggestions;
-    QString fullDoc = toPlainText();
+
+    // Avoid O(n) toPlainText() copy on every keystroke.
+    // No strategy uses the fullText parameter (DynamicWordStrategy
+    // queries its pre-built wordIndex instead).
+    static const QString empty;
 
     for (const auto& strategy : strategies) {
-        auto res = strategy->getSuggestions(textUnder, fullDoc);
+        auto res = strategy->getSuggestions(textUnder, empty);
         allSuggestions.insert(allSuggestions.end(), res.begin(), res.end());
     }
 

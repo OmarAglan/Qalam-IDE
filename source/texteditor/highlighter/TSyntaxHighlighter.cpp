@@ -21,8 +21,9 @@ void TSyntaxHighlighter::highlightBlock(const QString& text) {
     QVector<TToken> tokens = lexer->tokenize(text, startState);
 
     for (const TToken& token : tokens) {
-        if (currentThemeFormats.contains(token.type)) {
-            setFormat(token.start, token.length, currentThemeFormats[token.type]);
+        auto it = currentThemeFormats.find(token.type);
+        if (it != currentThemeFormats.end()) {
+            setFormat(token.start, token.length, *it);
         }
     }
 

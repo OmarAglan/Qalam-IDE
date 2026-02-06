@@ -75,6 +75,7 @@ private:
 
 
     QTimer *autoSaveTimer;
+    QTimer *m_indexRebuildTimer{};
 
     friend class LineNumberArea;
 
