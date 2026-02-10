@@ -1,10 +1,10 @@
 #include "Qalam.h"
-#include "TWelcomeWindow.h"
 #include "QalamTheme.h"
 
 #include <QApplication>
 #include <QMessageBox>
 #include <QDebug>
+#include <QFontDatabase>
 
 #include <QFileDialog>
 #include <QLockFile>
@@ -17,12 +17,6 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName(Constants::OrgName);
     QCoreApplication::setApplicationName(Constants::AppName);
     app.setLayoutDirection(Qt::RightToLeft);
-
-    // Load Central Stylesheet
-    QFile styleFile(":/styles/resources/styles/main.qss");
-    if (styleFile.open(QFile::ReadOnly)) {
-        app.setStyleSheet(styleFile.readAll());
-    }
 
 
     QString lockPath = QDir::tempPath() + "/qalam_ide.lock";
@@ -70,13 +64,8 @@ int main(int argc, char *argv[])
 
     app.setQuitOnLastWindowClosed(true);
 
-    if (!filePath.isEmpty()) {
-        Qalam *editor = new Qalam(filePath);
-        editor->show();
-    } else {
-        WelcomeWindow *w = new WelcomeWindow();
-        w->show();
-    }
+    Qalam *editor = new Qalam(filePath);
+    editor->show();
 
     return app.exec();
 }

@@ -58,7 +58,6 @@ void LayoutManager::setupLayout()
     // Create editor + panel vertical splitter
     QSplitter *editorPanelSplitter = new QSplitter(Qt::Vertical);
     editorPanelSplitter->setHandleWidth(1);
-    editorPanelSplitter->setStyleSheet("QSplitter::handle { background: #007acc; }");
 
     // Create editor area container with breadcrumb
     QWidget *editorContainer = new QWidget();

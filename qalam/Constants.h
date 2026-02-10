@@ -43,102 +43,102 @@ namespace Constants {
     const QString DefaultFontType = "Kawkab Mono";
 
     // ==========================================================================
-    // UI Colors - Premium Modern Dark (GitHub Dark / VSCode-ish, high-contrast)
+    // UI Colors - VS Code Dark+ (RTL-first)
     // ==========================================================================
     namespace Colors {
         // Surfaces
-        constexpr const char* WindowBackground = "#0d1117";
-        constexpr const char* EditorBackground = "#0d1117";
-        constexpr const char* SidebarBackground = "#161b22";
-        constexpr const char* SidebarHeaderBackground = "#161b22";
-        constexpr const char* ConsoleBackground = "#0d1117";
-        constexpr const char* MenuBackground = "#161b22";
+        constexpr const char* WindowBackground = "#1e1e1e";
+        constexpr const char* EditorBackground = "#1e1e1e";
+        constexpr const char* SidebarBackground = "#252526";
+        constexpr const char* SidebarHeaderBackground = "#252526";
+        constexpr const char* ConsoleBackground = "#1e1e1e";
+        constexpr const char* MenuBackground = "#252526";
 
         // Activity Bar
-        constexpr const char* ActivityBarBackground = "#0d1117";
-        constexpr const char* ActivityBarBorder = "#21262d";
-        constexpr const char* IconInactive = "#8b949e";
-        constexpr const char* IconActive = "#c9d1d9";
-        constexpr const char* ActivityIndicator = "#1f6feb";
-        constexpr const char* ActivityBarBadge = "#f85149";
+        constexpr const char* ActivityBarBackground = "#333333";
+        constexpr const char* ActivityBarBorder = "#2a2a2a";
+        constexpr const char* IconInactive = "#c5c5c5";
+        constexpr const char* IconActive = "#ffffff";
+        constexpr const char* ActivityIndicator = "#007acc";
+        constexpr const char* ActivityBarBadge = "#f14c4c";
 
         // Tabs
-        constexpr const char* TabBackground = "#161b22";
-        constexpr const char* TabActiveBackground = "#0d1117";
-        constexpr const char* TabHoverBackground = "#1f2630";
-        constexpr const char* TabBorder = "#21262d";
+        constexpr const char* TabBackground = "#2d2d2d";
+        constexpr const char* TabActiveBackground = "#1e1e1e";
+        constexpr const char* TabHoverBackground = "#3e3e3e";
+        constexpr const char* TabBorder = "#252526";
 
         // Accent
-        constexpr const char* Accent = "#1f6feb";
-        constexpr const char* AccentHover = "#388bfd";
-        constexpr const char* AccentAlt = "#0969da";
+        constexpr const char* Accent = "#007acc";
+        constexpr const char* AccentHover = "#1f8ad2";
+        constexpr const char* AccentAlt = "#006bb3";
 
         // Selection
-        constexpr const char* Selection = "#1f6feb55";
-        constexpr const char* SelectionHighlight = "#1f6feb26";
-        constexpr const char* CurrentLineHighlight = "#171824f0"; // rgba(23, 24, 36, 240)
+        constexpr const char* Selection = "#264f78";
+        constexpr const char* SelectionHighlight = "#264f7840";
+        constexpr const char* CurrentLineHighlight = "#2a2d2e";
 
         // Inputs
-        constexpr const char* InputBackground = "#0d1117";
-        constexpr const char* Border = "#30363d";
-        constexpr const char* BorderSubtle = "#21262d";
-        constexpr const char* BorderFocus = "#58a6ff";
+        constexpr const char* InputBackground = "#3c3c3c";
+        constexpr const char* Border = "#3c3c3c";
+        constexpr const char* BorderSubtle = "#2a2a2a";
+        constexpr const char* BorderFocus = "#007acc";
 
         // Text
-        constexpr const char* TextPrimary = "#c9d1d9";
-        constexpr const char* TextSecondary = "#adbac7";
-        constexpr const char* TextMuted = "#8b949e";
-        constexpr const char* TextDisabled = "#5c6370";
-        constexpr const char* ConsoleText = "#adbac7";
+        constexpr const char* TextPrimary = "#d4d4d4";
+        constexpr const char* TextSecondary = "#cccccc";
+        constexpr const char* TextMuted = "#8a8a8a";
+        constexpr const char* TextDisabled = "#5a5a5a";
+        constexpr const char* ConsoleText = "#d4d4d4";
 
         // Buttons / caption buttons
-        constexpr const char* ButtonHover = "#1f2630";
-        constexpr const char* ButtonPressed = "#21262d";
-        constexpr const char* CaptionButtonHover = "#1f2630";
-        constexpr const char* CaptionButtonPressed = "#21262d";
-        constexpr const char* CloseButtonHover = "#da3633";
-        constexpr const char* CloseButtonPressed = "#f85149";
+        constexpr const char* ButtonHover = "#2a2d2e";
+        constexpr const char* ButtonPressed = "#3e3e3e";
+        constexpr const char* CaptionButtonHover = "#2a2d2e";
+        constexpr const char* CaptionButtonPressed = "#3e3e3e";
+        constexpr const char* CloseButtonHover = "#e81123";
+        constexpr const char* CloseButtonPressed = "#c50f1f";
 
         // Status Bar
-        constexpr const char* StatusBarBackground = "#1f6feb";
+        constexpr const char* StatusBarBackground = "#007acc";
         constexpr const char* StatusBarForeground = "#ffffff";
-        constexpr const char* StatusBarHover = "#388bfd";
-        constexpr const char* StatusBarNoFolder = "#8957e5";
+        constexpr const char* StatusBarHover = "#1f8ad2";
+        constexpr const char* StatusBarNoFolder = "#68217a";
 
         // Breadcrumb
-        constexpr const char* BreadcrumbBackground = "#0d1117";
-        constexpr const char* BreadcrumbForeground = "#8b949e";
-        constexpr const char* BreadcrumbFocusForeground = "#c9d1d9";
+        constexpr const char* BreadcrumbBackground = "#1e1e1e";
+        constexpr const char* BreadcrumbForeground = "#9e9e9e";
+        constexpr const char* BreadcrumbFocusForeground = "#e7e7e7";
 
         // Panel / Console Area
-        constexpr const char* PanelBackground = "#0d1117";
-        constexpr const char* PanelBorder = "#21262d";
-        constexpr const char* PanelTabActive = "#0d1117";
+        constexpr const char* PanelBackground = "#1e1e1e";
+        constexpr const char* PanelBorder = "#2a2a2a";
+        constexpr const char* PanelTabActive = "#1e1e1e";
         constexpr const char* PanelTabInactive = "transparent";
 
         // Problems colors
-        constexpr const char* ErrorForeground = "#f85149";
-        constexpr const char* WarningForeground = "#d29922";
-        constexpr const char* InfoForeground = "#58a6ff";
+        constexpr const char* ErrorForeground = "#f14c4c";
+        constexpr const char* WarningForeground = "#cca700";
+        constexpr const char* InfoForeground = "#3794ff";
 
         // Borders (semantic aliases)
-        constexpr const char* BorderActive = "#1f6feb";
-        constexpr const char* LineNumberBorder = "#1f6feb";
+        constexpr const char* BorderActive = "#007acc";
+        constexpr const char* LineNumberBorder = "#007acc";
 
         // Scrollbar
         constexpr const char* ScrollbarBackground = "transparent";
-        constexpr const char* ScrollbarThumb = "#6e768166";
-        constexpr const char* ScrollbarThumbHover = "#6e7681b3";
+        constexpr const char* ScrollbarThumb = "#424242";
+        constexpr const char* ScrollbarThumbHover = "#4f4f4f";
 
         // List / Tree
-        constexpr const char* ListHoverBackground = "#1f2630";
-        constexpr const char* ListSelectionBackground = "#1f6feb33";
-        constexpr const char* ListActiveBackground = "#1f6feb55";
-        constexpr const char* ListInactiveBackground = "#2d333b";
+        constexpr const char* ListHoverBackground = "#2a2d2e";
+        constexpr const char* ListSelectionBackground = "#094771";
+        constexpr const char* ListActiveBackground = "#094771";
+        constexpr const char* ListInactiveBackground = "#37373d";
 
         // Title Bar
-        constexpr const char* TitleBarBackground = "#0d1117";
-        constexpr const char* TitleBarActiveBackground = "#161b22";
+        constexpr const char* TitleBarBackground = "#3c3c3c";
+        constexpr const char* TitleBarActiveBackground = "#3c3c3c";
     }
 
     // ==========================================================================

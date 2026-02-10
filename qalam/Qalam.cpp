@@ -1,5 +1,5 @@
 #include "Qalam.h"
-#include "TWelcomeWindow.h"
+#include "TWelcomePage.h"
 #include "TConsole.h"
 #include "TSearchPanel.h"
 #include "Constants.h"
@@ -21,6 +21,7 @@
 #include <QCoreApplication>
 #include <QApplication>
 #include <QSettings>
+#include <QFile>
 #include <QKeyEvent>
 #include <QInputDialog>
 
@@ -116,9 +117,13 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
             tabWidget->setCurrentIndex(session.activeTabIndex);
         }
 
-        // If nothing was restored, create a new empty tab
+        // If nothing was restored, show welcome or create a new empty tab
         if (not restoredAny) {
-            m_fileManager->newFile();
+            if (shouldShowWelcome()) {
+                showWelcomeTab();
+            } else {
+                m_fileManager->newFile();
+            }
         }
     }
 }
@@ -167,8 +172,8 @@ void Qalam::connectSignals()
     });
 
     // --- Menu bar signals ---
-    connect(menuBar, &TMenuBar::newRequested, m_fileManager, &FileManager::newFile);
-    connect(menuBar, &TMenuBar::openFileRequested, this, [this](){ m_fileManager->openFile(""); });
+    connect(menuBar, &TMenuBar::newRequested, this, &Qalam::newFileFromUi);
+    connect(menuBar, &TMenuBar::openFileRequested, this, [this]() { openFileFromUi(QString()); });
     connect(menuBar, &TMenuBar::saveRequested, m_fileManager, &FileManager::saveFile);
     connect(menuBar, &TMenuBar::saveAsRequested, m_fileManager, &FileManager::saveFileAs);
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
@@ -324,6 +329,12 @@ void Qalam::handleOpenFolderMenu()
     if (folderPath.isEmpty()) return;
 
     loadFolder(folderPath);
+
+    if (not hasAnyEditorTabs()) {
+        m_fileManager->newFile();
+    }
+
+    removeWelcomeTabIfPresent();
 }
 
 void Qalam::toggleSidebar()
@@ -366,11 +377,7 @@ void Qalam::exitApp() {
     else if (result == FileManager::SaveAction::Save) {
         m_fileManager->saveFile();
     }
-
-    WelcomeWindow *welcome = new WelcomeWindow();
-    welcome->setAttribute(Qt::WA_DeleteOnClose);
-    welcome->show();
-    this->close();
+    close();
 }
 
 void Qalam::onCurrentTabChanged()
@@ -448,19 +455,105 @@ TEditor* Qalam::currentEditor() {
     return qobject_cast<TEditor*>(tabWidget->currentWidget());
 }
 
-void Qalam::closeTab(int index)
+bool Qalam::shouldShowWelcome() const
 {
+    QSettings settings(Constants::OrgName, Constants::AppName);
+    return settings.value(Constants::SettingsKeyShowWelcome, true).toBool();
+}
 
-    if (tabWidget->count() <= 1) {
-        return;
+bool Qalam::hasAnyEditorTabs() const
+{
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        if (qobject_cast<TEditor*>(tabWidget->widget(i))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Qalam::showWelcomeTab()
+{
+    if (m_welcomePage) {
+        const int index = tabWidget->indexOf(m_welcomePage);
+        if (index != -1) {
+            m_welcomePage->refreshRecents();
+            tabWidget->setCurrentIndex(index);
+            return;
+        }
+
+        m_welcomePage->deleteLater();
+        m_welcomePage = nullptr;
     }
 
+    m_welcomePage = new TWelcomePage(tabWidget);
+
+    connect(m_welcomePage, &TWelcomePage::newFileRequested, this, &Qalam::newFileFromUi);
+    connect(m_welcomePage, &TWelcomePage::openFileRequested, this, [this]() { openFileFromUi(QString()); });
+    connect(m_welcomePage, &TWelcomePage::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+    connect(m_welcomePage, &TWelcomePage::recentFileRequested, this, &Qalam::openFileFromUi);
+    connect(m_welcomePage, &TWelcomePage::cloneRepoRequested, this, [this]() {
+        QMessageBox::information(this, "استنساخ", "هذه الميزة قيد التطوير.");
+    });
+
+    const int index = tabWidget->addTab(m_welcomePage, "الترحيب");
+    tabWidget->setCurrentIndex(index);
+}
+
+void Qalam::removeWelcomeTabIfPresent()
+{
+    if (!m_welcomePage) return;
+
+    const int index = tabWidget->indexOf(m_welcomePage);
+    if (index == -1) return;
+
+    tabWidget->removeTab(index);
+    m_welcomePage->deleteLater();
+    m_welcomePage = nullptr;
+}
+
+void Qalam::newFileFromUi()
+{
+    m_fileManager->newFile();
+    if (hasAnyEditorTabs()) {
+        removeWelcomeTabIfPresent();
+    }
+}
+
+void Qalam::openFileFromUi(const QString &filePathOrEmpty)
+{
+    m_fileManager->openFile(filePathOrEmpty);
+    if (hasAnyEditorTabs()) {
+        removeWelcomeTabIfPresent();
+    }
+}
+
+void Qalam::closeTab(int index)
+{
     QWidget *tab = tabWidget->widget(index);
 
     if (!tab) return;
 
-    TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(index));
-    if (!editor) return;
+    if (auto *welcome = qobject_cast<TWelcomePage*>(tab)) {
+        tabWidget->removeTab(index);
+        if (welcome == m_welcomePage) {
+            m_welcomePage->deleteLater();
+            m_welcomePage = nullptr;
+        } else {
+            welcome->deleteLater();
+        }
+
+        if (tabWidget->count() == 0) {
+            m_fileManager->newFile();
+        }
+        return;
+    }
+
+    TEditor* editor = qobject_cast<TEditor*>(tab);
+    if (!editor) {
+        tabWidget->removeTab(index);
+        tab->deleteLater();
+        return;
+    }
 
     if (editor and editor->document()->isModified()) {
         auto saveResult = m_fileManager->needSave();
@@ -475,7 +568,16 @@ void Qalam::closeTab(int index)
 
     }
     tabWidget->removeTab(index);
+    editor->deleteLater();
     syncOpenEditors();
+
+    if (not hasAnyEditorTabs()) {
+        if (shouldShowWelcome()) {
+            showWelcomeTab();
+        } else {
+            m_fileManager->newFile();
+        }
+    }
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */

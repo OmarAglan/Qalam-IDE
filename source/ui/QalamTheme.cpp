@@ -170,24 +170,27 @@ QString QalamTheme::buttonStyles() {
     using namespace Constants;
     return QString(R"(
         QPushButton {
-            background-color: #0e639c;
-            color: %1;
+            background-color: %1;
+            color: %2;
             border: none;
             border-radius: 2px;
             padding: 6px 14px;
         }
         QPushButton:hover {
-            background-color: #1177bb;
+            background-color: %3;
         }
         QPushButton:pressed {
-            background-color: #0d5289;
+            background-color: %4;
         }
         QPushButton:disabled {
-            background-color: %2;
-            color: %3;
+            background-color: %5;
+            color: %6;
         }
     )")
+    .arg(Colors::Accent)
     .arg(Colors::TextPrimary)
+    .arg(Colors::AccentHover)
+    .arg(Colors::AccentAlt)
     .arg(Colors::ButtonHover)
     .arg(Colors::TextDisabled);
 }
@@ -195,22 +198,23 @@ QString QalamTheme::buttonStyles() {
 QString QalamTheme::inputStyles() {
     using namespace Constants;
     return QString(R"(
-        QLineEdit {
-            background-color: #3c3c3c;
-            border: 1px solid %1;
+        QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+            background-color: %1;
+            border: 1px solid %2;
             border-radius: 2px;
             padding: 4px 8px;
-            color: %2;
-            selection-background-color: %3;
+            color: %3;
+            selection-background-color: %4;
         }
-        QLineEdit:focus {
-            border: 1px solid %4;
+        QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+            border: 1px solid %5;
         }
     )")
+    .arg(Colors::InputBackground)
     .arg(Colors::Border)
     .arg(Colors::TextSecondary)
     .arg(Colors::Selection)
-    .arg(Colors::Accent);
+    .arg(Colors::BorderFocus);
 }
 
 QString QalamTheme::listStyles() {
@@ -276,20 +280,32 @@ QString QalamTheme::globalStyleSheet() const {
             color: %2;
             font-family: 'Segoe UI', 'Tajawal', sans-serif;
         }
+
+        QPlainTextEdit, QTextEdit {
+            background-color: %3;
+            color: %4;
+            border: none;
+            selection-background-color: %5;
+            selection-color: %6;
+        }
         
         QSplitter::handle {
-            background-color: %3;
+            background-color: %7;
         }
         QSplitter::handle:horizontal {
-            width: %4px;
+            width: %8px;
         }
         QSplitter::handle:vertical {
-            height: %4px;
+            height: %8px;
         }
     )")
     .arg(Colors::WindowBackground)
     .arg(Colors::TextSecondary)
-    .arg(Colors::Accent)
+    .arg(Colors::EditorBackground)
+    .arg(Colors::TextPrimary)
+    .arg(Colors::Selection)
+    .arg(Colors::TextPrimary)
+    .arg(Colors::BorderSubtle)
     .arg(Layout::SplitterWidth);
     
     return baseStyles 
@@ -298,7 +314,8 @@ QString QalamTheme::globalStyleSheet() const {
          + buttonStyles() 
          + inputStyles() 
          + listStyles() 
-         + tooltipStyles();
+         + tooltipStyles()
+         + tabBarStyleSheet();
 }
 
 // ==========================================================================
@@ -747,20 +764,20 @@ QString QalamTheme::tabBarStyleSheet() {
         QTabBar::tab {
             background: %3;
             color: %4;
-            padding: 8px 20px;
+            padding: 7px 16px;
             border: none;
-            border-top: 1px solid transparent;
-            min-width: 120px;
+            border-right: 1px solid %5;
+            min-width: 110px;
         }
         
         QTabBar::tab:selected {
             background: %1;
-            color: %5;
-            border-top: 1px solid %6;
+            color: %6;
+            border-bottom: 2px solid %7;
         }
         
         QTabBar::tab:hover:!selected {
-            background: %7;
+            background: %8;
         }
         
         QTabBar::close-button {
@@ -773,18 +790,19 @@ QString QalamTheme::tabBarStyleSheet() {
         }
         
         QTabBar::close-button:hover {
-            background: %8;
-            border-radius: 3px;
+            background: %9;
+            border-radius: 4px;
         }
     )")
     .arg(Colors::TabActiveBackground)     // %1
     .arg(Colors::SidebarBackground)       // %2
     .arg(Colors::TabBackground)           // %3
     .arg(Colors::TextMuted)               // %4
-    .arg(Colors::TextPrimary)             // %5
-    .arg(Colors::Accent)                  // %6
-    .arg(Colors::TabHoverBackground)      // %7
-    .arg(Colors::ButtonHover);            // %8
+    .arg(Colors::TabBorder)               // %5
+    .arg(Colors::TextPrimary)             // %6
+    .arg(Colors::Accent)                  // %7
+    .arg(Colors::TabHoverBackground)      // %8
+    .arg(Colors::ButtonHover);            // %9
 }
 
 QString QalamTheme::consoleStyleSheet() {

@@ -11,6 +11,8 @@
 
 #include "TActivityBar.h"
 
+class TWelcomePage;
+
 class Qalam : public QalamWindow
 {
     Q_OBJECT
@@ -28,6 +30,9 @@ private slots:
     void handleOpenFolderMenu();
     void openSettings();
     void exitApp();
+
+    void newFileFromUi();
+    void openFileFromUi(const QString &filePathOrEmpty = QString());
 
     void runBaa();
     void aboutQalam();
@@ -52,6 +57,11 @@ private slots:
 
 private:
     TEditor *currentEditor();
+    bool shouldShowWelcome() const;
+    bool hasAnyEditorTabs() const;
+    void showWelcomeTab();
+    void removeWelcomeTabIfPresent();
+
     void connectSignals();
     void syncOpenEditors();
 
@@ -67,5 +77,6 @@ private:
     LayoutManager *m_layoutManager{};
 
     SearchPanel *searchBar{};
+    TWelcomePage *m_welcomePage{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
 };

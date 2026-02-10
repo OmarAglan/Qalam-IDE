@@ -19,6 +19,8 @@ add_library(qalam_core STATIC
     menubar/TMenu.cpp
     # Settings
     settings/TSettings.cpp
+    # Pages
+    pages/TWelcomePage.cpp
     # Sidebar
     sidebar/TExplorerView.cpp
     sidebar/TSearchView.cpp

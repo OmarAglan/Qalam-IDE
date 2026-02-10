@@ -95,29 +95,7 @@ void TTitleBar::addMenuBar(QWidget *menu) {
     if (QHBoxLayout *l = qobject_cast<QHBoxLayout*>(layout())) {
         l->insertWidget(2, menu);
     }
-    
-    // Style adjustments for embedded menu
-    menu->setStyleSheet(menu->styleSheet() + QString(R"(
-        QMenuBar { 
-            background: transparent; 
-            border: none; 
-            color: %1;
-            font-size: 13px;
-            font-family: 'Segoe UI', 'Tajawal', sans-serif;
-        }
-        QMenuBar::item { 
-            background: transparent; 
-            padding: 4px 10px; 
-        }
-        QMenuBar::item:selected { 
-            background-color: %2; 
-        }
-        QMenuBar::item:pressed { 
-            background-color: %3; 
-        }
-    )").arg(Constants::Colors::TextSecondary)
-       .arg(Constants::Colors::CaptionButtonHover)
-       .arg(Constants::Colors::Accent));
+
     menu->setFixedHeight(30);
 }
 

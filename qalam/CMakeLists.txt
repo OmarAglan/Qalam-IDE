@@ -3,7 +3,6 @@ qt_add_executable(Qalam
     Qalam.cpp
     Qalam.h
     resources.qrc
-    ../source/pages/TWelcomeWindow.cpp
 )
 
 # Platform-specific icons
@@ -26,5 +25,5 @@ endif()
 
 target_link_libraries(Qalam PRIVATE qalam_core)
 
-# Add the current directory (qalam/) to include paths so TWelcomeWindow can find Qalam.h
+# Add the current directory (qalam/) to include paths for local app headers
 target_include_directories(Qalam PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
