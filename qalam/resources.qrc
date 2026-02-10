@@ -14,13 +14,10 @@
         <file>resources/QalamLogo.icns</file>
         <file>resources/QalamLogo.ico</file>
         <file>resources/QalamLogo.png</file>
-        <file>resources/down-arrow.png</file>
-        <file>resources/up-arrow.png</file>
         <file>resources/panel-right-open.svg</file>
         <file>resources/close.svg</file>
         <file>resources/run.svg</file>
-        <file>resources/left-arrow.png</file>
-        <file>resources/right-arrow.png</file>
+        <file>resources/run-active.svg</file>
         <file>resources/file-new.svg</file>
         <file>resources/folder.svg</file>
         <file>resources/folder-open.svg</file>
@@ -28,10 +25,20 @@
         <file>resources/minimize.svg</file>
         <file>resources/maximize.svg</file>
         <file>resources/restore.svg</file>
-        <file>resources/close.svg</file>
         <file>resources/explorer.svg</file>
+        <file>resources/explorer-active.svg</file>
         <file>resources/search.svg</file>
+        <file>resources/search-active.svg</file>
+        <file>resources/source-control.svg</file>
+        <file>resources/source-control-active.svg</file>
+        <file>resources/extensions.svg</file>
+        <file>resources/extensions-active.svg</file>
         <file>resources/settings.svg</file>
+        <file>resources/settings-active.svg</file>
+        <file>resources/right-arrow.svg</file>
+        <file>resources/down-arrow.svg</file>
+        <file>resources/left-arrow.svg</file>
+        <file>resources/up-arrow.svg</file>
     </qresource>
     <qresource prefix="/styles">
         <file>resources/styles/main.qss</file>

@@ -20,6 +20,9 @@ public:
     enum class ViewType {
         Explorer,
         Search,
+        SourceControl,
+        Run,
+        Extensions,
         Settings,
         None
     };
@@ -33,13 +36,18 @@ public:
 signals:
     void viewChanged(TActivityBar::ViewType view);
     void viewToggled(TActivityBar::ViewType view, bool visible);
+    void runRequested();
 
 private slots:
     void onButtonClicked();
 
 private:
     void setupUi();
-    QPushButton* createButton(const QString &iconPath, const QString &tooltip, ViewType view);
+    QPushButton* createButton(const QString &inactiveIconPath,
+                              const QString &activeIconPath,
+                              const QString &tooltip,
+                              ViewType view,
+                              bool isAction = false);
     void updateButtonStates();
     void applyStyles();
 

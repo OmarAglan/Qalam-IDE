@@ -64,6 +64,7 @@ void TWelcomePage::setupUi()
 
     auto *container = new QWidget(scrollContent);
     container->setObjectName("welcomeContainer");
+    container->setMaximumWidth(980);
     outerLayout->addWidget(container, 0, Qt::AlignHCenter);
 
     auto *containerLayout = new QVBoxLayout(container);
@@ -238,27 +239,29 @@ void TWelcomePage::applyStyles()
         #welcomeSectionTitle {
             color: %2;
             font-size: 16px;
-            font-weight: 700;
+            font-weight: 600;
             padding-bottom: 8px;
             border-bottom: 1px solid %5;
         }
 
         QPushButton#welcomeActionButton {
             background: transparent;
-            border: 1px solid transparent;
-            border-radius: 6px;
-            padding: 10px 12px;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
             text-align: right;
-            color: %3;
+            color: %8;
             font-size: 13px;
         }
 
         QPushButton#welcomeActionButton:hover {
-            background: %6;
+            background: transparent;
+            color: %9;
+            text-decoration: underline;
         }
 
         QPushButton#welcomeActionButton:pressed {
-            background: %7;
+            color: %9;
         }
 
         QPushButton#welcomeClearRecents {
@@ -268,14 +271,13 @@ void TWelcomePage::applyStyles()
         }
 
         QPushButton#welcomeClearRecents:hover {
-            color: %8;
+            color: %9;
         }
 
         QListWidget#welcomeRecents {
-            background-color: %9;
-            border: 1px solid %5;
-            border-radius: 8px;
-            padding: 6px;
+            background-color: transparent;
+            border: none;
+            padding: 0px;
         }
 
         QListWidget#welcomeRecents::item {
@@ -313,7 +315,7 @@ void TWelcomePage::applyStyles()
         }
 
         #welcomeRecentName {
-            color: %2;
+            color: %8;
             font-size: 13px;
             font-weight: 600;
         }
@@ -330,8 +332,8 @@ void TWelcomePage::applyStyles()
                       .arg(Colors::BorderSubtle)              // %5
                       .arg(Colors::ListHoverBackground)       // %6
                       .arg(Colors::ButtonPressed)             // %7
-                      .arg(Colors::AccentHover)               // %8
-                      .arg(Colors::SidebarBackground)         // %9
+                      .arg(Colors::Accent)                    // %8
+                      .arg(Colors::AccentHover)               // %9
                       .arg(Colors::ListSelectionBackground)); // %10
 }
 
@@ -339,6 +341,7 @@ QPushButton *TWelcomePage::createActionButton(const QString &iconPath, const QSt
 {
     auto *btn = new QPushButton(text, this);
     btn->setObjectName("welcomeActionButton");
+    btn->setFlat(true);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setIcon(QIcon(iconPath));
     btn->setIconSize(QSize(18, 18));
@@ -512,4 +515,3 @@ void TWelcomePage::onShowOnStartupToggled(bool show)
     saveShowOnStartup(show);
     emit showWelcomeOnStartupChanged(show);
 }
-

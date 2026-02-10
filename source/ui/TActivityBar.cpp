@@ -2,6 +2,7 @@
 #include "QalamTheme.h"
 #include "Constants.h"
 #include <QStyle>
+#include <QTimer>
 
 TActivityBar::TActivityBar(QWidget *parent)
     : QWidget(parent)
@@ -27,11 +28,33 @@ void TActivityBar::setupUi()
     m_topLayout->setSpacing(0);
     
     // Create main buttons
-    auto explorerBtn = createButton(":/icons/resources/explorer.svg", ExplorerLabel, ViewType::Explorer);
-    auto searchBtn = createButton(":/icons/resources/search.svg", SearchLabel, ViewType::Search);
+    auto explorerBtn = createButton(":/icons/resources/explorer.svg",
+                                    ":/icons/resources/explorer-active.svg",
+                                    ExplorerLabel,
+                                    ViewType::Explorer);
+    auto searchBtn = createButton(":/icons/resources/search.svg",
+                                  ":/icons/resources/search-active.svg",
+                                  SearchLabel,
+                                  ViewType::Search);
+    auto scmBtn = createButton(":/icons/resources/source-control.svg",
+                               ":/icons/resources/source-control-active.svg",
+                               SourceControlLabel,
+                               ViewType::SourceControl);
+    auto runBtn = createButton(":/icons/resources/run.svg",
+                               ":/icons/resources/run-active.svg",
+                               RunLabel,
+                               ViewType::Run,
+                               true);
+    auto extensionsBtn = createButton(":/icons/resources/extensions.svg",
+                                      ":/icons/resources/extensions-active.svg",
+                                      ExtensionsLabel,
+                                      ViewType::Extensions);
     
     m_topLayout->addWidget(explorerBtn);
     m_topLayout->addWidget(searchBtn);
+    m_topLayout->addWidget(scmBtn);
+    m_topLayout->addWidget(runBtn);
+    m_topLayout->addWidget(extensionsBtn);
     
     // Bottom section - settings (pushed to bottom)
     QWidget *bottomSection = new QWidget();
@@ -39,7 +62,11 @@ void TActivityBar::setupUi()
     m_bottomLayout->setContentsMargins(0, 0, 0, 4);
     m_bottomLayout->setSpacing(0);
     
-    auto settingsBtn = createButton(":/icons/resources/settings.svg", SettingsLabel, ViewType::Settings);
+    auto settingsBtn = createButton(":/icons/resources/settings.svg",
+                                    ":/icons/resources/settings-active.svg",
+                                    SettingsLabel,
+                                    ViewType::Settings,
+                                    true);
     m_bottomLayout->addWidget(settingsBtn);
     
     // Assemble layout
@@ -52,18 +79,25 @@ void TActivityBar::setupUi()
     updateButtonStates();
 }
 
-QPushButton* TActivityBar::createButton(const QString &iconPath, const QString &tooltip, ViewType view)
+QPushButton* TActivityBar::createButton(const QString &inactiveIconPath,
+                                        const QString &activeIconPath,
+                                        const QString &tooltip,
+                                        ViewType view,
+                                        bool isAction)
 {
     using namespace Constants;
     
     QPushButton *btn = new QPushButton(this);
-    btn->setIcon(QIcon(iconPath));
+    btn->setIcon(QIcon(inactiveIconPath));
     btn->setIconSize(QSize(Layout::ActivityBarIconSize, Layout::ActivityBarIconSize));
     btn->setFixedSize(Layout::ActivityBarButtonSize, Layout::ActivityBarButtonSize);
     btn->setToolTip(tooltip);
-    btn->setCheckable(true);
+    btn->setCheckable(!isAction);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setProperty("viewType", QVariant::fromValue(view));
+    btn->setProperty("inactiveIconPath", inactiveIconPath);
+    btn->setProperty("activeIconPath", activeIconPath);
+    btn->setProperty("isAction", isAction);
     
     connect(btn, &QPushButton::clicked, this, &TActivityBar::onButtonClicked);
     
@@ -77,10 +111,22 @@ void TActivityBar::onButtonClicked()
     if (!btn) return;
     
     ViewType clickedView = btn->property("viewType").value<ViewType>();
+    const bool isAction = btn->property("isAction").toBool();
     
-    // Settings is special - doesn't toggle sidebar, just emits signal
-    if (clickedView == ViewType::Settings) {
-        emit viewToggled(clickedView, true);
+    if (isAction) {
+        const QString inactiveIcon = btn->property("inactiveIconPath").toString();
+        const QString activeIcon = btn->property("activeIconPath").toString();
+
+        btn->setIcon(QIcon(activeIcon));
+        QTimer::singleShot(140, this, [btn, inactiveIcon]() {
+            btn->setIcon(QIcon(inactiveIcon));
+        });
+
+        if (clickedView == ViewType::Settings) {
+            emit viewToggled(clickedView, true);
+        } else if (clickedView == ViewType::Run) {
+            emit runRequested();
+        }
         return;
     }
     
@@ -100,7 +146,6 @@ void TActivityBar::setCurrentView(ViewType view)
 {
     if (m_currentView == view) return;
     
-    ViewType oldView = m_currentView;
     m_currentView = view;
     updateButtonStates();
     
@@ -112,7 +157,19 @@ void TActivityBar::setCurrentView(ViewType view)
 void TActivityBar::updateButtonStates()
 {
     for (auto it = m_buttons.begin(); it != m_buttons.end(); ++it) {
-        it.value()->setChecked(it.key() == m_currentView);
+        QPushButton *btn = it.value();
+        const ViewType view = it.key();
+        const bool isAction = btn->property("isAction").toBool();
+        if (isAction) {
+            continue;
+        }
+
+        const bool checked = (view == m_currentView);
+        btn->setChecked(checked);
+
+        const QString inactiveIcon = btn->property("inactiveIconPath").toString();
+        const QString activeIcon = btn->property("activeIconPath").toString();
+        btn->setIcon(QIcon(checked ? activeIcon : inactiveIcon));
     }
 }
 

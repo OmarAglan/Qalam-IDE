@@ -239,6 +239,14 @@ QString QalamTheme::listStyles() {
         QTreeView::branch {
             background: transparent;
         }
+        QTreeView::branch:closed:has-children {
+            border-image: none;
+            image: url(:/icons/resources/right-arrow.svg);
+        }
+        QTreeView::branch:open:has-children {
+            border-image: none;
+            image: url(:/icons/resources/down-arrow.svg);
+        }
     )")
     .arg(Colors::SidebarBackground)
     .arg(Colors::TextSecondary)
@@ -339,26 +347,24 @@ QString QalamTheme::activityBarStyleSheet() {
         }
         
         TActivityBar QPushButton:hover {
-            background-color: transparent;
-        }
-        
-        TActivityBar QPushButton {
-            opacity: 0.6;
+            background-color: %3;
         }
         
         TActivityBar QPushButton:checked {
-            border-left: %3px solid %4;
-            opacity: 1.0;
+            border-left: %4px solid %5;
+            background-color: %6;
         }
         
         TActivityBar QPushButton:checked:hover {
-            background-color: transparent;
+            background-color: %6;
         }
     )")
     .arg(Colors::ActivityBarBackground)
     .arg(Colors::ActivityBarBorder)
+    .arg(Colors::ButtonHover)
     .arg(Layout::ActivityIndicatorWidth)
-    .arg(Colors::ActivityIndicator);
+    .arg(Colors::ActivityIndicator)
+    .arg(Colors::ButtonPressed);
 }
 
 QString QalamTheme::sidebarStyleSheet() {

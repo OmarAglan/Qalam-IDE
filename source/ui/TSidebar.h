@@ -40,6 +40,7 @@ private:
     void setupUi();
     void applyStyles();
     void updateHeader();
+    QWidget* createPlaceholderView(const QString &title);
 
     TActivityBar::ViewType m_currentView = TActivityBar::ViewType::Explorer;
     
@@ -50,4 +51,6 @@ private:
     
     TExplorerView *m_explorerView = nullptr;
     TSearchView *m_searchView = nullptr;
+    QWidget *m_sourceControlView = nullptr;
+    QWidget *m_extensionsView = nullptr;
 };

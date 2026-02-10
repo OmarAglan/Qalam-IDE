@@ -47,9 +47,13 @@ void TSidebar::setupUi()
     // Create views
     m_explorerView = new TExplorerView();
     m_searchView = new TSearchView();
+    m_sourceControlView = createPlaceholderView("قيد التطوير");
+    m_extensionsView = createPlaceholderView("قيد التطوير");
     
     m_stackedWidget->addWidget(m_explorerView);  // Index 0
     m_stackedWidget->addWidget(m_searchView);    // Index 1
+    m_stackedWidget->addWidget(m_sourceControlView); // Index 2
+    m_stackedWidget->addWidget(m_extensionsView);    // Index 3
     
     m_mainLayout->addWidget(m_stackedWidget, 1);
     
@@ -77,6 +81,12 @@ void TSidebar::setCurrentView(TActivityBar::ViewType view)
             m_stackedWidget->setCurrentWidget(m_searchView);
             m_searchView->focusSearchInput();
             break;
+        case TActivityBar::ViewType::SourceControl:
+            m_stackedWidget->setCurrentWidget(m_sourceControlView);
+            break;
+        case TActivityBar::ViewType::Extensions:
+            m_stackedWidget->setCurrentWidget(m_extensionsView);
+            break;
         case TActivityBar::ViewType::Settings:
             // Settings opens a dialog, doesn't change sidebar
             break;
@@ -94,9 +104,33 @@ void TSidebar::updateHeader()
         case TActivityBar::ViewType::Search:
             m_headerTitle->setText(Constants::SearchLabel.toUpper());
             break;
+        case TActivityBar::ViewType::SourceControl:
+            m_headerTitle->setText(Constants::SourceControlLabel.toUpper());
+            break;
+        case TActivityBar::ViewType::Extensions:
+            m_headerTitle->setText(Constants::ExtensionsLabel.toUpper());
+            break;
         default:
             break;
     }
+}
+
+QWidget* TSidebar::createPlaceholderView(const QString &title)
+{
+    auto *root = new QWidget(this);
+    root->setObjectName("sidebarPlaceholder");
+    auto *layout = new QVBoxLayout(root);
+    layout->setContentsMargins(18, 18, 18, 18);
+    layout->setAlignment(Qt::AlignTop);
+
+    auto *label = new QLabel(title, root);
+    label->setObjectName("sidebarPlaceholderLabel");
+    label->setAlignment(Qt::AlignRight | Qt::AlignTop);
+    label->setStyleSheet(QString("color: %1;").arg(Constants::Colors::TextMuted));
+
+    layout->addWidget(label);
+    layout->addStretch(1);
+    return root;
 }
 
 void TSidebar::applyStyles()

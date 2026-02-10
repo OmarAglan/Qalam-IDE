@@ -26,6 +26,8 @@ QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
     // Set menu widget to title bar (QMainWindow feature) or add to layout?
     // QMainWindow::setMenuWidget() puts it at top. Perfect.
     setMenuWidget(m_titleBar);
+
+    connect(this, &QWidget::windowTitleChanged, m_titleBar, &TTitleBar::setTitle);
     
     // 2. Window Flags for Custom Frame
     // We do NOT use FramelessWindowHint because we want native snap/shadow.

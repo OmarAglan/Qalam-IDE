@@ -31,6 +31,9 @@ namespace Constants {
     const QString NewFileLabel = "غير معنون";
     const QString ExplorerLabel = "المستكشف";
     const QString SearchLabel = "البحث";
+    const QString SourceControlLabel = "التحكم بالمصادر";
+    const QString RunLabel = "تشغيل";
+    const QString ExtensionsLabel = "الإضافات";
     const QString SettingsLabel = "الإعدادات";
     const QString ProblemsLabel = "المشاكل";
     const QString OutputLabel = "المخرجات";
@@ -166,10 +169,10 @@ namespace Constants {
         constexpr int CaptionButtonHeight = 38;
         constexpr int CaptionIconSize = 16;
 
-        // Activity Bar (more breathing room)
-        constexpr int ActivityBarWidth = 56;
-        constexpr int ActivityBarIconSize = 26;
-        constexpr int ActivityBarButtonSize = 56;
+        // Activity Bar (VS Code-like)
+        constexpr int ActivityBarWidth = 48;
+        constexpr int ActivityBarIconSize = 24;
+        constexpr int ActivityBarButtonSize = 48;
         constexpr int ActivityIndicatorWidth = 3;
 
         // Sidebar

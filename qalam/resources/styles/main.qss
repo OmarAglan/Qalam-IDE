@@ -242,12 +242,12 @@ QTreeView::branch {
 
 QTreeView::branch:closed:has-children {
     border-image: none;
-    image: url(:/icons/resources/right-arrow.png);
+    image: url(:/icons/resources/right-arrow.svg);
 }
 
 QTreeView::branch:open:has-children {
     border-image: none;
-    image: url(:/icons/resources/down-arrow.png);
+    image: url(:/icons/resources/down-arrow.svg);
 }
 
 /* ------------------------------ Scrollbars ------------------------------- */

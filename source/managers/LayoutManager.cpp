@@ -95,7 +95,7 @@ void LayoutManager::setupLayout()
     m_activityBar->show();
     m_sidebar->hide();       // Start collapsed, like VSCode
     m_statusBar->show();
-    m_breadcrumb->show();
+    m_breadcrumb->hide();    // Hide by default to match VS Code top layout
     m_panelArea->hide();     // Start collapsed, like VSCode
 
     // --- Set initial status bar values ---

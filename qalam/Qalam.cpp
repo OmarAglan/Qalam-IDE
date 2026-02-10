@@ -219,6 +219,7 @@ void Qalam::connectSignals()
     auto *statusBar = m_layoutManager->statusBar();
 
     connect(activityBar, &TActivityBar::viewChanged, this, &Qalam::onActivityViewChanged);
+    connect(activityBar, &TActivityBar::runRequested, this, &Qalam::runBaa);
 
     connect(activityBar, &TActivityBar::viewToggled, this, [this](TActivityBar::ViewType view, bool visible) {
         if (view == TActivityBar::ViewType::Settings) {
