@@ -773,7 +773,7 @@ QString QalamTheme::tabBarStyleSheet() {
             color: %4;
             padding: 7px 16px;
             border: none;
-            border-right: 1px solid %5;
+            border-left: 1px solid %5;
             border-top: 1px solid transparent;
             min-width: 110px;
         }
@@ -794,7 +794,7 @@ QString QalamTheme::tabBarStyleSheet() {
             border: none;
             padding: 2px;
             margin: 2px;
-            subcontrol-position: right;
+            subcontrol-position: left;
         }
         
         QTabBar::close-button:hover {

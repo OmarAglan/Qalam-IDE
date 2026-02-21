@@ -77,10 +77,12 @@ void TSearchView::setupUi()
     m_regexBtn->setCheckable(true);
     m_regexBtn->setFixedSize(28, 24);
     
-    m_toggleReplaceBtn = new QPushButton("▸");
+    m_toggleReplaceBtn = new QPushButton();
+    m_toggleReplaceBtn->setIcon(QIcon(":/icons/resources/right-arrow.svg"));
+    m_toggleReplaceBtn->setIconSize(QSize(14, 14));
     m_toggleReplaceBtn->setObjectName("toggleReplaceBtn");
     m_toggleReplaceBtn->setToolTip("إظهار/إخفاء الاستبدال");
-    m_toggleReplaceBtn->setFixedSize(20, 24);
+    m_toggleReplaceBtn->setFixedSize(24, 24);
     
     optionsLayout->addWidget(m_toggleReplaceBtn);
     optionsLayout->addStretch();
@@ -120,7 +122,7 @@ void TSearchView::setupUi()
     connect(m_toggleReplaceBtn, &QPushButton::clicked, this, [this]() {
         m_replaceVisible = !m_replaceVisible;
         m_replaceInput->setVisible(m_replaceVisible);
-        m_toggleReplaceBtn->setText(m_replaceVisible ? "▾" : "▸");
+        m_toggleReplaceBtn->setIcon(QIcon(m_replaceVisible ? ":/icons/resources/down-arrow.svg" : ":/icons/resources/right-arrow.svg"));
     });
     
     connect(m_caseSensitiveBtn, &QPushButton::toggled, this, [this](bool checked) {

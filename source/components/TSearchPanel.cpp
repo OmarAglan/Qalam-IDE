@@ -20,17 +20,23 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
         .arg(Constants::Colors::SidebarBackground)
         .arg(Constants::Colors::TextSecondary));
 
-    btnNext = new QPushButton("التالي", this);
-    btnPrev = new QPushButton("السابق", this);
+    btnNext = new QPushButton(this);
+    btnNext->setIcon(QIcon(":/icons/resources/down-arrow.svg"));
+    btnNext->setToolTip("التالي");
+    
+    btnPrev = new QPushButton(this);
+    btnPrev->setIcon(QIcon(":/icons/resources/up-arrow.svg"));
+    btnPrev->setToolTip("السابق");
 
     // أزرار صغيرة
     QString btnStyle = QString(
-        "QPushButton { background: transparent; border: none; color: %1; padding: 4px; }"
-        "QPushButton:hover { background: %2; border-radius: 7px; }")
-        .arg(Constants::Colors::TextSecondary)
-        .arg(Constants::Colors::ListActiveBackground);
+        "QPushButton { background: transparent; border: none; padding: 4px; }"
+        "QPushButton:hover { background: %1; border-radius: 4px; }")
+        .arg(Constants::Colors::ListHoverBackground);
     btnNext->setStyleSheet(btnStyle);
     btnPrev->setStyleSheet(btnStyle);
+    btnNext->setFixedSize(26, 26);
+    btnPrev->setFixedSize(26, 26);
 
     // زر الإغلاق (X)
     btnClose = new QPushButton(this);

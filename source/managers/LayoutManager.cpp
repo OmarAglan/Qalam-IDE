@@ -39,6 +39,10 @@ void LayoutManager::setupLayout()
     m_breadcrumb  = new TBreadcrumb(m_window);
     m_panelArea   = new TPanelArea(m_window);
 
+    // Enforce RTL on editor components so tabs and search align correctly to the right
+    m_tabWidget->setLayoutDirection(Qt::RightToLeft);
+    m_searchBar->setLayoutDirection(Qt::RightToLeft);
+
     // =========================================================
     // Build the main layout - RTL for Arabic (Activity Bar on RIGHT)
     // =========================================================
