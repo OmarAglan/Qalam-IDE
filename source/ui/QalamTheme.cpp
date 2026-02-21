@@ -134,6 +134,8 @@ QString QalamTheme::menuStyles() {
         QMenu::item:selected {
             background-color: %3;
             color: %4;
+            border-radius: 4px;
+            margin: 0px 4px;
         }
         QMenu::separator {
             height: 1px;
@@ -149,12 +151,11 @@ QString QalamTheme::menuStyles() {
         QMenuBar::item {
             background-color: transparent;
             padding: 4px 10px;
+            border-radius: 4px;
         }
-        QMenuBar::item:selected {
-            background-color: %6;
-        }
-        QMenuBar::item:pressed {
-            background-color: %7;
+        QMenuBar::item:selected, QMenuBar::item:pressed {
+            background-color: #505050;
+            color: #ffffff;
         }
     )")
     .arg(Colors::MenuBackground)
@@ -347,16 +348,16 @@ QString QalamTheme::activityBarStyleSheet() {
         }
         
         TActivityBar QPushButton:hover {
-            background-color: %3;
+            color: %3;
         }
         
         TActivityBar QPushButton:checked {
             border-left: %4px solid %5;
-            background-color: %6;
+            background-color: transparent;
         }
         
         TActivityBar QPushButton:checked:hover {
-            background-color: %6;
+            background-color: transparent;
         }
     )")
     .arg(Colors::ActivityBarBackground)
@@ -703,11 +704,11 @@ QString QalamTheme::titleBarStyleSheet() {
         
         #titleLabel {
             color: %2;
-            font-weight: bold;
-            font-family: 'Segoe UI', 'Tajawal';
+            font-size: 12px;
+            font-family: 'Segoe UI', 'Tajawal', sans-serif;
         }
         
-        #captionButton {
+        #captionButton, #closeButton {
             background-color: transparent;
             border: none;
             border-radius: 0px;
@@ -773,13 +774,14 @@ QString QalamTheme::tabBarStyleSheet() {
             padding: 7px 16px;
             border: none;
             border-right: 1px solid %5;
+            border-top: 1px solid transparent;
             min-width: 110px;
         }
         
         QTabBar::tab:selected {
             background: %1;
             color: %6;
-            border-bottom: 2px solid %7;
+            border-top: 1px solid %7;
         }
         
         QTabBar::tab:hover:!selected {

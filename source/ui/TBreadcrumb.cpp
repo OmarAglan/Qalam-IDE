@@ -7,6 +7,7 @@
 TBreadcrumb::TBreadcrumb(QWidget* parent)
     : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
     setFixedHeight(Constants::Layout::BreadcrumbHeight);
     
     m_layout = new QHBoxLayout(this);

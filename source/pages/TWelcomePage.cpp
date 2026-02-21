@@ -29,6 +29,7 @@ QWidget *createSectionTitle(const QString &text, QWidget *parent)
 TWelcomePage::TWelcomePage(QWidget *parent)
     : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
     setObjectName("welcomePage");
     setLayoutDirection(Qt::RightToLeft);
     setupUi();
@@ -247,21 +248,21 @@ void TWelcomePage::applyStyles()
         QPushButton#welcomeActionButton {
             background: transparent;
             border: none;
-            border-radius: 4px;
-            padding: 6px 10px;
+            border-radius: 0px;
+            padding: 4px 0px;
             text-align: right;
-            color: %8;
+            color: #3794ff; /* VS Code link blue */
             font-size: 13px;
         }
 
         QPushButton#welcomeActionButton:hover {
             background: transparent;
-            color: %9;
+            color: #1177bb;
             text-decoration: underline;
         }
 
         QPushButton#welcomeActionButton:pressed {
-            color: %9;
+            color: #1177bb;
         }
 
         QPushButton#welcomeClearRecents {

@@ -68,7 +68,7 @@ namespace Constants {
         // Tabs
         constexpr const char* TabBackground = "#2d2d2d";
         constexpr const char* TabActiveBackground = "#1e1e1e";
-        constexpr const char* TabHoverBackground = "#3e3e3e";
+        constexpr const char* TabHoverBackground = "#2b2d2e";
         constexpr const char* TabBorder = "#252526";
 
         // Accent
@@ -164,10 +164,10 @@ namespace Constants {
     // ==========================================================================
     namespace Layout {
         // Title Bar
-        constexpr int TitleBarHeight = 38;
+        constexpr int TitleBarHeight = 30;
         constexpr int CaptionButtonWidth = 46;
-        constexpr int CaptionButtonHeight = 38;
-        constexpr int CaptionIconSize = 16;
+        constexpr int CaptionButtonHeight = 30;
+        constexpr int CaptionIconSize = 14;
 
         // Activity Bar (VS Code-like)
         constexpr int ActivityBarWidth = 48;

@@ -5,6 +5,7 @@
 #include <QStyle>
 
 SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
+    setAttribute(Qt::WA_StyledBackground, true);
     // 1. إنشاء التخطيط الأفقي
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(5, 5, 5, 5);

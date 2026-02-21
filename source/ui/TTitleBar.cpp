@@ -20,20 +20,12 @@ void TTitleBar::setupUi() {
     
     // Title
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setStyleSheet(QString("color: %1; font-weight: bold; font-family: 'Segoe UI', 'Tajawal';")
-        .arg(Colors::TextSecondary));
+    m_titleLabel->setObjectName("titleLabel");
     
     // Window Controls
-    m_minimizeBtn = createCaptionButton(":/icons/resources/minimize.svg", "minimizeBtn");
-    m_maximizeBtn = createCaptionButton(":/icons/resources/maximize.svg", "maximizeBtn");
-    m_closeBtn = createCaptionButton(":/icons/resources/close.svg", "closeBtn");
-    
-    // Hover style for close button (red)
-    m_closeBtn->setStyleSheet(m_closeBtn->styleSheet() + 
-        QString("QPushButton#closeBtn:hover { background-color: %1; border: none; } "
-                "QPushButton#closeBtn:pressed { background-color: %2; border: none; }")
-        .arg(Colors::CloseButtonHover)
-        .arg(Colors::CloseButtonPressed));
+    m_minimizeBtn = createCaptionButton(":/icons/resources/minimize.svg", "captionButton");
+    m_maximizeBtn = createCaptionButton(":/icons/resources/maximize.svg", "captionButton");
+    m_closeBtn = createCaptionButton(":/icons/resources/close.svg", "closeButton");
 
     connect(m_minimizeBtn, &QPushButton::clicked, this, &TTitleBar::minimizeClicked);
     connect(m_maximizeBtn, &QPushButton::clicked, this, &TTitleBar::maximizeRestoreClicked);
@@ -96,7 +88,7 @@ void TTitleBar::addMenuBar(QWidget *menu) {
         l->insertWidget(2, menu);
     }
 
-    menu->setFixedHeight(30);
+    menu->setFixedHeight(Constants::Layout::TitleBarHeight);
 }
 
 QPushButton* TTitleBar::createCaptionButton(const QString &iconPath, const QString &objName) {
@@ -107,15 +99,6 @@ QPushButton* TTitleBar::createCaptionButton(const QString &iconPath, const QStri
     btn->setFixedSize(Layout::CaptionButtonWidth, Layout::CaptionButtonHeight);
     btn->setIcon(QIcon(iconPath));
     btn->setIconSize(QSize(Layout::CaptionIconSize, Layout::CaptionIconSize));
-    
-    // Base style for buttons
-    btn->setStyleSheet(
-        QString("QPushButton { background: transparent; border: none; border-radius: 0px; }"
-                "QPushButton:hover { background-color: %1; }"
-                "QPushButton:pressed { background-color: %2; }")
-        .arg(Colors::CaptionButtonHover)
-        .arg(Colors::CaptionButtonPressed)
-    );
     
     return btn;
 }

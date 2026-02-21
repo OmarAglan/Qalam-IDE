@@ -6,6 +6,7 @@
 TStatusBar::TStatusBar(QWidget* parent)
     : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
     setFixedHeight(Constants::Layout::StatusBarHeight);
     
     m_layout = new QHBoxLayout(this);

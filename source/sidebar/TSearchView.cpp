@@ -9,6 +9,7 @@
 TSearchView::TSearchView(QWidget *parent)
     : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUi();
     applyStyles();
 }

@@ -9,6 +9,7 @@
 TPanelArea::TPanelArea(QWidget* parent)
     : QWidget(parent)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
     setupUI();
     applyStyles();
 }

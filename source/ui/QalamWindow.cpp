@@ -30,19 +30,7 @@ QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
     connect(this, &QWidget::windowTitleChanged, m_titleBar, &TTitleBar::setTitle);
     
     // 2. Window Flags for Custom Frame
-    // We do NOT use FramelessWindowHint because we want native snap/shadow.
-    // We rely on WM_NCCALCSIZE to hide the frame.
-    // However, Qt sometimes fights this.
-    // A stable cross-platform way + Native Snap in Qt 6:
-    // Use WS_THICKFRAME | WS_CAPTION but handle NCCALCSIZE.
-    
-    // For simplicity and stability in this iteration, IF we are on MinGW/Qt6,
-    // we can try the pure Qt approach first:
-    // setWindowFlags(Qt::FramelessWindowHint);
-    // But then we lose shadows and snap (Win+Arrows).
-    
-    // Enabling Native Events for Snap/Shadow:
-    // We keep standard flags.
+    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 }
 
 void QalamWindow::setCustomMenuBar(QWidget *menu) {
