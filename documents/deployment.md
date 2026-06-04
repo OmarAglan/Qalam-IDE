@@ -1,5 +1,26 @@
 # Deployment Guide
 
+## Windows execution policy note
+
+If PowerShell reports that `scripts\bootstrap-windows.ps1` is not digitally signed, use the repository-root launcher instead:
+
+```bat
+build-qalam-windows.cmd
+```
+
+Or run the script with a process-only policy bypass:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1
+```
+
+For projects extracted from a downloaded ZIP, Windows may mark the files as internet-downloaded. After reviewing the files and trusting the source, you can unblock them once:
+
+```powershell
+Get-ChildItem -Recurse -File | Unblock-File
+```
+
+
 This document explains how to build and package Qalam IDE on Windows, Linux, and macOS.
 
 ## Prerequisites

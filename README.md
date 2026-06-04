@@ -81,11 +81,19 @@ Qalam IDE is a Qt Widgets application written in C++23.
 
 ### Windows: one-command bootstrap recommended
 
-On a fresh Windows machine, open PowerShell in the repository root and run:
+On a fresh Windows machine, open PowerShell, Command Prompt, or Windows Terminal in the repository root and run:
+
+```bat
+build-qalam-windows.cmd
+```
+
+You can also run the PowerShell script directly:
 
 ```powershell
-.\scripts\bootstrap-windows.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\bootstrap-windows.ps1
 ```
+
+The `.cmd` launcher uses `-ExecutionPolicy Bypass` only for the current PowerShell process, so users do not need to permanently change their Windows script policy.
 
 The bootstrap script attempts to install the missing base tools with `winget`, installs Qt + MinGW with `aqtinstall`, builds Qalam, and creates the portable ZIP.
 
@@ -96,15 +104,21 @@ Output:
 
 Useful options:
 
+```bat
+REM Build only, do not create dist/Qalam-win64.zip
+build-qalam-windows.cmd -NoPackage
+
+REM Use a custom Qt install root
+build-qalam-windows.cmd -QtRoot "D:\Qt"
+
+REM Use an already installed Qt and skip downloading Qt
+build-qalam-windows.cmd -SkipQtInstall -QtRoot "C:\Qt"
+```
+
+If Windows still blocks scripts after using the launcher, unblock the downloaded project files once after verifying the source:
+
 ```powershell
-# Build only, do not create dist/Qalam-win64.zip
-.\scripts\bootstrap-windows.ps1 -NoPackage
-
-# Use a custom Qt install root
-.\scripts\bootstrap-windows.ps1 -QtRoot "D:\Qt"
-
-# Use an already installed Qt and skip downloading Qt
-.\scripts\bootstrap-windows.ps1 -SkipQtInstall -QtRoot "C:\Qt"
+Get-ChildItem -Recurse -File | Unblock-File
 ```
 
 ### Windows: manual quick path
