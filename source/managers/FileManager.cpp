@@ -3,9 +3,13 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTextStream>
+#include <QStringConverter>
 #include <QSettings>
 #include <QFileInfo>
 #include <QDir>
+#include <QTextDocument>
+#include <QPushButton>
+#include <QAbstractButton>
 
 FileManager::FileManager(QTabWidget *tabWidget, QWidget *parentWindow, QObject *parent)
     : QObject(parent)
@@ -19,36 +23,84 @@ TEditor *FileManager::currentEditor() const
     return qobject_cast<TEditor*>(m_tabWidget->currentWidget());
 }
 
+QString FileManager::normalizePath(const QString &filePath) const
+{
+    if (filePath.trimmed().isEmpty()) return QString();
+
+    QFileInfo info(filePath);
+    const QString canonical = info.canonicalFilePath();
+    if (!canonical.isEmpty()) return QDir::cleanPath(canonical);
+
+    return QDir::cleanPath(info.absoluteFilePath());
+}
+
+TEditor *FileManager::createEditor(const QString &filePath)
+{
+    auto *editor = new TEditor(m_parentWindow);
+    editor->setFilePath(filePath);
+
+    connect(editor, &TEditor::openRequest, this, [this](const QString &requestedPath) {
+        openFile(requestedPath);
+    });
+    connect(editor->document(), &QTextDocument::modificationChanged, this, [this]() {
+        emit fileStateChanged();
+        emit openEditorsChanged();
+    });
+
+    return editor;
+}
+
+void FileManager::addRecentFile(const QString &filePath)
+{
+    const QString normalizedPath = normalizePath(filePath);
+    if (normalizedPath.isEmpty()) return;
+
+    QSettings settings(Constants::OrgName, Constants::AppName);
+    QStringList recentFiles = settings.value(Constants::SettingsKeyRecentFiles).toStringList();
+    recentFiles.removeAll(normalizedPath);
+    recentFiles.prepend(normalizedPath);
+    while (recentFiles.size() > 10) {
+        recentFiles.removeLast();
+    }
+    settings.setValue(Constants::SettingsKeyRecentFiles, recentFiles);
+}
+
 FileManager::SaveAction FileManager::needSave()
 {
-    if (TEditor *editor = currentEditor()) {
-        if (editor->document()->isModified()) {
-            QMessageBox msgBox;
-            msgBox.setWindowTitle("قلم");
-            msgBox.setText("تم التعديل على الملف.\n"
-                           "هل تريد حفظ التغييرات؟");
-            QPushButton *saveButton = msgBox.addButton("حفظ", QMessageBox::AcceptRole);
-            QPushButton *discardButton = msgBox.addButton("تجاهل", QMessageBox::DestructiveRole);
-            QPushButton *cancelButton = msgBox.addButton("إلغاء", QMessageBox::RejectRole);
-            msgBox.setDefaultButton(cancelButton);
+    return needSave(currentEditor());
+}
 
-            QFont msgFont = m_parentWindow->font();
-            msgFont.setPointSize(10);
-            saveButton->setFont(msgFont);
-            discardButton->setFont(msgFont);
-            cancelButton->setFont(msgFont);
+FileManager::SaveAction FileManager::needSave(TEditor *editor)
+{
+    if (editor and editor->document()->isModified()) {
+        const QString displayName = editor->currentFilePath().isEmpty()
+            ? Constants::NewFileLabel
+            : QFileInfo(editor->currentFilePath()).fileName();
 
-            msgBox.exec();
+        QMessageBox msgBox(m_parentWindow);
+        msgBox.setWindowTitle("قلم");
+        msgBox.setText(QString("تم تعديل الملف:\n%1\n\nهل تريد حفظ التغييرات؟").arg(displayName));
+        QPushButton *saveButton = msgBox.addButton("حفظ", QMessageBox::AcceptRole);
+        QPushButton *discardButton = msgBox.addButton("تجاهل", QMessageBox::DestructiveRole);
+        QPushButton *cancelButton = msgBox.addButton("إلغاء", QMessageBox::RejectRole);
+        msgBox.setDefaultButton(cancelButton);
 
-            QAbstractButton *clickedButton = msgBox.clickedButton();
-            if (clickedButton == saveButton) {
-                return SaveAction::Save;
-            } else if (clickedButton == discardButton) {
-                return SaveAction::Discard;
-            } else if (clickedButton == cancelButton) {
-                return SaveAction::Cancel;
-            }
+        QFont msgFont = m_parentWindow ? m_parentWindow->font() : msgBox.font();
+        msgFont.setPointSize(10);
+        saveButton->setFont(msgFont);
+        discardButton->setFont(msgFont);
+        cancelButton->setFont(msgFont);
+
+        msgBox.exec();
+
+        QAbstractButton *clickedButton = msgBox.clickedButton();
+        if (clickedButton == saveButton) {
+            return SaveAction::Save;
         }
+        if (clickedButton == discardButton) {
+            return SaveAction::Discard;
+        }
+        return SaveAction::Cancel;
     }
 
     return SaveAction::Discard;
@@ -56,23 +108,9 @@ FileManager::SaveAction FileManager::needSave()
 
 void FileManager::newFile()
 {
-    TEditor *editor = currentEditor();
-    if (editor) {
-        SaveAction result = needSave();
-        if (result == SaveAction::Cancel) return;
-        if (result == SaveAction::Save) saveFile();
-    }
-
-    TEditor *newEditor = new TEditor(m_parentWindow);
-    m_tabWidget->addTab(newEditor, Constants::NewFileLabel);
-    m_tabWidget->setCurrentWidget(newEditor);
-
-    connect(newEditor, &TEditor::openRequest, this, [this](QString filePath) {
-        openFile(filePath);
-    });
-    connect(newEditor->document(), &QTextDocument::modificationChanged, this, [this]() {
-        emit fileStateChanged();
-    });
+    TEditor *newEditor = createEditor();
+    const int index = m_tabWidget->addTab(newEditor, Constants::NewFileLabel);
+    m_tabWidget->setCurrentIndex(index);
 
     emit fileStateChanged();
     emit openEditorsChanged();
@@ -80,23 +118,20 @@ void FileManager::newFile()
 
 void FileManager::openFile(QString filePath)
 {
-    if (currentEditor()) {
-        SaveAction result = needSave();
-        if (result == SaveAction::Cancel) return;
-        if (result == SaveAction::Save) saveFile();
-    }
-
     if (filePath.isEmpty()) {
         filePath = QFileDialog::getOpenFileName(m_parentWindow, "فتح ملف", "",
-                                                 "ملف باء (*.baa *.baahd);;All Files (*)");
+                                                 "ملف باء (*.baa *.baahd);;Text Files (*.txt);;All Files (*)");
     }
 
     if (filePath.isEmpty()) return;
 
+    const QString normalizedPath = normalizePath(filePath);
+    if (normalizedPath.isEmpty()) return;
+
     // Check if file is already open in a tab
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         TEditor *editor = qobject_cast<TEditor*>(m_tabWidget->widget(i));
-        if (editor and editor->property("filePath").toString() == filePath) {
+        if (editor and normalizePath(editor->currentFilePath()) == normalizedPath) {
             m_tabWidget->setCurrentIndex(i);
             return;
         }
@@ -105,7 +140,7 @@ void FileManager::openFile(QString filePath)
     // File size safety check
     constexpr qint64 WarnThreshold = 10 * 1024 * 1024;   // 10 MB
     constexpr qint64 RejectThreshold = 50 * 1024 * 1024;  // 50 MB
-    QFileInfo fileCheck(filePath);
+    QFileInfo fileCheck(normalizedPath);
     qint64 fileSize = fileCheck.size();
 
     if (fileSize > RejectThreshold) {
@@ -125,25 +160,23 @@ void FileManager::openFile(QString filePath)
         if (reply != QMessageBox::Yes) return;
     }
 
-    QFile file(filePath);
+    QFile file(normalizedPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن فتح الملف");
         return;
     }
 
     QTextStream in(&file);
+    in.setEncoding(QStringConverter::Utf8);
     QString content = in.readAll();
     file.close();
 
-    TEditor *newEditor = new TEditor(m_parentWindow);
-    connect(newEditor->document(), &QTextDocument::modificationChanged, this, [this]() {
-        emit fileStateChanged();
-    });
+    TEditor *newEditor = createEditor(normalizedPath);
     newEditor->setPlainText(content);
-    newEditor->setProperty("filePath", filePath);
+    newEditor->document()->setModified(false);
 
     // Check for backup recovery
-    QString backupPath = filePath + ".~";
+    const QString backupPath = normalizedPath + Constants::BackupExtension;
     if (QFile::exists(backupPath)) {
         QMessageBox::StandardButton reply;
         reply = QMessageBox::warning(m_parentWindow, "استعادة ملف",
@@ -155,6 +188,7 @@ void FileManager::openFile(QString filePath)
             QFile backup(backupPath);
             if (backup.open(QIODevice::ReadOnly | QIODevice::Text)) {
                 QTextStream backupIn(&backup);
+                backupIn.setEncoding(QStringConverter::Utf8);
                 newEditor->setPlainText(backupIn.readAll());
                 newEditor->document()->setModified(true);
                 backup.close();
@@ -164,87 +198,104 @@ void FileManager::openFile(QString filePath)
         }
     }
 
-    QFileInfo fileInfo(filePath);
-    m_tabWidget->addTab(newEditor, fileInfo.fileName());
-    m_tabWidget->setCurrentWidget(newEditor);
-    m_tabWidget->setTabToolTip(m_tabWidget->currentIndex(), filePath);
+    QFileInfo fileInfo(normalizedPath);
+    const int index = m_tabWidget->addTab(newEditor, fileInfo.fileName());
+    m_tabWidget->setCurrentIndex(index);
+    m_tabWidget->setTabToolTip(index, normalizedPath);
 
-    // Update recent files
-    QSettings settings(Constants::OrgName, Constants::AppName);
-    QStringList recentFiles = settings.value(Constants::SettingsKeyRecentFiles).toStringList();
-    recentFiles.removeAll(filePath);
-    recentFiles.prepend(filePath);
-    while (recentFiles.size() > 10) {
-        recentFiles.removeLast();
-    }
-    settings.setValue(Constants::SettingsKeyRecentFiles, recentFiles);
+    addRecentFile(normalizedPath);
 
     emit fileStateChanged();
     emit openEditorsChanged();
 }
 
-void FileManager::saveFile()
+bool FileManager::saveEditor(TEditor *editor)
 {
-    TEditor *editor = currentEditor();
-    if (!editor) return;
+    if (!editor) return false;
 
-    QString filePath = editor->property("filePath").toString();
+    QString filePath = editor->currentFilePath();
     QString content = editor->toPlainText();
 
     if (filePath.isEmpty()) {
-        saveFileAs();
-        return;
+        return saveEditorAs(editor);
     }
 
+    filePath = normalizePath(filePath);
     QFile file(filePath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
         out << content;
         file.close();
+
+        editor->setFilePath(filePath);
         editor->document()->setModified(false);
 
         int index = m_tabWidget->indexOf(editor);
         if (index != -1) {
             QFileInfo fileInfo(filePath);
             m_tabWidget->setTabText(index, fileInfo.fileName());
+            m_tabWidget->setTabToolTip(index, filePath);
         }
+
         editor->removeBackupFile();
+        addRecentFile(filePath);
         emit fileStateChanged();
-    } else {
-        QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن حفظ الملف");
+        emit openEditorsChanged();
+        return true;
     }
+
+    QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن حفظ الملف");
+    return false;
 }
 
-void FileManager::saveFileAs()
+void FileManager::saveFile()
 {
-    TEditor *editor = currentEditor();
-    if (!editor) return;
+    (void) saveEditor(currentEditor());
+}
+
+bool FileManager::saveEditorAs(TEditor *editor)
+{
+    if (!editor) return false;
 
     QString content = editor->toPlainText();
-    QString currentPath = editor->property("filePath").toString();
+    QString currentPath = editor->currentFilePath();
     QString currentName = currentPath.isEmpty() ? "ملف جديد.baa" : QFileInfo(currentPath).fileName();
     QString fileName = QFileDialog::getSaveFileName(m_parentWindow, "حفظ الملف", currentName,
-                                                     "ملف باء (*.baa);;مكتبة باء(*.baahd);;All Files (*)");
+                                                     "ملف باء (*.baa);;مكتبة باء (*.baahd);;Text Files (*.txt);;All Files (*)");
 
-    if (fileName.isEmpty()) return;
+    if (fileName.isEmpty()) return false;
 
-    QFile file(fileName);
+    const QString normalizedPath = normalizePath(fileName);
+    QFile file(normalizedPath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
         QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
         out << content;
         file.close();
 
-        editor->setProperty("filePath", fileName);
+        editor->setFilePath(normalizedPath);
         editor->document()->setModified(false);
 
         int index = m_tabWidget->indexOf(editor);
         if (index != -1) {
-            QFileInfo fileInfo(fileName);
+            QFileInfo fileInfo(normalizedPath);
             m_tabWidget->setTabText(index, fileInfo.fileName());
+            m_tabWidget->setTabToolTip(index, normalizedPath);
         }
 
+        editor->removeBackupFile();
+        addRecentFile(normalizedPath);
         emit fileStateChanged();
-    } else {
-        QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن حفظ الملف");
+        emit openEditorsChanged();
+        return true;
     }
+
+    QMessageBox::warning(m_parentWindow, "خطأ", "لا يمكن حفظ الملف");
+    return false;
+}
+
+void FileManager::saveFileAs()
+{
+    (void) saveEditorAs(currentEditor());
 }

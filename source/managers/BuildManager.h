@@ -37,5 +37,5 @@ private:
     void cleanupBuild();
 
     QPointer<ProcessWorker> m_worker;
-    QThread *m_buildThread = nullptr;
+    QPointer<QThread> m_buildThread;
 };

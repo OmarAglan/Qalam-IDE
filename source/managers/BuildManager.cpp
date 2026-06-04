@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QStandardPaths>
+#include <QMetaObject>
 
 BuildManager::BuildManager(QObject *parent)
     : QObject(parent)
@@ -62,19 +63,25 @@ QString BuildManager::resolveCompilerPath() const
 
 void BuildManager::cleanupBuild()
 {
-    if (m_buildThread) {
-        if (m_worker) {
-            m_worker->stop();
-            m_worker = nullptr;
+    QThread *thread = m_buildThread.data();
+    ProcessWorker *worker = m_worker.data();
+
+    m_worker = nullptr;
+    m_buildThread = nullptr;
+
+    if (worker) {
+        if (thread and thread->isRunning() and QThread::currentThread() != thread) {
+            QMetaObject::invokeMethod(worker, "stop", Qt::BlockingQueuedConnection);
+        } else {
+            worker->stop();
         }
-        m_buildThread->quit();
-        if (!m_buildThread->wait(3000)) {
-            m_buildThread->terminate();
-            m_buildThread->wait();
-        }
-        if (m_buildThread) {
-            m_buildThread->deleteLater();
-            m_buildThread = nullptr;
+    }
+
+    if (thread) {
+        thread->quit();
+        if (!thread->wait(3000)) {
+            thread->terminate();
+            thread->wait();
         }
     }
 }
@@ -131,18 +138,29 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
     connect(m_worker, &ProcessWorker::errorReady,
             console, &TConsole::appendPlainTextThreadSafe);
 
-    connect(m_worker, &ProcessWorker::finished, this, [this, console](int code) {
+    QThread *thread = m_buildThread.data();
+    ProcessWorker *worker = m_worker.data();
+
+    connect(m_worker, &ProcessWorker::finished, this, [this, console, thread](int code) {
         console->appendPlainTextThreadSafe(
             "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
             + QString::number(code) + ")\n"
             );
-        m_buildThread->quit();
+        if (thread) {
+            thread->quit();
+        }
         emit buildFinished(code);
     });
 
-    // Cleanup logic: Ensure thread and worker are deleted after the thread finishes
-    connect(m_buildThread, &QThread::finished, m_worker, &QObject::deleteLater);
-    connect(m_buildThread, &QThread::finished, m_buildThread, &QObject::deleteLater);
+    // Cleanup logic: ensure pointers are cleared after the worker thread finishes.
+    connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(thread, &QThread::finished, this, [this, thread]() {
+        if (m_buildThread == thread) {
+            m_buildThread = nullptr;
+        }
+        m_worker = nullptr;
+    });
 
     connect(console, &TConsole::commandEntered,
             m_worker, &ProcessWorker::sendInput);

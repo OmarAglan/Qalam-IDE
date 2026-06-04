@@ -49,8 +49,12 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
     btnClose->setFixedSize(35, 35);
 
     checkCase = new QCheckBox("Aa", this); // Case Sensitive
-    checkCase->setToolTip("مطبقة حالة الأحرف");
+    checkCase->setToolTip("مطابقة حالة الأحرف");
     checkCase->setStyleSheet(QString("color: %1;").arg(Constants::Colors::TextSecondary));
+
+    checkWord = new QCheckBox("ab", this); // Whole Word
+    checkWord->setToolTip("كلمة كاملة فقط");
+    checkWord->setStyleSheet(QString("color: %1;").arg(Constants::Colors::TextSecondary));
 
     // 3. إضافة المكونات للتخطيط
     layout->addWidget(btnClose);
@@ -58,6 +62,7 @@ SearchPanel::SearchPanel(QWidget *parent) : QWidget(parent) {
     layout->addWidget(btnNext);
     layout->addWidget(btnPrev);
     layout->addWidget(checkCase);
+    layout->addWidget(checkWord);
     layout->addStretch(); // فراغ في النهاية
 
     // 4. الخلفية واللون
@@ -88,6 +93,7 @@ void SearchPanel::performFind() {
 
     QTextDocument::FindFlags flags;
     if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+    if (isWholeWord()) flags |= QTextDocument::FindWholeWords;
 
     m_editor->moveCursor(QTextCursor::Start);
     bool found = m_editor->find(text, flags);
@@ -105,6 +111,7 @@ void SearchPanel::performFindNext() {
 
     QTextDocument::FindFlags flags;
     if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+    if (isWholeWord()) flags |= QTextDocument::FindWholeWords;
 
     bool found = m_editor->find(text, flags);
 
@@ -126,6 +133,7 @@ void SearchPanel::performFindPrev() {
 
     QTextDocument::FindFlags flags = QTextDocument::FindBackward;
     if (isCaseSensitive()) flags |= QTextDocument::FindCaseSensitively;
+    if (isWholeWord()) flags |= QTextDocument::FindWholeWords;
 
     bool found = m_editor->find(text, flags);
 
@@ -139,5 +147,5 @@ void SearchPanel::performFindPrev() {
 
 QString SearchPanel::getText() const { return searchInput->text(); }
 bool SearchPanel::isCaseSensitive() const { return checkCase->isChecked(); }
-bool SearchPanel::isWholeWord() const { return false; }
+bool SearchPanel::isWholeWord() const { return checkWord && checkWord->isChecked(); }
 void SearchPanel::setFocusToInput() { searchInput->setFocus(); searchInput->selectAll(); }

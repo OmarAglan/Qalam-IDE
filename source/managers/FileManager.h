@@ -22,6 +22,11 @@ public:
 
     /// Show save confirmation dialog if the current document is modified
     SaveAction needSave();
+    SaveAction needSave(TEditor *editor);
+
+    /// Save the current or specified editor. Returns false if the save was cancelled or failed.
+    bool saveEditor(TEditor *editor);
+    bool saveEditorAs(TEditor *editor);
 
 public slots:
     void newFile();
@@ -36,6 +41,10 @@ signals:
     void openEditorsChanged();
 
 private:
+    TEditor *createEditor(const QString &filePath = QString());
+    QString normalizePath(const QString &filePath) const;
+    void addRecentFile(const QString &filePath);
+
     QTabWidget *m_tabWidget{};
     QWidget *m_parentWindow{};
 };

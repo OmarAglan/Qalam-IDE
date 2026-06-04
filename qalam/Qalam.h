@@ -64,6 +64,10 @@ private:
 
     void connectSignals();
     void syncOpenEditors();
+    bool maybeSaveAllModified();
+    void goToLocation(const QString &filePath, int line, int column);
+    void performProjectSearch(const QString &query, bool caseSensitive, bool wholeWord, bool regex);
+    void closeEditorByPath(const QString &filePath);
 
 private:
     QTabWidget *tabWidget{};

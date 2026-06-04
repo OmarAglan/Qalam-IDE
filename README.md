@@ -7,8 +7,6 @@
 **English:** Qalam IDE is a fast, right-to-left friendly, Qt-powered IDE designed for Arabic-syntax system languages — starting with **Baa (باء)**.  
 **العربية:** محرر **قلم** هو بيئة تطوير سريعة تدعم اتجاه الكتابة من اليمين إلى اليسار، ومصممة للغات الأنظمة ذات الصياغة العربية — بدايةً مع **لغة باء**.
 
-> Note: Qalam IDE is the evolution of the Taif editor, now fully aligned with the Baa programming language.
-
 ---
 
 ## Why Qalam?

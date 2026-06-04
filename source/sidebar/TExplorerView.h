@@ -6,6 +6,7 @@
 #include <QFileSystemModel>
 #include <QLabel>
 #include <QPushButton>
+#include <QEvent>
 
 /**
  * @brief Explorer View - File tree with collapsible sections
@@ -33,9 +34,13 @@ public:
     QTreeView* treeView() const { return m_treeView; }
     QFileSystemModel* fileSystemModel() const { return m_fileSystemModel; }
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 signals:
     void fileDoubleClicked(const QString &filePath);
     void openEditorClicked(const QString &filePath);
+    void openEditorCloseRequested(const QString &filePath);
     void openFolderRequested();  // Emitted when "Open Folder" button is clicked
 
 private:

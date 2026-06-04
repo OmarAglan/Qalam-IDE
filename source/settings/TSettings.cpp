@@ -9,9 +9,7 @@ TSettings::TSettings(QWidget* parent) : QWidget(parent) {
 
     // Layout setup
     QHBoxLayout* mainLayout = new QHBoxLayout();
-    QVBoxLayout* mainPropertyLayout = new QVBoxLayout();
     optionsLayout = new QVBoxLayout();
-    QHBoxLayout* buttonLayout = new QHBoxLayout();
 
     stackedWidget = new QStackedWidget();
 
@@ -29,14 +27,8 @@ TSettings::TSettings(QWidget* parent) : QWidget(parent) {
     optionsWidget->setMinimumWidth(200);
     optionsWidget->setMaximumWidth(300);
 
-    QWidget* propertyWidget = new QWidget();
-    propertyWidget->setLayout(mainPropertyLayout);
-    propertyWidget->setMinimumWidth(400);
-
     mainLayout->addWidget(optionsWidget);
     mainLayout->addWidget(stackedWidget);
-
-    mainPropertyLayout->addLayout(buttonLayout);
 
     setLayout(mainLayout);
 }
@@ -132,20 +124,22 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     fontCombo->setMinimumHeight(40);
     fontCombo->setMaximumWidth(200);
 
-    QStringList fontFamilies{};
-    for (int i = 0; i < 3; i++) {
-        QStringList font = QFontDatabase::applicationFontFamilies(i);
-        if (!font.isEmpty()) {
-            fontFamilies.append(font.at(0));
+    QStringList fontFamilies = QFontDatabase::families();
+    fontFamilies.sort(Qt::CaseInsensitive);
+
+    const QStringList preferredFonts = {
+        Constants::DefaultFontType,
+        "Noto Kufi Arabic",
+        "Tajawal",
+        "Kawkab Mono"
+    };
+    for (const QString &family : preferredFonts) {
+        if (!family.isEmpty() && !fontFamilies.contains(family, Qt::CaseInsensitive)) {
+            fontFamilies.prepend(family);
         }
     }
 
-    // QStringList fontFamilies = QFontDatabase::families();
-    // fontFamilies.sort(Qt::CaseInsensitive);
-    // Add fonts to combobox
-    foreach (const QString &family, fontFamilies) {
-        fontCombo->addItem(family);
-    }
+    fontCombo->addItems(fontFamilies);
     QString savedFont = settingsVal.value(Constants::SettingsKeyFontType).toString();
     !savedFont.isEmpty() ? fontCombo->setCurrentText(savedFont) : fontCombo->setCurrentText(Constants::DefaultFontType);
 
@@ -174,7 +168,8 @@ void TSettings::createAppearancePage(QVBoxLayout* layout) {
     }
 
     int savedTheme = settingsVal.value(Constants::SettingsKeyTheme).toInt();
-    savedTheme ? themeCombo->setCurrentIndex(savedTheme) : themeCombo->setCurrentIndex(0);
+    if (savedTheme < 0 || savedTheme >= themeCombo->count()) savedTheme = 0;
+    themeCombo->setCurrentIndex(savedTheme);
 
     comboLayout->addRow("مظهر الشيفرة: ", themeCombo);
     connect(themeCombo, &QComboBox::currentIndexChanged, this, &TSettings::highlighterThemeChanged);

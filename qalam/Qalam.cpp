@@ -22,8 +22,14 @@
 #include <QApplication>
 #include <QSettings>
 #include <QFile>
+#include <QFileInfo>
+#include <QTextStream>
+#include <QStringConverter>
+#include <QDirIterator>
+#include <QRegularExpression>
 #include <QKeyEvent>
 #include <QInputDialog>
+#include "TSearchView.h"
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -53,13 +59,13 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     // الخطوة 2: إعداد النافذة وشريط القوائم
     // ===================================================================
     QScreen* screen = QGuiApplication::primaryScreen();
-    QRect screenGeo = screen->availableGeometry();
-    int margin = 100;
-    int widthFixedNum = 6;
-    int x = screenGeo.right() - screenGeo.size().width() + margin * widthFixedNum / 2;
-    int y = screenGeo.top() + 30 + margin / 2; // 30 is top system bar height
-    int width = screenGeo.size().width() - margin * widthFixedNum;
-    int height = screenGeo.size().height() - margin;
+    QRect screenGeo = screen ? screen->availableGeometry() : QRect(0, 0, 1280, 800);
+    const int margin = 100;
+    const int widthFixedNum = 6;
+    const int width = qMax(900, screenGeo.size().width() - margin * widthFixedNum);
+    const int height = qMax(600, screenGeo.size().height() - margin);
+    const int x = screenGeo.left() + qMax(0, (screenGeo.width() - width) / 2);
+    const int y = screenGeo.top() + qMax(0, (screenGeo.height() - height) / 2);
     this->setGeometry(x, y, width, height);
     this->setCustomMenuBar(menuBar);
 
@@ -236,6 +242,11 @@ void Qalam::connectSignals()
 
     connect(sidebar, &TSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
     connect(sidebar, &TSidebar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+    connect(sidebar, &TSidebar::openEditorCloseRequested, this, &Qalam::closeEditorByPath);
+    connect(sidebar, &TSidebar::searchRequested, this, &Qalam::performProjectSearch);
+    if (sidebar->searchView()) {
+        connect(sidebar->searchView(), &TSearchView::resultClicked, this, &Qalam::goToLocation);
+    }
 
     connect(statusBar, &TStatusBar::problemsClicked, this, [this]() {
         m_layoutManager->panelArea()->setCurrentTab(TPanelArea::Tab::Problems);
@@ -254,11 +265,7 @@ void Qalam::connectSignals()
 }
 
 void Qalam::closeEvent(QCloseEvent *event) {
-    auto saveResult = m_fileManager->needSave();
-
-    if (saveResult == FileManager::SaveAction::Save) {
-        m_fileManager->saveFile();
-    } else if (saveResult == FileManager::SaveAction::Cancel) {
+    if (!maybeSaveAllModified()) {
         event->ignore();
         return;
     }
@@ -371,12 +378,8 @@ void Qalam::openSettings() {
 
 
 void Qalam::exitApp() {
-    auto result = m_fileManager->needSave();
-    if (result == FileManager::SaveAction::Cancel) {
+    if (!maybeSaveAllModified()) {
         return;
-    }
-    else if (result == FileManager::SaveAction::Save) {
-        m_fileManager->saveFile();
     }
     close();
 }
@@ -388,17 +391,26 @@ void Qalam::onCurrentTabChanged()
 
     TEditor* editor = currentEditor();
 
-    // Disconnect the previous editor to avoid accumulating connections
+    // Disconnect the previous editor to avoid accumulating connections.
+    // Also clear the raw pointer so closing the last editor does not leave a dangling reference.
     if (m_lastConnectedEditor) {
         disconnect(m_lastConnectedEditor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
+        m_lastConnectedEditor = nullptr;
     }
 
     if (editor) {
         connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
+        connect(editor, &QObject::destroyed, this, [this, editor]() {
+            if (m_lastConnectedEditor == editor) {
+                m_lastConnectedEditor = nullptr;
+            }
+        }, Qt::UniqueConnection);
         m_lastConnectedEditor = editor;
 
         // Keep search panel pointing at the active editor
         searchBar->setEditor(editor);
+    } else {
+        searchBar->setEditor(nullptr);
     }
 }
 
@@ -417,7 +429,7 @@ void Qalam::updateCursorPosition()
         
         // Update breadcrumb with current file
         if (m_layoutManager->breadcrumb()) {
-            QString filePath = editor->property("filePath").toString();
+            QString filePath = editor->currentFilePath();
             m_layoutManager->breadcrumb()->setFilePath(filePath);
         }
     }
@@ -430,11 +442,11 @@ void Qalam::runBaa() {
     TEditor *editor = currentEditor();
     if (!editor) return;
 
-    QString filePath = editor->property("filePath").toString();
+    QString filePath = editor->currentFilePath();
     if (filePath.isEmpty() or editor->document()->isModified()) {
         QMessageBox::warning(this, "تنبيه", "يجب حفظ الملف قبل التشغيل.");
         m_fileManager->saveFile();
-        filePath = editor->property("filePath").toString();
+        filePath = editor->currentFilePath();
         if (filePath.isEmpty() or editor->document()->isModified()) return;
     }
 
@@ -556,18 +568,21 @@ void Qalam::closeTab(int index)
         return;
     }
 
-    if (editor and editor->document()->isModified()) {
-        auto saveResult = m_fileManager->needSave();
+    if (editor->document()->isModified()) {
+        const int previousIndex = tabWidget->currentIndex();
+        tabWidget->setCurrentIndex(index);
+        auto saveResult = m_fileManager->needSave(editor);
 
         if (saveResult == FileManager::SaveAction::Cancel) {
+            tabWidget->setCurrentIndex(previousIndex);
             return;
         }
-        else if (saveResult == FileManager::SaveAction::Save) {
-            m_fileManager->saveFile();
+        if (saveResult == FileManager::SaveAction::Save and !m_fileManager->saveEditor(editor)) {
+            tabWidget->setCurrentIndex(previousIndex);
             return;
         }
-
     }
+
     tabWidget->removeTab(index);
     editor->deleteLater();
     syncOpenEditors();
@@ -579,6 +594,147 @@ void Qalam::closeTab(int index)
             m_fileManager->newFile();
         }
     }
+}
+
+bool Qalam::maybeSaveAllModified()
+{
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+        if (!editor or !editor->document()->isModified()) {
+            continue;
+        }
+
+        tabWidget->setCurrentIndex(i);
+        auto result = m_fileManager->needSave(editor);
+        if (result == FileManager::SaveAction::Cancel) {
+            return false;
+        }
+        if (result == FileManager::SaveAction::Save and !m_fileManager->saveEditor(editor)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Qalam::goToLocation(const QString &filePath, int line, int column)
+{
+    if (filePath.isEmpty()) return;
+
+    openFileFromUi(filePath);
+    TEditor *editor = currentEditor();
+    if (!editor) return;
+
+    QTextCursor cursor(editor->document());
+    const int targetLine = qMax(1, line);
+    cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, targetLine - 1);
+    const int targetColumn = qMax(1, column);
+    cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, targetColumn - 1);
+    editor->setTextCursor(cursor);
+    editor->centerCursor();
+    editor->setFocus();
+}
+
+void Qalam::closeEditorByPath(const QString &filePath)
+{
+    const QString targetCanonical = QFileInfo(filePath).canonicalFilePath();
+    const QString targetClean = QDir::cleanPath(filePath);
+
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(i));
+        if (!editor) continue;
+
+        const QString editorPath = editor->currentFilePath();
+        const QString editorCanonical = QFileInfo(editorPath).canonicalFilePath();
+        const QString editorClean = QDir::cleanPath(editorPath);
+
+        const bool sameRealFile = !targetCanonical.isEmpty() and editorCanonical == targetCanonical;
+        const bool sameUnsavedLabel = targetCanonical.isEmpty() and editorPath.isEmpty() and tabWidget->tabText(i) == filePath;
+        const bool sameCleanPath = !targetClean.isEmpty() and !editorClean.isEmpty() and editorClean == targetClean;
+
+        if (sameRealFile or sameCleanPath or sameUnsavedLabel) {
+            closeTab(i);
+            return;
+        }
+    }
+}
+
+void Qalam::performProjectSearch(const QString &query, bool caseSensitive, bool wholeWord, bool regex)
+{
+    auto *sidebar = m_layoutManager ? m_layoutManager->sidebar() : nullptr;
+    auto *searchView = sidebar ? sidebar->searchView() : nullptr;
+    if (!searchView) return;
+
+    searchView->clearResults();
+
+    const QString trimmedQuery = query.trimmed();
+    if (trimmedQuery.isEmpty() or folderPath.isEmpty()) {
+        searchView->setResultCount(0, 0);
+        return;
+    }
+
+    QRegularExpression::PatternOptions options = QRegularExpression::UseUnicodePropertiesOption;
+    if (!caseSensitive) {
+        options |= QRegularExpression::CaseInsensitiveOption;
+    }
+
+    QString pattern = regex ? trimmedQuery : QRegularExpression::escape(trimmedQuery);
+    if (wholeWord) {
+        pattern = QStringLiteral("(?<![\\p{L}\\p{N}_])(?:%1)(?![\\p{L}\\p{N}_])").arg(pattern);
+    }
+
+    QRegularExpression expression(pattern, options);
+    if (!expression.isValid()) {
+        searchView->setResultCount(0, 0);
+        return;
+    }
+
+    const QStringList allowedExtensions = {"baa", "baahd", "txt"};
+    int fileCount = 0;
+    int matchCount = 0;
+
+    QDirIterator it(folderPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        const QString path = it.next();
+        const QFileInfo info(path);
+        if (!allowedExtensions.contains(info.suffix().toLower())) {
+            continue;
+        }
+        if (info.size() > 5 * 1024 * 1024) {
+            continue;
+        }
+
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            continue;
+        }
+
+        QTextStream stream(&file);
+        stream.setEncoding(QStringConverter::Utf8);
+
+        bool fileHadMatch = false;
+        int lineNumber = 0;
+        while (!stream.atEnd()) {
+            const QString lineText = stream.readLine();
+            ++lineNumber;
+
+            QRegularExpressionMatchIterator matches = expression.globalMatch(lineText);
+            while (matches.hasNext()) {
+                const QRegularExpressionMatch match = matches.next();
+                if (!match.hasMatch()) continue;
+
+                if (!fileHadMatch) {
+                    fileHadMatch = true;
+                    ++fileCount;
+                }
+                ++matchCount;
+                searchView->addResult(path, lineNumber, match.capturedStart() + 1,
+                                      lineText, match.captured(0));
+            }
+        }
+    }
+
+    searchView->setResultCount(fileCount, matchCount);
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */
@@ -594,9 +750,6 @@ void Qalam::aboutQalam() {
         • يدعم اتجاه الكتابة من اليمين إلى اليسار (RTL)
         • تلوين شيفرة (Syntax Highlighting) ومحرك ثيمات
         • إكمال تلقائي (Auto-complete) وحفظ تلقائي واستعادة النسخ الاحتياطية
-
-        ملاحظة:
-        المشروع كان يُعرف سابقاً باسم "طيف" ويتم حالياً تحديث الهوية والواجهة.
 
         © Qalam IDE
                                     )"
@@ -616,7 +769,7 @@ void Qalam::updateWindowTitle() {
     if (!editor) {
         title = "قلم";
     } else {
-        QString filePath = editor->property("filePath").toString();
+        QString filePath = editor->currentFilePath();
 
         if (filePath.isEmpty()) {
             title = "غير معنون";

@@ -60,7 +60,10 @@ void TSidebar::setupUi()
     
     // Connect signals
     connect(m_explorerView, &TExplorerView::fileDoubleClicked, this, &TSidebar::fileSelected);
+    connect(m_explorerView, &TExplorerView::openEditorClicked, this, &TSidebar::fileSelected);
+    connect(m_explorerView, &TExplorerView::openEditorCloseRequested, this, &TSidebar::openEditorCloseRequested);
     connect(m_explorerView, &TExplorerView::openFolderRequested, this, &TSidebar::openFolderRequested);
+    connect(m_searchView, &TSearchView::searchRequested, this, &TSidebar::searchRequested);
     connect(m_searchView, &TSearchView::resultClicked, this, [this](const QString &path, int, int) {
         emit fileSelected(path);
     });

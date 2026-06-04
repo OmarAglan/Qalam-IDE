@@ -127,14 +127,17 @@ void TSearchView::setupUi()
     
     connect(m_caseSensitiveBtn, &QPushButton::toggled, this, [this](bool checked) {
         m_caseSensitive = checked;
+        onSearchTriggered();
     });
     
     connect(m_wholeWordBtn, &QPushButton::toggled, this, [this](bool checked) {
         m_wholeWord = checked;
+        onSearchTriggered();
     });
     
     connect(m_regexBtn, &QPushButton::toggled, this, [this](bool checked) {
         m_useRegex = checked;
+        onSearchTriggered();
     });
 }
 
@@ -146,7 +149,15 @@ void TSearchView::onSearchTextChanged()
 void TSearchView::onSearchTriggered()
 {
     QString query = m_searchInput->text();
-    if (query.length() < 2) return;
+    if (query.trimmed().isEmpty()) {
+        clearResults();
+        setResultCount(0, 0);
+        return;
+    }
+    if (query.length() < 2) {
+        clearResults();
+        return;
+    }
 
     // Validate regex before emitting
     if (m_useRegex) {

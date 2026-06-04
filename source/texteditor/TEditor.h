@@ -28,6 +28,8 @@ public:
     void lineNumberAreaPaintEvent(QPaintEvent* event);
     int lineNumberAreaWidth() const;
     QString filePath{};
+    QString currentFilePath() const;
+    void setFilePath(const QString &path);
 
     QString getCurrentLineIndentation(const QTextCursor &cursor) const;
     void cursorIndentation();

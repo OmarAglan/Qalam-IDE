@@ -19,7 +19,7 @@ void SessionManager::saveSession(const QString &folderPath, const QByteArray &wi
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         TEditor *editor = qobject_cast<TEditor*>(m_tabWidget->widget(i));
         if (editor) {
-            QString filePath = editor->property("filePath").toString();
+            QString filePath = editor->currentFilePath();
             if (not filePath.isEmpty()) {
                 openFiles.append(filePath);
             }
@@ -65,7 +65,7 @@ void SessionManager::syncOpenEditors(TExplorerView *explorerView)
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         TEditor *editor = qobject_cast<TEditor*>(m_tabWidget->widget(i));
         if (editor) {
-            QString filePath = editor->property("filePath").toString();
+            QString filePath = editor->currentFilePath();
             bool modified = editor->document()->isModified();
 
             // Use tab text if no file path (unsaved file)

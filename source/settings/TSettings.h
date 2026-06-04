@@ -24,8 +24,6 @@ public:
 
     QVector<std::shared_ptr<SyntaxTheme>> getAvailableThemes() const { return ThemeManager::getAvailableThemes(); }
 
-    // TODO: add getFontCombo() and getFontSpin() to use it to save the settings values
-    // instade of using the editor current values to save the values
     QComboBox *getThemeCombo() const;
 
 protected:

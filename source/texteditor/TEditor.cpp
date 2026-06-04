@@ -129,6 +129,18 @@ void TEditor::wheelEvent(QWheelEvent *event) {
     QPlainTextEdit::wheelEvent(event);
 }
 
+QString TEditor::currentFilePath() const {
+    return filePath;
+}
+
+void TEditor::setFilePath(const QString &path) {
+    filePath = path;
+    setProperty("filePath", path);
+    if (m_autoSave) {
+        m_autoSave->filePath = path;
+    }
+}
+
 void TEditor::updateFontSize(int size) {
     if (size < 10) {
         size = 18;
@@ -667,7 +679,7 @@ QString TEditor::getCurrentLineIndentation(const QTextCursor &cursor) const {
 /* ---------------------------------- Auto-Save (delegated) ---------------------------------- */
 
 void TEditor::startAutoSave() {
-    m_autoSave->filePath = this->filePath;
+    m_autoSave->filePath = currentFilePath();
     m_autoSave->start();
 }
 
@@ -676,7 +688,7 @@ void TEditor::stopAutoSave() {
 }
 
 void TEditor::removeBackupFile() {
-    m_autoSave->filePath = this->filePath;
+    m_autoSave->filePath = currentFilePath();
     m_autoSave->removeBackupFile();
 }
 

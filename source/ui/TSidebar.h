@@ -33,8 +33,9 @@ public:
 
 signals:
     void fileSelected(const QString &filePath);
-    void searchRequested(const QString &query);
+    void searchRequested(const QString &query, bool caseSensitive, bool wholeWord, bool regex);
     void openFolderRequested();  // Forward from explorer view
+    void openEditorCloseRequested(const QString &filePath);
 
 private:
     void setupUi();

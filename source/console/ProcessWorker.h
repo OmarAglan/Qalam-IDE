@@ -36,4 +36,7 @@ private:
     QString errorBuffer{};
     QTimer *flushTimer{};
     QMutex bufferMutex{};  // Mutex for thread-safe buffer access
+    bool m_finishedEmitted{};
+
+    void emitFinishedOnce(int exitCode);
 };

@@ -3,6 +3,7 @@
 #include "Constants.h"
 #include <QScrollArea>
 #include <QFileInfo>
+#include <QMouseEvent>
 
 TExplorerView::TExplorerView(QWidget *parent)
     : QWidget(parent)
@@ -190,7 +191,14 @@ void TExplorerView::addOpenEditor(const QString &filePath, bool modified)
     
     // Click to switch to file
     item->installEventFilter(this);
-    
+
+    connect(closeBtn, &QPushButton::clicked, this, [this, item]() {
+        const QString path = item->property("filePath").toString();
+        if (!path.isEmpty()) {
+            emit openEditorCloseRequested(path);
+        }
+    });
+
     m_openEditorsLayout->addWidget(item);
 }
 
@@ -232,6 +240,54 @@ void TExplorerView::clearOpenEditors()
         }
         delete item;
     }
+}
+
+bool TExplorerView::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::Enter) {
+        if (auto *widget = qobject_cast<QWidget*>(watched)) {
+            if (!widget->property("filePath").toString().isEmpty()) {
+                if (auto *button = widget->findChild<QPushButton*>("openEditorClose")) {
+                    button->show();
+                }
+            }
+        }
+    } else if (event->type() == QEvent::Leave) {
+        if (auto *widget = qobject_cast<QWidget*>(watched)) {
+            if (auto *button = widget->findChild<QPushButton*>("openEditorClose")) {
+                button->hide();
+            }
+        }
+    } else if (event->type() == QEvent::MouseButtonRelease) {
+        if (watched == m_openEditorsHeader) {
+            m_openEditorsExpanded = !m_openEditorsExpanded;
+            m_openEditorsContent->setVisible(m_openEditorsExpanded);
+            if (auto *arrow = m_openEditorsHeader->findChild<QLabel*>("sectionArrow")) {
+                arrow->setText(m_openEditorsExpanded ? "▾" : "▸");
+            }
+            return true;
+        }
+
+        if (watched == m_folderHeader) {
+            m_folderExpanded = !m_folderExpanded;
+            m_treeView->setVisible(m_folderExpanded && !m_rootPath.isEmpty());
+            m_noFolderWidget->setVisible(m_folderExpanded && m_rootPath.isEmpty());
+            if (auto *arrow = m_folderHeader->findChild<QLabel*>("sectionArrow")) {
+                arrow->setText(m_folderExpanded ? "▾" : "▸");
+            }
+            return true;
+        }
+
+        if (auto *widget = qobject_cast<QWidget*>(watched)) {
+            const QString path = widget->property("filePath").toString();
+            if (!path.isEmpty() && QFileInfo(path).exists()) {
+                emit openEditorClicked(path);
+                return true;
+            }
+        }
+    }
+
+    return QWidget::eventFilter(watched, event);
 }
 
 void TExplorerView::applyStyles()

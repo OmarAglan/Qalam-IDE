@@ -39,6 +39,7 @@ void ProcessWorker::start() {
         process = nullptr;
     }
     process = new QProcess(this);
+    m_finishedEmitted = false;
 
     process->setProgram(program);
     process->setArguments(args);
@@ -66,8 +67,18 @@ void ProcessWorker::start() {
                 // Flush any remaining buffered data
                 flushBuffers();
 
-                emit finished(code);
+                emitFinishedOnce(code);
             });
+
+    connect(process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart) {
+            emit errorReady("❌ فشل بدء العملية: " + process->errorString());
+            if (flushTimer && flushTimer->isActive()) {
+                flushTimer->stop();
+            }
+            emitFinishedOnce(-1);
+        }
+    });
 
     // Start the process (non-blocking)
     process->start();
@@ -99,6 +110,15 @@ void ProcessWorker::flushBuffers() {
     if (!errCopy.isEmpty()) {
         emit errorReady(errCopy);
     }
+}
+
+void ProcessWorker::emitFinishedOnce(int exitCode)
+{
+    if (m_finishedEmitted) {
+        return;
+    }
+    m_finishedEmitted = true;
+    emit finished(exitCode);
 }
 
 void ProcessWorker::stop() {

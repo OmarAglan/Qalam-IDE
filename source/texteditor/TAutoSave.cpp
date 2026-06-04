@@ -3,6 +3,7 @@
 #include <QPlainTextEdit>
 #include <QFile>
 #include <QTextStream>
+#include <QStringConverter>
 #include "Constants.h"
 
 TAutoSave::TAutoSave(QPlainTextEdit *editor, QObject *parent)
@@ -29,11 +30,12 @@ void TAutoSave::onContentChanged() {
 void TAutoSave::performAutoSave() {
     if (filePath.isEmpty() or !m_editor->document()->isModified()) return;
 
-    QString backupPath = filePath + ".~";
+    QString backupPath = filePath + Constants::BackupExtension;
 
     QFile file(backupPath);
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&file);
+        out.setEncoding(QStringConverter::Utf8);
         out << m_editor->toPlainText();
         file.close();
     }
@@ -42,7 +44,7 @@ void TAutoSave::performAutoSave() {
 void TAutoSave::removeBackupFile() {
     if (filePath.isEmpty()) return;
 
-    QString backupPath = filePath + ".~";
+    QString backupPath = filePath + Constants::BackupExtension;
     if (QFile::exists(backupPath)) {
         QFile::remove(backupPath);
     }
