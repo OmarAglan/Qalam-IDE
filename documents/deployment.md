@@ -15,9 +15,43 @@ This document explains how to build and package Qalam IDE on Windows, Linux, and
 
 ## Windows: Build and Package
 
-### Option A: PowerShell scripts (recommended)
+### Option A: one-command bootstrap (recommended)
 
 From the repository root:
+
+```powershell
+.\scripts\bootstrap-windows.ps1
+```
+
+The bootstrap script does the full local setup:
+
+1. Checks for Python and CMake.
+2. Uses `winget` to install missing base tools when possible.
+3. Installs `aqtinstall` with Python.
+4. Downloads Qt 6 + MinGW into `C:\Qt` by default.
+5. Builds Qalam.
+6. Runs the packaging script to create a portable ZIP.
+
+Outputs:
+
+- Executable: `build/windows-release/qalam/Qalam.exe`
+- Portable folder: `dist/Qalam-win64/`
+- ZIP package: `dist/Qalam-win64.zip`
+
+Useful options:
+
+```powershell
+.\scripts\bootstrap-windows.ps1 -NoPackage
+.\scripts\bootstrap-windows.ps1 -QtRoot "D:\Qt"
+.\scripts\bootstrap-windows.ps1 -SkipWinget
+.\scripts\bootstrap-windows.ps1 -SkipQtInstall -QtRoot "C:\Qt"
+```
+
+The packaging script runs `windeployqt.exe`, which copies the Qt runtime DLLs, platform plugins, styles, and related runtime files into the package folder.
+
+### Option B: manual PowerShell scripts
+
+Use this when Qt 6 with the MinGW kit is already installed:
 
 ```powershell
 # Optional when Qt is not installed under C:\Qt
@@ -27,15 +61,7 @@ $env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
 .\scripts\package-windows.ps1 -SkipBuild
 ```
 
-Outputs:
-
-- Executable: `build/windows-release/qalam/Qalam.exe`
-- Portable folder: `dist/Qalam-win64/`
-- ZIP package: `dist/Qalam-win64.zip`
-
-The packaging script runs `windeployqt.exe`, which copies the Qt runtime DLLs, platform plugins, styles, and related runtime files into the package folder.
-
-### Option B: CMake presets
+### Option C: CMake presets
 
 When Qt is not in the default `C:\Qt\6.10.2\mingw_64` location:
 
@@ -54,7 +80,7 @@ cmake --build --preset release-qt6102
 .\scripts\package-windows.ps1 -SkipBuild
 ```
 
-### Optional: Deploy after every build
+### Optional: deploy after every build
 
 This is convenient for local manual testing, but slower for normal development:
 
@@ -90,14 +116,22 @@ The Windows executable icon is configured through `qalam/resources/Qalam.rc` and
 
 ## Linux
 
-### Install dependencies on Ubuntu/Debian
+### One-command bootstrap
+
+```bash
+./scripts/bootstrap-linux.sh
+```
+
+The Linux bootstrap installs common compiler/CMake/Python packages through `apt`, `dnf`, or `pacman` when available, installs Qt through `aqtinstall`, and builds `build/linux-release/qalam/Qalam`.
+
+### Manual distro-package dependencies
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential cmake qt6-base-dev qt6-base-dev-tools libxcb-cursor0 libxcb-cursor-dev
 ```
 
-### Build
+### Manual build
 
 ```bash
 ./scripts/build-linux.sh Release
@@ -131,6 +165,16 @@ chmod +x build/linux-release/qalam/baa/baa
 
 ## macOS
 
+### One-command bootstrap
+
+```bash
+./scripts/bootstrap-macos.sh
+```
+
+The macOS bootstrap expects Homebrew and Xcode Command Line Tools, installs CMake/Python/aqtinstall, downloads Qt, and builds `build/macos-release/qalam/Qalam.app`.
+
+### Manual build
+
 ```bash
 export QALAM_QT_DIR=/Users/$USER/Qt/6.x/macos
 cmake --preset macos-release
@@ -154,11 +198,17 @@ mingw32-make -j
 
 ---
 
+## Continuous Integration
+
+The repository includes `.github/workflows/build.yml` for Windows and Linux builds. It installs Python, downloads Qt with `aqtinstall`, builds the project, and uploads the Windows portable ZIP as a workflow artifact.
+
+---
+
 ## Known Issues / Next Work
 
 1. **Compiler settings UI:** The key already exists (`compilerPath`), but the settings window still needs a proper compiler path picker.
 2. **Windows terminal:** The embedded terminal starts `cmd.exe` using UTF-8 code page setup, but a future terminal layer should support PowerShell and better ANSI color rendering.
-3. **CI:** GitHub Actions should build Windows, Linux, and macOS artifacts automatically.
+3. **CI:** Windows and Linux GitHub Actions builds are included; macOS CI packaging can be added later.
 4. **Packaging installer:** Current Windows packaging creates a portable ZIP. A proper installer can be added later with Qt Installer Framework or another installer system.
 5. **Baa compiler bundling:** `scripts/package-windows.ps1` copies a local `baa/` folder if present. If the compiler lives in another repository, the release process should fetch or build it first.
 

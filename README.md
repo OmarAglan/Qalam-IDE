@@ -79,9 +79,37 @@ Qalam IDE is a Qt Widgets application written in C++23.
   - Linux: GCC 13+ recommended
   - macOS: Clang 16+ recommended
 
-### Windows: recommended quick path
+### Windows: one-command bootstrap recommended
 
-Install Qt 6 with the MinGW kit, then run PowerShell from the repository root:
+On a fresh Windows machine, open PowerShell in the repository root and run:
+
+```powershell
+.\scripts\bootstrap-windows.ps1
+```
+
+The bootstrap script attempts to install the missing base tools with `winget`, installs Qt + MinGW with `aqtinstall`, builds Qalam, and creates the portable ZIP.
+
+Output:
+
+- Build: `build/windows-release/qalam/Qalam.exe`
+- Portable package: `dist/Qalam-win64.zip`
+
+Useful options:
+
+```powershell
+# Build only, do not create dist/Qalam-win64.zip
+.\scripts\bootstrap-windows.ps1 -NoPackage
+
+# Use a custom Qt install root
+.\scripts\bootstrap-windows.ps1 -QtRoot "D:\Qt"
+
+# Use an already installed Qt and skip downloading Qt
+.\scripts\bootstrap-windows.ps1 -SkipQtInstall -QtRoot "C:\Qt"
+```
+
+### Windows: manual quick path
+
+If Qt 6 + MinGW is already installed, run PowerShell from the repository root:
 
 ```powershell
 # Optional when Qt is not installed under C:\Qt
@@ -90,11 +118,6 @@ $env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
 .\scripts\build-windows.ps1 -Configuration Release
 .\scripts\package-windows.ps1 -SkipBuild
 ```
-
-Output:
-
-- Build: `build/windows-release/qalam/Qalam.exe`
-- Portable package: `dist/Qalam-win64.zip`
 
 ### Windows: manual CMake path
 
@@ -113,6 +136,14 @@ cmake --build --preset release-qt6102
 
 ### Linux
 
+On Ubuntu/Fedora/Arch-like systems, the low-hassle path is:
+
+```bash
+./scripts/bootstrap-linux.sh
+```
+
+If Qt is already installed:
+
 ```bash
 ./scripts/build-linux.sh Release
 ```
@@ -122,6 +153,14 @@ Or manually:
 ```bash
 cmake -S . -B build/linux-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/Qt/6.x/gcc_64
 cmake --build build/linux-release --parallel
+```
+
+### macOS
+
+On macOS with Homebrew available:
+
+```bash
+./scripts/bootstrap-macos.sh
 ```
 
 ### Build with Qt Creator

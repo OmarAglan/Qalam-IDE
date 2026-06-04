@@ -1,0 +1,264 @@
+param(
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Release',
+
+    [string]$QtVersion = '6.10.2',
+
+    [string]$QtArch = 'win64_mingw',
+
+    [string]$QtRoot = 'C:\Qt',
+
+    [switch]$NoPackage,
+
+    [switch]$SkipWinget,
+
+    [switch]$SkipQtInstall,
+
+    [switch]$ForceQtInstall
+)
+
+$ErrorActionPreference = 'Stop'
+Set-Location (Split-Path -Parent $PSScriptRoot)
+
+function Write-Step {
+    param([string]$Message)
+    Write-Host "`n==> $Message" -ForegroundColor Cyan
+}
+
+function Refresh-Path {
+    $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:PATH = "$machinePath;$userPath;$env:PATH"
+
+    $commonPaths = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python312",
+        "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
+        'C:\Program Files\CMake\bin',
+        'C:\Program Files\Git\cmd',
+        'C:\Program Files\Git\bin'
+    )
+
+    foreach ($path in $commonPaths) {
+        if ($path -and (Test-Path $path)) {
+            $env:PATH = "$path;$env:PATH"
+        }
+    }
+}
+
+function Get-CommandOrNull {
+    param([string]$Name)
+    return Get-Command $Name -ErrorAction SilentlyContinue
+}
+
+function Require-Winget {
+    if (Get-CommandOrNull winget.exe) { return }
+    throw @'
+winget.exe was not found.
+Install/enable Windows Package Manager first, or install these manually:
+- Python 3.12+
+- CMake 3.21+
+- Qt 6 MinGW kit
+Then run scripts/build-windows.ps1.
+'@
+}
+
+function Install-WingetPackage {
+    param(
+        [string]$Id,
+        [string]$CommandName
+    )
+
+    if ($CommandName -and (Get-CommandOrNull $CommandName)) {
+        Write-Host "Already installed: $CommandName"
+        return
+    }
+
+    if ($SkipWinget) {
+        Write-Host "Skipping winget install for $Id because -SkipWinget was supplied." -ForegroundColor Yellow
+        return
+    }
+
+    Require-Winget
+    Write-Step "Installing $Id"
+    winget install --id $Id --exact --source winget --accept-package-agreements --accept-source-agreements
+    Refresh-Path
+}
+
+function Get-PythonCommand {
+    $candidates = @('py.exe', 'python.exe', 'python3.exe')
+    foreach ($candidate in $candidates) {
+        $cmd = Get-CommandOrNull $candidate
+        if ($cmd) { return $cmd.Source }
+    }
+    return $null
+}
+
+function Invoke-Python {
+    param([string[]]$Arguments)
+    $python = Get-PythonCommand
+    if (!$python) { throw 'Python was not found after installation.' }
+
+    if ((Split-Path -Leaf $python) -ieq 'py.exe') {
+        & $python -3 @Arguments
+    } else {
+        & $python @Arguments
+    }
+}
+
+function Find-QtRoot {
+    param(
+        [string]$Root,
+        [string]$Version
+    )
+
+    $exactCandidates = @(
+        (Join-Path $Root "$Version\mingw_64"),
+        (Join-Path $Root "$Version\$QtArch")
+    )
+
+    foreach ($candidate in $exactCandidates) {
+        if (Test-Path (Join-Path $candidate 'lib\cmake\Qt6\Qt6Config.cmake')) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    if (Test-Path $Root) {
+        $matches = Get-ChildItem $Root -Recurse -Filter Qt6Config.cmake -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match [regex]::Escape("$Version") -and $_.FullName -match 'cmake\\Qt6\\Qt6Config\.cmake$' } |
+            Sort-Object FullName |
+            Select-Object -First 1
+
+        if ($matches) {
+            return (Resolve-Path (Join-Path $matches.DirectoryName '..\..\..')).Path
+        }
+    }
+
+    return $null
+}
+
+function Install-QtIfNeeded {
+    $currentQt = Find-QtRoot -Root $QtRoot -Version $QtVersion
+    if ($currentQt -and !$ForceQtInstall) {
+        Write-Host "Qt already installed: $currentQt"
+        return $currentQt
+    }
+
+    if ($SkipQtInstall) {
+        throw "Qt $QtVersion was not found under $QtRoot and -SkipQtInstall was supplied."
+    }
+
+    Write-Step "Installing aqtinstall"
+    Invoke-Python @('-m', 'pip', 'install', '--user', '--upgrade', 'pip', 'aqtinstall')
+    Refresh-Path
+
+    Write-Step "Installing Qt $QtVersion ($QtArch) to $QtRoot"
+    Invoke-Python @('-m', 'aqt', 'install-qt', '-O', $QtRoot, 'windows', 'desktop', $QtVersion, $QtArch)
+
+    $installedQt = Find-QtRoot -Root $QtRoot -Version $QtVersion
+    if (!$installedQt) {
+        throw "Qt installation completed, but Qt6Config.cmake was not found under $QtRoot."
+    }
+
+    return $installedQt
+}
+
+function Find-MingwBin {
+    param([string]$Root)
+
+    $candidates = @(
+        (Join-Path $Root 'Tools\mingw1310_64\bin'),
+        (Join-Path $Root 'Tools\mingw1120_64\bin'),
+        (Join-Path $Root 'Tools\mingw1100_64\bin'),
+        (Join-Path $Root 'Tools\mingw900_64\bin')
+    )
+
+    if (Test-Path (Join-Path $Root 'Tools')) {
+        $candidates += Get-ChildItem (Join-Path $Root 'Tools') -Directory -Filter 'mingw*_64' -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending |
+            ForEach-Object { Join-Path $_.FullName 'bin' }
+    }
+
+    foreach ($candidate in $candidates) {
+        if ($candidate -and (Test-Path (Join-Path $candidate 'g++.exe'))) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    $pathGxx = Get-CommandOrNull 'g++.exe'
+    if ($pathGxx) { return (Split-Path -Parent $pathGxx.Source) }
+
+    return $null
+}
+
+function Install-MingwIfNeeded {
+    $mingw = Find-MingwBin -Root $QtRoot
+    if ($mingw -and !$ForceQtInstall) {
+        Write-Host "MinGW already installed: $mingw"
+        return $mingw
+    }
+
+    if ($SkipQtInstall) {
+        throw "MinGW was not found under $QtRoot and -SkipQtInstall was supplied."
+    }
+
+    Write-Step 'Installing Qt MinGW toolchain'
+    Invoke-Python @('-m', 'pip', 'install', '--user', '--upgrade', 'aqtinstall')
+
+    $attempts = @(
+        @('tools_mingw1310', 'qt.tools.win64_mingw1310'),
+        @('tools_mingw', 'qt.tools.win64_mingw1310'),
+        @('tools_mingw1120', 'qt.tools.win64_mingw1120'),
+        @('tools_mingw90', ''),
+        @('tools_mingw', 'qt.tools.win64_mingw1120')
+    )
+
+    $lastError = $null
+    foreach ($attempt in $attempts) {
+        $tool = $attempt[0]
+        $variant = $attempt[1]
+        try {
+            Write-Host "Trying aqt tool package: $tool $variant"
+            if ($variant) {
+                Invoke-Python @('-m', 'aqt', 'install-tool', '-O', $QtRoot, 'windows', 'desktop', $tool, $variant)
+            } else {
+                Invoke-Python @('-m', 'aqt', 'install-tool', '-O', $QtRoot, 'windows', 'desktop', $tool)
+            }
+            $mingw = Find-MingwBin -Root $QtRoot
+            if ($mingw) { return $mingw }
+        } catch {
+            $lastError = $_
+            Write-Host "Failed: $tool $variant" -ForegroundColor Yellow
+        }
+    }
+
+    throw "Could not install/find MinGW. Last error: $lastError"
+}
+
+Write-Step 'Checking base Windows build tools'
+Refresh-Path
+Install-WingetPackage -Id 'Python.Python.3.12' -CommandName 'python.exe'
+Install-WingetPackage -Id 'Kitware.CMake' -CommandName 'cmake.exe'
+Refresh-Path
+
+if (!(Get-PythonCommand)) { throw 'Python is required but was not found.' }
+if (!(Get-CommandOrNull 'cmake.exe')) { throw 'CMake is required but was not found.' }
+
+$resolvedQtRoot = Install-QtIfNeeded
+$mingwBin = Install-MingwIfNeeded
+
+$env:QALAM_QT_DIR = $resolvedQtRoot
+$env:PATH = "$mingwBin;$resolvedQtRoot\bin;$env:PATH"
+
+Write-Step 'Building Qalam IDE'
+& (Join-Path $PSScriptRoot 'build-windows.ps1') -Configuration $Configuration -QtRoot $resolvedQtRoot
+
+if (!$NoPackage) {
+    Write-Step 'Packaging portable Windows ZIP'
+    & (Join-Path $PSScriptRoot 'package-windows.ps1') -QtRoot $resolvedQtRoot -BuildDir "build/windows-$($Configuration.ToLowerInvariant())" -SkipBuild
+}
+
+Write-Host "`nQalam IDE is ready." -ForegroundColor Green
+Write-Host "Executable: build/windows-$($Configuration.ToLowerInvariant())/qalam/Qalam.exe"
+if (!$NoPackage) {
+    Write-Host 'Portable ZIP: dist/Qalam-win64.zip'
+}
