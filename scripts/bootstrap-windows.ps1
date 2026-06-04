@@ -101,7 +101,7 @@ function Test-PythonExecutable {
     if (!$PythonPath) { return $false }
     if ($PythonPath -match '\\WindowsApps\\python(3)?\.exe$') { return $false }
 
-    $probeCode = 'import sys; print(sys.executable); print(str(sys.version_info[0]) + "." + str(sys.version_info[1]))'
+    $probeCode = "import sys; print(sys.executable); print(str(sys.version_info[0]) + '.' + str(sys.version_info[1]))"
     $probeArguments = @('-c', $probeCode)
     if ($UseLauncher) {
         $probeArguments = @('-3') + $probeArguments

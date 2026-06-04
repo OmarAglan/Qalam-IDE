@@ -43,7 +43,7 @@ if(WIN32 AND QALAM_DEPLOY_AFTER_BUILD)
 
     if(WINDEPLOYQT_EXECUTABLE)
         add_custom_command(TARGET Qalam POST_BUILD
-            COMMAND "${WINDEPLOYQT_EXECUTABLE}" --compiler-runtime --dir "$<TARGET_FILE_DIR:Qalam>" "$<TARGET_FILE:Qalam>"
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}" --compiler-runtime --no-system-dxc-compiler --dir "$<TARGET_FILE_DIR:Qalam>" "$<TARGET_FILE:Qalam>"
             COMMENT "Deploying Qt runtime with windeployqt"
             VERBATIM
         )

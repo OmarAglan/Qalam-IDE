@@ -36,7 +36,7 @@ if (!(Get-Command $windeployqt -ErrorAction SilentlyContinue)) {
     throw 'windeployqt.exe was not found. Set QALAM_QT_DIR to your Qt MinGW kit path.'
 }
 
-& $windeployqt --compiler-runtime --dir $PackageDir (Join-Path $PackageDir 'Qalam.exe')
+& $windeployqt --compiler-runtime --no-system-dxc-compiler --dir $PackageDir (Join-Path $PackageDir 'Qalam.exe')
 
 # Optional: bundle the Baa compiler if the repository contains a local compiler folder.
 if (Test-Path 'baa') {

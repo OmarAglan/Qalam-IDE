@@ -14,3 +14,5 @@ DerivedData
 /qalam/build
 /build
 /.cache
+/dist
+*.log

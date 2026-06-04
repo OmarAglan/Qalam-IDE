@@ -9,6 +9,7 @@
             "binaryDir": "${sourceDir}/build/windows-debug",
             "cacheVariables": {
                 "CMAKE_PREFIX_PATH": "$env{QALAM_QT_DIR}",
+                "CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders": "TRUE",
                 "CMAKE_BUILD_TYPE": "Debug"
             }
         },
@@ -28,7 +29,7 @@
             "binaryDir": "${sourceDir}/build/windows-debug",
             "cacheVariables": {
                 "CMAKE_PREFIX_PATH": "C:/Qt/6.10.2/mingw_64",
-                "CMAKE_C_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/gcc.exe",
+                "CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders": "TRUE",
                 "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
                 "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/mingw1310_64/bin/mingw32-make.exe",
                 "CMAKE_BUILD_TYPE": "Debug"

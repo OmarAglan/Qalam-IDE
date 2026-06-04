@@ -63,7 +63,6 @@ function Resolve-MingwBin {
 $QtRoot = Resolve-QtRoot -ProvidedRoot $QtRoot
 $MingwBin = Resolve-MingwBin -ResolvedQtRoot $QtRoot
 $MakeProgram = Join-Path $MingwBin 'mingw32-make.exe'
-$Gcc = Join-Path $MingwBin 'gcc.exe'
 $Gxx = Join-Path $MingwBin 'g++.exe'
 
 $env:PATH = "$MingwBin;$QtRoot/bin;$env:PATH"
@@ -72,10 +71,10 @@ $deployFlag = if ($DeployAfterBuild) { 'ON' } else { 'OFF' }
 
 cmake -S . -B $BuildDir -G 'MinGW Makefiles' `
     -DCMAKE_PREFIX_PATH="$QtRoot" `
-    -DCMAKE_C_COMPILER="$Gcc" `
     -DCMAKE_CXX_COMPILER="$Gxx" `
     -DCMAKE_MAKE_PROGRAM="$MakeProgram" `
     -DCMAKE_BUILD_TYPE=$Configuration `
+    -DCMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders=TRUE `
     -DQALAM_DEPLOY_AFTER_BUILD=$deployFlag
 
 cmake --build $BuildDir --parallel
