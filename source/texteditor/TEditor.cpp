@@ -1,0 +1,927 @@
+#include "TEditor.h"
+
+#include <QPainter>
+#include <QTextBlock>
+#include <QScrollBar>
+#include <QMimeData>
+#include <QSettings>
+#include <QPainterPath>
+#include <QStack>
+#include <QMenu>
+#include <QAction>
+#include <QFile>
+#include "Constants.h"
+#include "highlighter/ThemeManager.h"
+#include "ui/QalamTheme.h"
+
+
+TEditor::TEditor(QWidget* parent)
+    : QPlainTextEdit(parent),
+      m_bracketHandler(this),
+      m_snippetManager(this) {
+    setAcceptDrops(true);
+    this->setStyleSheet(QalamTheme::editorStyleSheet());
+    this->setTabStopDistance(32);
+
+    QTextDocument* editorDocument = this->document();
+    QTextOption option = editorDocument->defaultTextOption();
+    option.setTextDirection(Qt::RightToLeft);
+    option.setAlignment(Qt::AlignRight);
+    editorDocument->setDefaultTextOption(option);
+
+
+    highlighter = new TSyntaxHighlighter(editorDocument);
+    lineNumberArea = new LineNumberArea(this);
+
+    // ضبط الإكمال التلقائي
+    setupAutoComplete();
+
+    connect(this, &TEditor::blockCountChanged, this, &TEditor::updateLineNumberAreaWidth);
+    connect(this, &TEditor::updateRequest, this, &TEditor::updateLineNumberArea);
+    connect(this, &TEditor::cursorPositionChanged, this, &TEditor::highlightCurrentLine);
+    connect(this->document(), &QTextDocument::contentsChanged, this, &TEditor::updateFoldRegions);
+
+    updateLineNumberAreaWidth();
+    highlightCurrentLine();
+
+    // set saved setting font size to the editor
+    QSettings settingsVal(Constants::OrgName, Constants::AppName);
+    int savedSize = settingsVal.value(Constants::SettingsKeyFontSize).toInt();
+    updateFontSize(savedSize);
+    // set saved setting font type to the editor
+    QString savedFont = settingsVal.value(Constants::SettingsKeyFontType).toString();
+    updateFontType(savedFont);
+    // set saved setting theme to the editor
+    int savedThemeIdx = settingsVal.value(Constants::SettingsKeyTheme).toInt();
+    if (savedThemeIdx < 0) savedThemeIdx = 0;
+    auto theme = ThemeManager::getThemeByIndex(savedThemeIdx);
+    updateHighlighterTheme(theme);
+
+    // Auto-save (delegated to TAutoSave helper)
+    m_autoSave = new TAutoSave(this, this);
+    connect(this->document(), &QTextDocument::contentsChanged, m_autoSave, &TAutoSave::onContentChanged);
+    
+    // Initial index build
+    if (dynamicStrategy) {
+        dynamicStrategy->rebuildIndex(this->toPlainText());
+    }
+    
+    // Debounced timer to rebuild word index when text is deleted
+    // (so the index shrinks and doesn't grow forever)
+    m_indexRebuildTimer = new QTimer(this);
+    m_indexRebuildTimer->setSingleShot(true);
+    m_indexRebuildTimer->setInterval(2000); // 2 seconds after last deletion
+    connect(m_indexRebuildTimer, &QTimer::timeout, this, [this]() {
+        if (dynamicStrategy) {
+            dynamicStrategy->rebuildIndex(this->toPlainText());
+        }
+    });
+
+    // Connect document changes to update the autocomplete index
+    connect(this->document(), &QTextDocument::contentsChange, this, [this](int position, int charsRemoved, int charsAdded) {
+        if (dynamicStrategy && charsAdded > 0) {
+            QTextCursor cursor(this->document());
+            cursor.setPosition(position);
+            cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, charsAdded);
+            dynamicStrategy->updateIndex(cursor.selectedText());
+        }
+        // Schedule a full rebuild when text is deleted so stale words are pruned
+        if (dynamicStrategy && charsRemoved > 0) {
+            m_indexRebuildTimer->start();
+        }
+    });
+
+    installEventFilter(this);
+}
+
+void TEditor::wheelEvent(QWheelEvent *event) {
+    if (event->modifiers() & Qt::ControlModifier) {
+        const int delta = event->angleDelta().y();
+        if (delta == 0) return;
+
+        QFont font = this->font();
+        qreal currentSize = font.pointSizeF();
+
+        qreal step = 0.5;
+
+        if (delta > 0) {
+            currentSize += step;
+        } else {
+            currentSize -= step;
+        }
+
+        if (currentSize < 5.0) currentSize = 5.0;
+        if (currentSize > 50) currentSize = 50;
+
+        font.setPointSizeF(currentSize);
+        this->setFont(font);
+
+        if (lineNumberArea) {
+            QFont lineFont = lineNumberArea->font();
+            lineFont.setPointSizeF(currentSize);
+            lineNumberArea->setFont(lineFont);
+        }
+
+        updateLineNumberAreaWidth();
+
+        return;
+    }
+    QPlainTextEdit::wheelEvent(event);
+}
+
+void TEditor::updateFontSize(int size) {
+    if (size < 10) {
+        size = 18;
+    }
+
+    QFont font = this->font();
+    font.setPixelSize(size);
+    this->setFont(font);
+
+    QFont fontNums = lineNumberArea->font();
+    fontNums.setPixelSize(size);
+    lineNumberArea->setFont(fontNums);
+}
+
+void TEditor::updateFontType(QString font) {
+    QFont currentFont = this->font();
+    currentFont.setFamily(font);
+
+    this->setFont(currentFont);
+}
+
+
+// 1. دالة تعليق/إلغاء تعليق الأكواد
+void TEditor::toggleComment()
+{
+    QTextCursor cursor = textCursor();
+    cursor.beginEditBlock(); // لبدء عملية تراجع (Undo) واحدة
+
+    int startPos = cursor.selectionStart();
+    int endPos = cursor.selectionEnd();
+
+    // تحديد بداية ونهاية الأسطر المحددة
+    cursor.setPosition(startPos);
+    int startBlock = cursor.blockNumber();
+    cursor.setPosition(endPos, QTextCursor::KeepAnchor);
+    int endBlock = cursor.blockNumber();
+
+    if (cursor.atBlockStart() && endBlock > startBlock) {
+        endBlock--;
+    }
+
+    bool shouldComment = false;
+
+    QTextBlock block = document()->findBlockByNumber(startBlock);
+    if (!block.text().trimmed().startsWith("//")) {
+        shouldComment = true;
+    }
+
+    for (int i = startBlock; i <= endBlock; ++i) {
+        block = document()->findBlockByNumber(i);
+        QTextCursor lineCursor(block);
+
+        if (shouldComment) {
+            lineCursor.movePosition(QTextCursor::StartOfBlock);
+            lineCursor.insertText("// ");
+        } else {
+            QString text = block.text();
+            int idx = text.indexOf("//");
+            if (idx >= 0) {
+                lineCursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, idx);
+                int removeCount = 2;
+                // Also remove trailing space after //
+                if (idx + 2 < text.length() and text.at(idx + 2) == ' ') {
+                    removeCount = 3;
+                }
+                lineCursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, removeCount);
+                lineCursor.removeSelectedText();
+            }
+        }
+    }
+
+    cursor.endEditBlock();
+}
+
+void TEditor::duplicateLine()
+{
+    QTextCursor cursor = textCursor();
+    cursor.beginEditBlock();
+
+    QString lineText = cursor.block().text();
+
+    cursor.movePosition(QTextCursor::EndOfBlock);
+
+    cursor.insertText("\n" + lineText);
+
+    cursor.endEditBlock();
+}
+
+void TEditor::moveLineUp()
+{
+    QTextCursor cursor = textCursor();
+    QTextBlock currentBlock = cursor.block();
+    QTextBlock prevBlock = currentBlock.previous();
+
+    if (!prevBlock.isValid()) return;
+
+    cursor.beginEditBlock();
+
+    QString currentText = currentBlock.text();
+    cursor.movePosition(QTextCursor::StartOfBlock);
+    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
+    cursor.deletePreviousChar();
+
+    cursor.movePosition(QTextCursor::StartOfBlock);
+    cursor.insertText(currentText + "\n");
+
+    cursor.movePosition(QTextCursor::Up);
+    setTextCursor(cursor);
+
+    cursor.endEditBlock();
+}
+
+void TEditor::moveLineDown()
+{
+    QTextCursor cursor = textCursor();
+    QTextBlock currentBlock = cursor.block();
+    QTextBlock nextBlock = currentBlock.next();
+
+    if (!nextBlock.isValid()) return;
+
+    cursor.beginEditBlock();
+
+    QString currentText = currentBlock.text();
+    cursor.movePosition(QTextCursor::StartOfBlock);
+    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    cursor.removeSelectedText();
+    if (cursor.atBlockStart()) cursor.deleteChar();
+
+    cursor.movePosition(QTextCursor::EndOfBlock);
+    cursor.insertText("\n" + currentText);
+
+    setTextCursor(cursor);
+    cursor.endEditBlock();
+}
+
+bool TEditor::eventFilter(QObject* obj, QEvent* event) {
+    if (obj == this and event->type() == QEvent::KeyPress) {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+        if (keyEvent->key() == Qt::Key_Return
+             or keyEvent->key() == Qt::Key_Enter) {
+            cursorIndentation();
+            return true;
+        }
+    }
+    return QPlainTextEdit::eventFilter(obj, event);
+}
+
+void TEditor::contextMenuEvent(QContextMenuEvent *event)
+{
+    QMenu *menu = createStandardContextMenu();
+
+    menu->addSeparator();
+
+    QAction *commentAction = new QAction("تعليق/إلغاء تعليق", this);
+    commentAction->setShortcut(QKeySequence("Ctrl+/"));
+    connect(commentAction, &QAction::triggered, this, &TEditor::toggleComment);
+    menu->addAction(commentAction);
+
+    QAction *duplicateAction = new QAction("تكرار السطر", this);
+    duplicateAction->setShortcut(QKeySequence("Ctrl+D"));
+    connect(duplicateAction, &QAction::triggered, this, &TEditor::duplicateLine);
+    menu->addAction(duplicateAction);
+
+
+    menu->setStyleSheet(QString(
+        "QMenu { background-color: %1; color: %2; border: 1px solid %3; }"
+        "QMenu::item { padding: 5px 20px; background-color: transparent; }"
+        "QMenu::item:selected { background-color: %4; color: %5; }"
+        "QMenu::separator { height: 1px; background: %3; margin: 5px 0; }")
+        .arg(Constants::Colors::MenuBackground)
+        .arg(Constants::Colors::TextSecondary)
+        .arg(Constants::Colors::Border)
+        .arg(Constants::Colors::ListActiveBackground)
+        .arg(Constants::Colors::TextPrimary));
+
+    menu->exec(event->globalPos());
+
+    delete menu;
+}
+
+int TEditor::lineNumberAreaWidth() const {
+    int digits = 1;
+    int max = qMax(1, blockCount());
+    while (max >= 10) {
+        max /= 10;
+        ++digits;
+    }
+
+    int space = 30 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
+
+    return space;
+}
+
+
+void TEditor::updateLineNumberAreaWidth() {
+    int numsWidth = lineNumberAreaWidth();
+
+    int mapWidth = 0;
+
+    setViewportMargins(mapWidth, 0, numsWidth, 0);
+}
+
+void TEditor::updateLineNumberArea(const QRect &rect, int dy) {
+    if (dy)
+        lineNumberArea->scroll(0, dy);
+    else
+        lineNumberArea->update(0, rect.y(), lineNumberArea->width(), rect.height());
+
+    if (rect.contains(viewport()->rect()))
+        updateLineNumberAreaWidth();
+}
+
+void TEditor::resizeEvent(QResizeEvent* event) {
+    QPlainTextEdit::resizeEvent(event);
+
+    QRect cr = contentsRect();
+    int numsWidth = lineNumberAreaWidth();
+
+
+    lineNumberArea->setGeometry(this->width() - numsWidth, cr.top(), numsWidth, cr.height());
+}
+
+void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
+
+    QPainter painter(lineNumberArea);
+    painter.fillRect(event->rect(), Qt::transparent);
+
+        QTextBlock block = firstVisibleBlock();
+        int blockNumber = block.blockNumber();
+        int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
+        int bottom = top + qRound(blockBoundingRect(block).height());
+
+    while (block.isValid() && top <= event->rect().bottom()) {
+        if (block.isVisible() && bottom >= event->rect().top()) {
+            QString number = QString::number(blockNumber + 1);
+
+            painter.setPen(QColor(Constants::Colors::TextMuted));
+
+            painter.drawText(12, top, lineNumberArea->width(), fontMetrics().height(),
+                                     Qt::AlignRight | Qt::AlignVCenter, number);
+
+            for (const auto& region : foldRegions) {
+                if (region.startBlockNumber == blockNumber) {
+                    bool folded = region.folded;
+
+                    QPolygon arrow;
+                    int midY = top + fontMetrics().height() / 2;
+                    if (folded) {
+                        arrow << QPoint(lineNumberArea->width() - 10, midY - 4)
+                        << QPoint(lineNumberArea->width() - 2, midY)
+                        << QPoint(lineNumberArea->width() - 10, midY + 4);
+                    } else {
+                        arrow << QPoint(lineNumberArea->width() - 10, midY - 4)
+                        << QPoint(lineNumberArea->width() - 2, midY - 4)
+                        << QPoint(lineNumberArea->width() - 6, midY + 4);
+                    }
+
+                    painter.setBrush(QColor(Constants::Colors::Accent));
+                    painter.setPen(Qt::NoPen);
+                    painter.drawPolygon(arrow);
+                }
+            }
+        }
+
+        block = block.next();
+        top = bottom;
+        bottom = top + static_cast<int>(blockBoundingRect(block).height());
+        ++blockNumber;
+    }
+}
+
+void TEditor::highlightCurrentLine() {
+    QList<QTextEdit::ExtraSelection> extraSelections;
+
+    if (!isReadOnly()) {
+        QTextEdit::ExtraSelection selection;
+
+        QColor lineColor = QColor(Constants::Colors::CurrentLineHighlight);
+
+        selection.format.setBackground(lineColor);
+        selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+        selection.cursor = textCursor();
+        selection.cursor.clearSelection();
+        extraSelections.append(selection);
+    }
+
+    setExtraSelections(extraSelections);
+}
+
+void TEditor::updateFoldRegions() {
+
+    QHash<int, bool> previousFoldStates;
+    for (const FoldRegion& region : foldRegions) {
+        previousFoldStates[region.startBlockNumber] = region.folded;
+    }
+
+    foldRegions.clear();
+    QStack<int> braceStack;
+
+    QTextBlock block = document()->firstBlock();
+    while (block.isValid()) {
+        QString text = block.text();
+
+        QString trimmed = text.trimmed();
+        if (trimmed.startsWith("دالة ") || trimmed.startsWith("صنف ")) {
+            int start = block.blockNumber();
+
+            int startIndent = 0;
+            for (QChar c : text) {
+                if (c == '\t') startIndent += 4;
+                else if (c == ' ') startIndent += 1;
+                else break;
+            }
+
+            QTextBlock next = block.next();
+            int end = start;
+
+            while (next.isValid()) {
+                QString nextText = next.text();
+                QString nextTrim = nextText.trimmed();
+
+                if (nextTrim.isEmpty()) {
+                    next = next.next();
+                    continue;
+                }
+
+                int nextIndent = 0;
+                for (QChar c : nextText) {
+                    if (c == '\t') nextIndent += 4;
+                    else if (c == ' ') nextIndent += 1;
+                    else break;
+                }
+
+                if (nextTrim.startsWith("دالة ") || nextTrim.startsWith("صنف ")) {
+                    if (nextIndent <= startIndent)
+                        break;
+                }
+
+                if (nextIndent <= startIndent)
+                    break;
+
+                end = next.blockNumber();
+                next = next.next();
+            }
+
+            if (end > start) {
+                FoldRegion region{};
+                region.startBlockNumber = start;
+                region.endBlockNumber = end;
+                region.folded = false;
+                if (previousFoldStates.contains(region.startBlockNumber))
+                    region.folded = previousFoldStates[region.startBlockNumber];
+                foldRegions.append(region);
+            }
+        }
+        block = block.next();
+    }
+
+    if (lineNumberArea)
+        lineNumberArea->update();
+
+    for (const FoldRegion& region : foldRegions) {
+        QTextBlock block = document()->findBlockByNumber(region.startBlockNumber + 1);
+        while (block.isValid() && block.blockNumber() <= region.endBlockNumber) {
+            block.setVisible(!region.folded);
+            block = block.next();
+        }
+    }
+    viewport()->update();
+}
+
+void TEditor::toggleFold(int blockNumber) {
+    for (FoldRegion &region : foldRegions) {
+        if (region.startBlockNumber == blockNumber) {
+            region.folded = !region.folded;
+
+            QTextBlock block = document()->findBlockByNumber(region.startBlockNumber + 1);
+            while (block.isValid() && block.blockNumber() <= region.endBlockNumber) {
+                block.setVisible(!region.folded);
+                block = block.next();
+            }
+
+            if (!region.folded) {
+                for (FoldRegion &subRegion : foldRegions) {
+                    if (subRegion.startBlockNumber > region.startBlockNumber &&
+                        subRegion.endBlockNumber <= region.endBlockNumber) {
+                        QTextBlock subBlock = document()->findBlockByNumber(subRegion.startBlockNumber + 1);
+                        bool allVisible = true;
+                        while (subBlock.isValid() && subBlock.blockNumber() <= subRegion.endBlockNumber) {
+                            if (!subBlock.isVisible()) {
+                                allVisible = false;
+                                break;
+                            }
+                            subBlock = subBlock.next();
+                        }
+                        subRegion.folded = !allVisible;
+                    }
+                }
+            }
+
+            viewport()->update();
+            break;
+        }
+    }
+}
+
+
+/* ---------------------------------- Drag and Drop ---------------------------------- */
+
+void TEditor::dragEnterEvent(QDragEnterEvent* event) {
+    if (event->mimeData()->hasUrls()) {
+        for (const QUrl& url : event->mimeData()->urls()) {
+            if (url.fileName().endsWith(".baa", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".baahd", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".txt", Qt::CaseInsensitive)) {
+                event->acceptProposedAction();
+                return;
+            }
+        }
+    }
+
+    if (event->mimeData()->hasText()) {
+        event->acceptProposedAction();
+        return;
+    }
+    event->ignore();
+}
+
+void TEditor::dragMoveEvent(QDragMoveEvent* event) {
+    event->acceptProposedAction();
+}
+
+void TEditor::dropEvent(QDropEvent* event) {
+    if (event->mimeData()->hasUrls()) {
+        for (const QUrl& url : event->mimeData()->urls()) {
+            if (url.fileName().endsWith(".baa", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".baahd", Qt::CaseInsensitive) or
+                url.fileName().endsWith(".txt", Qt::CaseInsensitive)) {
+
+                QString filePath = url.toLocalFile();
+                emit openRequest(filePath);
+
+                event->acceptProposedAction();
+                return;
+            }
+        }
+    }
+
+    if (event->mimeData()->hasText()) {
+        QTextCursor dropCursor = cursorForPosition(event->position().toPoint());
+        int dropPosition = dropCursor.position();
+
+        if (dropPosition >= textCursor().selectionStart()
+            and dropPosition <= textCursor().selectionEnd()) {
+            event->ignore();
+            return;
+        }
+
+        QString droppedText = event->mimeData()->text();
+        QTextCursor originalCursor = textCursor();
+
+        originalCursor.removeSelectedText();
+
+        if (originalCursor.position() < dropPosition) {
+            dropPosition -= droppedText.length();
+        }
+
+        dropCursor.setPosition(dropPosition);
+        dropCursor.insertText(droppedText);
+
+        event->acceptProposedAction();
+        return;
+    }
+
+    event->ignore();
+}
+
+void TEditor::dragLeaveEvent(QDragLeaveEvent* event) {
+    event->accept();
+}
+
+
+/* ---------------------------------- Indentation ---------------------------------- */
+
+void TEditor::cursorIndentation() {
+    QTextCursor cursor = textCursor();
+    QString lineText = cursor.block().text();
+    int cursorPosInLine = cursor.positionInBlock();
+    QString currentIndentation = getCurrentLineIndentation(cursor);
+
+    if (cursorPosInLine > 0) {
+        int checkPos = cursorPosInLine - 1;
+        while (checkPos >= 0 and lineText.at(checkPos).isSpace()) {
+            checkPos--;
+        }
+
+        if (checkPos >= 0 and lineText.at(checkPos) == ':') {
+            currentIndentation += "\t";
+        } else {
+            // Also indent after function, class definitions, or control blocks starting with {
+            QString trimmed = lineText.trimmed();
+            if (trimmed.startsWith("إذا") || trimmed.startsWith("طالما") || 
+                trimmed.startsWith("لكل") || trimmed.endsWith("{")) {
+                currentIndentation += "\t";
+            }
+        }
+    }
+
+    cursor.beginEditBlock();
+    cursor.insertText("\n" + currentIndentation);
+    cursor.endEditBlock();
+    setTextCursor(cursor);
+}
+
+QString TEditor::getCurrentLineIndentation(const QTextCursor &cursor) const {
+    QTextBlock block = cursor.block();
+    if (!block.isValid()) {
+        return QString();
+    }
+
+    QString lineText = block.text();
+    QString indentation;
+    for (const QChar &ch : lineText) {
+        if (ch == ' ' or ch == '\t') {
+            indentation += ch;
+        } else {
+            break;
+        }
+    }
+    return indentation;
+}
+
+
+/* ---------------------------------- Auto-Save (delegated) ---------------------------------- */
+
+void TEditor::startAutoSave() {
+    m_autoSave->filePath = this->filePath;
+    m_autoSave->start();
+}
+
+void TEditor::stopAutoSave() {
+    m_autoSave->stop();
+}
+
+void TEditor::removeBackupFile() {
+    m_autoSave->filePath = this->filePath;
+    m_autoSave->removeBackupFile();
+}
+
+
+void TEditor::updateHighlighterTheme(std::shared_ptr<SyntaxTheme> theme) {
+    this->highlighter->setTheme(theme);
+}
+
+
+
+// --- autocomplete system ---
+
+void TEditor::setupAutoComplete() {
+    // set autocomplete system
+    model = new CompletionModel(this);
+    strategies.push_back(std::make_unique<SnippetStrategy>());
+    strategies.push_back(std::make_unique<KeywordStrategy>());
+    strategies.push_back(std::make_unique<BuiltinStrategy>());
+    strategies.push_back(std::make_unique<PreprocessorStrategy>());
+    auto dynamic = std::make_unique<DynamicWordStrategy>();
+    dynamicStrategy = dynamic.get();
+    strategies.push_back(std::move(dynamic));
+
+    QCompleter *completer = new QCompleter(this);
+    setCompleter(completer);
+}
+
+void TEditor::setCompleter(QCompleter *completer) {
+    if (c) disconnect(c, nullptr, this, nullptr);
+    c = completer;
+    if (!c) return;
+
+    c->setWidget(this);
+    c->setCompletionMode(QCompleter::PopupCompletion);
+    c->setCaseSensitivity(Qt::CaseInsensitive);
+    c->setModel(model);
+
+    // Custom Rich Popup ---
+    TCompletionPopup *popup = new TCompletionPopup;
+    c->setPopup(popup); // QCompleter takes ownership
+
+    popup->setItemDelegate(new TModernCompletionDelegate(popup));
+
+    // set dimensions
+    popup->setMinimumWidth(350);
+    popup->setMinimumHeight(200); // Taller to fit list + footer
+
+
+    // To this lambda that captures the type:
+    connect(c, QOverload<const QString &>::of(&QCompleter::activated),
+            this, [this](const QString &completion) {
+                // Get the current index from the completer popup
+                QModelIndex index = c->popup()->currentIndex();
+                if (index.isValid()) {
+                    // Get the type from the model
+                    CompletionType type = static_cast<CompletionType>(
+                        index.data(Qt::UserRole + 2).toInt());
+                    SnippetId snippetId = static_cast<SnippetId>(
+                        index.data(Qt::UserRole + 3).toInt());
+                    // Get the full completion item
+                    QString completionText = index.data(Qt::EditRole).toString();
+                    insertCompletion(completionText, type, snippetId);
+                } else {
+                    // Fallback to just the string without type
+                    insertCompletion(completion, CompletionType::DynamicWord, SnippetId::None);
+                }
+            });
+}
+
+void TEditor::focusOutEvent(QFocusEvent *e) {
+    if (c && c->popup()->isVisible()) {
+        c->popup()->hide();
+    }
+    QPlainTextEdit::focusOutEvent(e);
+}
+
+void TEditor::keyPressEvent(QKeyEvent *e) {
+
+    // Bracket and quote auto-pairing (delegated to TBracketHandler)
+    if (m_bracketHandler.handleAutoPairing(e)) {
+        e->accept();
+        return;
+    }
+
+    // RTL-Aware Word Navigation (Alt + Arrow Keys)
+    if (e->modifiers() & Qt::AltModifier) {
+        QTextCursor cursor = textCursor();
+        if (e->key() == Qt::Key_Left) {
+            cursor.movePosition(QTextCursor::WordLeft);
+            setTextCursor(cursor);
+            e->accept();
+            return;
+        }
+        if (e->key() == Qt::Key_Right) {
+            cursor.movePosition(QTextCursor::WordRight);
+            setTextCursor(cursor);
+            e->accept();
+            return;
+        }
+    }
+
+    // Handle Navigation for Live Update (Arrow Keys) ---
+    if (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right) {
+        // Let the editor move the cursor first
+        QPlainTextEdit::keyPressEvent(e);
+        // Then immediately trigger completion to update the list based on the new cursor position
+        performCompletion();
+        return;
+    }
+
+    if (c && c->popup()->isVisible()) {
+        switch (e->key()) {
+        case Qt::Key_Enter:
+        case Qt::Key_Return:
+        case Qt::Key_Escape:
+        case Qt::Key_Tab:
+        case Qt::Key_Backtab:
+            e->ignore();
+            return;
+        default: break;
+        }
+    }
+
+    // Snippet navigation (delegated to TSnippetManager)
+    if ((e->key() == Qt::Key_Return || e->key() == Qt::Key_Enter)) {
+        if (m_snippetManager.hasActiveSnippet()) {
+            if (m_snippetManager.processSnippetNavigation()) {
+                e->accept();
+                return;
+            }
+        }
+    }
+
+    if (e->key() == Qt::Key_Tab && m_snippetManager.hasActiveSnippet()) {
+        if (m_snippetManager.processSnippetNavigation()) {
+            e->accept();
+            return;
+        }
+    }
+
+    bool isShortcut = ((e->modifiers() & Qt::ControlModifier) && e->key() == Qt::Key_Space);
+
+    QPlainTextEdit::keyPressEvent(e);
+
+    if (!isShortcut && e->text().isEmpty()) return;
+
+    performCompletion();
+}
+
+void TEditor::performCompletion() {
+    QString textUnder = textUnderCursor();
+    // Allow empty text for shortcut (Ctrl+Space) to show all
+    if (textUnder.length() < 1) {
+        // Optional: Trigger immediately on Ctrl+Space even if empty?
+        // For now, keep logic to hide if empty, unless you want "all suggestion" behavior.
+        c->popup()->hide();
+        return;
+    }
+
+    std::vector<CompletionItem> allSuggestions;
+
+    // Avoid O(n) toPlainText() copy on every keystroke.
+    // No strategy uses the fullText parameter (DynamicWordStrategy
+    // queries its pre-built wordIndex instead).
+    static const QString empty;
+
+    for (const auto& strategy : strategies) {
+        auto res = strategy->getSuggestions(textUnder, empty);
+        allSuggestions.insert(allSuggestions.end(), res.begin(), res.end());
+    }
+
+    model->updateData(allSuggestions);
+
+    if (allSuggestions.empty()) {
+        c->popup()->hide();
+        return;
+    }
+
+    c->setCompletionPrefix(textUnder);
+    QRect cr = cursorRect();
+
+    QPoint widgetPos = this->viewport()->mapTo(this, cr.topRight());
+    cr.moveTo(widgetPos);
+
+    // Calculate popup width with constants
+    int popupWidth = std::clamp(
+        Constants::Layout::PopupBasePadding + c->popup()->verticalScrollBar()->width(),
+        Constants::Layout::PopupMinWidth,
+        Constants::Layout::PopupMaxWidth);
+
+    // RTL positioning: place popup to the left of cursor
+    // Calculate position based on actual viewport/widget geometry
+    int cursorX = cr.x();
+    
+    // In RTL mode, position popup so it appears to the left of the cursor
+    // Ensure popup stays within visible area
+    int popupX = cursorX - popupWidth;
+    if (popupX < 0) {
+        popupX = 0;  // Don't go past left edge
+    }
+    
+    cr.moveLeft(popupX);
+    cr.setWidth(popupWidth);
+
+    c->complete(cr);
+}
+
+QString TEditor::textUnderCursor() const {
+    QTextCursor tc = textCursor();
+    tc.movePosition(QTextCursor::StartOfWord, QTextCursor::KeepAnchor);
+    return tc.selectedText();
+}
+
+void TEditor::insertCompletion(const QString &completion, CompletionType type, SnippetId snippetId) {
+    if (c->widget() != this) return;
+    QTextCursor tc = textCursor();
+
+    // This ensures we replace the whole partial word with the completion.
+    tc.select(QTextCursor::WordUnderCursor);
+
+    switch (type) {
+    case CompletionType::Builtin:
+        insertBuiltinFunction(completion, tc);
+        break;
+    case CompletionType::Snippet:
+        m_snippetManager.insertSnippet(completion, tc, snippetId);
+        break;
+    case CompletionType::Keyword:
+        insertWord(completion, tc);
+        break;
+    case CompletionType::DynamicWord:
+    default:
+        insertWord(completion, tc);
+        break;
+    }
+}
+void TEditor::insertWord(const QString& completion, QTextCursor& tc) {
+    tc.insertText(completion);
+    setTextCursor(tc);
+}
+void TEditor::insertBuiltinFunction(const QString& functionName, QTextCursor& tc) {
+    tc.insertText(functionName);
+    tc.insertText("()");
+    tc.movePosition(QTextCursor::Left, QTextCursor::MoveAnchor, 1);
+
+    // Perform the insertion
+    setTextCursor(tc);
+}

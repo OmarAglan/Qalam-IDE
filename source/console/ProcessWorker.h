@@ -1,0 +1,39 @@
+#pragma once
+
+#include <QObject>
+#include <QStringList>
+#include <QProcess>
+#include <QTimer>
+#include <QMutex>
+
+class ProcessWorker : public QObject
+{
+    Q_OBJECT
+public:
+    explicit ProcessWorker(const QString &program, const QStringList &args, const QString &workingDir);
+
+signals:
+    void outputReady(const QString &text);
+    void errorReady(const QString &text);
+    void finished(int exitCode);
+
+public slots:
+    void start();
+    void sendInput(const QString &text);
+    void stop();
+
+private slots:
+    void onReadyReadOutput();
+    void onReadyReadError();
+    void flushBuffers();
+
+private:
+    QString program{};
+    QStringList args{};
+    QString workingDir{};
+    QProcess *process{};
+    QString outputBuffer{};
+    QString errorBuffer{};
+    QTimer *flushTimer{};
+    QMutex bufferMutex{};  // Mutex for thread-safe buffer access
+};

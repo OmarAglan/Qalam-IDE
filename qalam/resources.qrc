@@ -1,0 +1,49 @@
+<RCC>
+    <qresource prefix="/fonts">
+        <file>resources/fonts/KawkabMono-Regular.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-Black.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-Bold.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-ExtraBold.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-ExtraLight.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-Light.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-Medium.ttf</file>
+        <file>resources/fonts/Tajawal/Tajawal-Regular.ttf</file>
+        <file>resources/fonts/NotoKufiArabic-Regular.ttf</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file>resources/QalamLogo.icns</file>
+        <file>resources/QalamLogo.ico</file>
+        <file>resources/QalamLogo.png</file>
+        <file>resources/panel-right-open.svg</file>
+        <file>resources/close.svg</file>
+        <file>resources/run.svg</file>
+        <file>resources/run-active.svg</file>
+        <file>resources/file-new.svg</file>
+        <file>resources/folder.svg</file>
+        <file>resources/folder-open.svg</file>
+        <file>resources/git-clone.svg</file>
+        <file>resources/minimize.svg</file>
+        <file>resources/maximize.svg</file>
+        <file>resources/restore.svg</file>
+        <file>resources/explorer.svg</file>
+        <file>resources/explorer-active.svg</file>
+        <file>resources/search.svg</file>
+        <file>resources/search-active.svg</file>
+        <file>resources/source-control.svg</file>
+        <file>resources/source-control-active.svg</file>
+        <file>resources/extensions.svg</file>
+        <file>resources/extensions-active.svg</file>
+        <file>resources/settings.svg</file>
+        <file>resources/settings-active.svg</file>
+        <file>resources/right-arrow.svg</file>
+        <file>resources/down-arrow.svg</file>
+        <file>resources/left-arrow.svg</file>
+        <file>resources/up-arrow.svg</file>
+    </qresource>
+    <qresource prefix="/styles">
+        <file>resources/styles/main.qss</file>
+    </qresource>
+    <qresource prefix="/lang">
+        <file>resources/baa-language.json</file>
+    </qresource>
+</RCC>
