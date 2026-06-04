@@ -163,10 +163,7 @@ void TSearchView::onSearchTriggered()
     if (m_useRegex) {
         QRegularExpression re(query);
         if (not re.isValid()) {
-            m_searchInput->setStyleSheet(
-                m_searchInput->styleSheet() +
-                "QLineEdit { border-color: #f44747; }"
-            );
+            m_searchInput->setStyleSheet("QLineEdit#searchInput { border: 1px solid #f44747; }");
             m_resultSummary->setText("تعبير نمطي غير صالح: " + re.errorString());
             m_resultSummary->show();
             return;

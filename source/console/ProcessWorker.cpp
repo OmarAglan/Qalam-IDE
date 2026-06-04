@@ -122,20 +122,22 @@ void ProcessWorker::emitFinishedOnce(int exitCode)
 }
 
 void ProcessWorker::stop() {
-    if (process && process->state() == QProcess::Running) {
+    if (process && process->state() != QProcess::NotRunning) {
         process->terminate();
         if (!process->waitForFinished(3000)) {
             process->kill();
+            process->waitForFinished(500);
         }
+        flushBuffers();
     }
 }
 
 void ProcessWorker::sendInput(const QString &text) {
     if (process && process->state() == QProcess::Running) {
 #if defined(Q_OS_WIN)
-        process->write((text + "\r\n").toLocal8Bit());
+        process->write((text + "\r\n").toUtf8());
 #else
-        process->write((text + "\n").toLocal8Bit());
+        process->write((text + "\n").toUtf8());
 #endif
     }
 }

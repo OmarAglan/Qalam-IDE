@@ -43,6 +43,8 @@ signals:
 private:
     TEditor *createEditor(const QString &filePath = QString());
     QString normalizePath(const QString &filePath) const;
+    QString nextUntitledName() const;
+    void removeBackupForPath(const QString &filePath) const;
     void addRecentFile(const QString &filePath);
 
     QTabWidget *m_tabWidget{};

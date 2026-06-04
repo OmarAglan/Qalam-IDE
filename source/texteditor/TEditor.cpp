@@ -6,13 +6,22 @@
 #include <QMimeData>
 #include <QSettings>
 #include <QPainterPath>
-#include <QStack>
 #include <QMenu>
 #include <QAction>
 #include <QFile>
+#include <QUrl>
+#include <QHash>
 #include "Constants.h"
 #include "highlighter/ThemeManager.h"
 #include "ui/QalamTheme.h"
+
+
+namespace {
+bool isCompletionCharacter(QChar ch)
+{
+    return ch.isLetterOrNumber() || ch == '_' || ch == '#';
+}
+}
 
 
 TEditor::TEditor(QWidget* parent)
@@ -197,12 +206,15 @@ void TEditor::toggleComment()
             lineCursor.movePosition(QTextCursor::StartOfBlock);
             lineCursor.insertText("// ");
         } else {
-            QString text = block.text();
-            int idx = text.indexOf("//");
-            if (idx >= 0) {
+            const QString text = block.text();
+            int idx = 0;
+            while (idx < text.length() and text.at(idx).isSpace()) {
+                ++idx;
+            }
+
+            if (text.mid(idx, 2) == "//") {
                 lineCursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, idx);
                 int removeCount = 2;
-                // Also remove trailing space after //
                 if (idx + 2 < text.length() and text.at(idx + 2) == ' ') {
                     removeCount = 3;
                 }
@@ -232,49 +244,55 @@ void TEditor::duplicateLine()
 void TEditor::moveLineUp()
 {
     QTextCursor cursor = textCursor();
-    QTextBlock currentBlock = cursor.block();
-    QTextBlock prevBlock = currentBlock.previous();
+    const QTextBlock currentBlock = cursor.block();
+    const QTextBlock prevBlock = currentBlock.previous();
 
     if (!prevBlock.isValid()) return;
 
-    cursor.beginEditBlock();
+    const int column = cursor.positionInBlock();
+    const int targetBlockNumber = prevBlock.blockNumber();
+    const QString currentText = currentBlock.text();
+    const QString prevText = prevBlock.text();
 
-    QString currentText = currentBlock.text();
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-    cursor.removeSelectedText();
-    cursor.deletePreviousChar();
+    QTextCursor editCursor(prevBlock);
+    editCursor.beginEditBlock();
+    editCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    editCursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor);
+    editCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    editCursor.insertText(currentText + "\n" + prevText);
+    editCursor.endEditBlock();
 
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.insertText(currentText + "\n");
-
-    cursor.movePosition(QTextCursor::Up);
-    setTextCursor(cursor);
-
-    cursor.endEditBlock();
+    QTextBlock movedBlock = document()->findBlockByNumber(targetBlockNumber);
+    QTextCursor newCursor(movedBlock);
+    newCursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, qMin(column, static_cast<int>(currentText.length())));
+    setTextCursor(newCursor);
 }
 
 void TEditor::moveLineDown()
 {
     QTextCursor cursor = textCursor();
-    QTextBlock currentBlock = cursor.block();
-    QTextBlock nextBlock = currentBlock.next();
+    const QTextBlock currentBlock = cursor.block();
+    const QTextBlock nextBlock = currentBlock.next();
 
     if (!nextBlock.isValid()) return;
 
-    cursor.beginEditBlock();
+    const int column = cursor.positionInBlock();
+    const int targetBlockNumber = nextBlock.blockNumber();
+    const QString currentText = currentBlock.text();
+    const QString nextText = nextBlock.text();
 
-    QString currentText = currentBlock.text();
-    cursor.movePosition(QTextCursor::StartOfBlock);
-    cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-    cursor.removeSelectedText();
-    if (cursor.atBlockStart()) cursor.deleteChar();
+    QTextCursor editCursor(currentBlock);
+    editCursor.beginEditBlock();
+    editCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    editCursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor);
+    editCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+    editCursor.insertText(nextText + "\n" + currentText);
+    editCursor.endEditBlock();
 
-    cursor.movePosition(QTextCursor::EndOfBlock);
-    cursor.insertText("\n" + currentText);
-
-    setTextCursor(cursor);
-    cursor.endEditBlock();
+    QTextBlock movedBlock = document()->findBlockByNumber(targetBlockNumber);
+    QTextCursor newCursor(movedBlock);
+    newCursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, qMin(column, static_cast<int>(currentText.length())));
+    setTextCursor(newCursor);
 }
 
 bool TEditor::eventFilter(QObject* obj, QEvent* event) {
@@ -283,6 +301,12 @@ bool TEditor::eventFilter(QObject* obj, QEvent* event) {
 
         if (keyEvent->key() == Qt::Key_Return
              or keyEvent->key() == Qt::Key_Enter) {
+            if ((c and c->popup() and c->popup()->isVisible())
+                or m_snippetManager.hasActiveSnippet()
+                or (keyEvent->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
+                return false;
+            }
+
             cursorIndentation();
             return true;
         }
@@ -440,7 +464,10 @@ void TEditor::updateFoldRegions() {
     }
 
     foldRegions.clear();
-    QStack<int> braceStack;
+
+    for (QTextBlock visibleBlock = document()->firstBlock(); visibleBlock.isValid(); visibleBlock = visibleBlock.next()) {
+        visibleBlock.setVisible(true);
+    }
 
     QTextBlock block = document()->firstBlock();
     while (block.isValid()) {
@@ -595,22 +622,28 @@ void TEditor::dropEvent(QDropEvent* event) {
         QTextCursor dropCursor = cursorForPosition(event->position().toPoint());
         int dropPosition = dropCursor.position();
 
-        if (dropPosition >= textCursor().selectionStart()
-            and dropPosition <= textCursor().selectionEnd()) {
+        QTextCursor originalCursor = textCursor();
+        const bool movingSelection = originalCursor.hasSelection();
+        const int selectionStart = originalCursor.selectionStart();
+        const int selectionEnd = originalCursor.selectionEnd();
+
+        if (movingSelection
+            and dropPosition >= selectionStart
+            and dropPosition <= selectionEnd) {
             event->ignore();
             return;
         }
 
         QString droppedText = event->mimeData()->text();
-        QTextCursor originalCursor = textCursor();
 
-        originalCursor.removeSelectedText();
-
-        if (originalCursor.position() < dropPosition) {
-            dropPosition -= droppedText.length();
+        if (movingSelection) {
+            originalCursor.removeSelectedText();
+            if (selectionStart < dropPosition) {
+                dropPosition -= droppedText.length();
+            }
         }
 
-        dropCursor.setPosition(dropPosition);
+        dropCursor.setPosition(qMax(0, dropPosition));
         dropCursor.insertText(droppedText);
 
         event->acceptProposedAction();
@@ -897,17 +930,30 @@ void TEditor::performCompletion() {
 }
 
 QString TEditor::textUnderCursor() const {
-    QTextCursor tc = textCursor();
-    tc.movePosition(QTextCursor::StartOfWord, QTextCursor::KeepAnchor);
-    return tc.selectedText();
+    const QTextCursor cursor = textCursor();
+    const QString blockText = cursor.block().text();
+    int end = qBound(0, cursor.positionInBlock(), static_cast<int>(blockText.length()));
+    int start = end;
+
+    while (start > 0 and isCompletionCharacter(blockText.at(start - 1))) {
+        --start;
+    }
+
+    return blockText.mid(start, end - start);
 }
 
 void TEditor::insertCompletion(const QString &completion, CompletionType type, SnippetId snippetId) {
     if (c->widget() != this) return;
     QTextCursor tc = textCursor();
 
-    // This ensures we replace the whole partial word with the completion.
-    tc.select(QTextCursor::WordUnderCursor);
+    // Replace the whole completion prefix, including Arabic letters and preprocessor '#'.
+    const int end = tc.position();
+    int start = end;
+    while (start > 0 and isCompletionCharacter(document()->characterAt(start - 1))) {
+        --start;
+    }
+    tc.setPosition(start);
+    tc.setPosition(end, QTextCursor::KeepAnchor);
 
     switch (type) {
     case CompletionType::Builtin:
@@ -917,6 +963,7 @@ void TEditor::insertCompletion(const QString &completion, CompletionType type, S
         m_snippetManager.insertSnippet(completion, tc, snippetId);
         break;
     case CompletionType::Keyword:
+    case CompletionType::Preprocessor:
         insertWord(completion, tc);
         break;
     case CompletionType::DynamicWord:

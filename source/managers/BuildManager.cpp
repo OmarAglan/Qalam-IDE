@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QStandardPaths>
 #include <QMetaObject>
+#include <QPointer>
 
 BuildManager::BuildManager(QObject *parent)
     : QObject(parent)
@@ -106,12 +107,12 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
 
     if (!QFileInfo(program).isExecutable()) {
         console->clear();
-        console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم باء!");
-        console->appendPlainTextThreadSafe("المسار المتوقع: " + program);
-        console->appendPlainTextThreadSafe("يمكنك وضع المترجم بجانب التطبيق داخل baa/ أو ضبط مساره من الإعدادات.");
+        console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم باء!\n");
+        console->appendPlainTextThreadSafe("المسار المتوقع: " + program + "\n");
+        console->appendPlainTextThreadSafe("يمكنك وضع المترجم بجانب التطبيق داخل baa/ أو ضبط مساره من الإعدادات.\n");
 
 #if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-        console->appendPlainTextThreadSafe("تأكد من أن ملف baa لديه صلاحية التنفيذ (chmod +x).");
+        console->appendPlainTextThreadSafe("تأكد من أن ملف baa لديه صلاحية التنفيذ (chmod +x).\n");
 #endif
         return;
     }
@@ -119,12 +120,14 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
     QStringList args = { filePath };
     QString workingDir = QFileInfo(filePath).absolutePath();
 
-    // Safely clean up existing thread/worker before creating new ones
+    // Safely clean up existing thread/worker before creating new ones.
+    // The same console hosts an interactive shell, so stop it while Baa owns stdin/stdout.
     cleanupBuild();
+    console->stopCmd();
 
     console->clear();
-    console->appendPlainTextThreadSafe("🚀 بدء تشغيل ملف باء...");
-    console->appendPlainTextThreadSafe("📄 الملف: " + QFileInfo(filePath).fileName());
+    console->appendPlainTextThreadSafe("🚀 بدء تشغيل ملف باء...\n");
+    console->appendPlainTextThreadSafe("📄 الملف: " + QFileInfo(filePath).fileName() + "\n");
 
     m_worker = new ProcessWorker(program, args, workingDir);
     m_buildThread = new QThread(this);
@@ -140,12 +143,16 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
 
     QThread *thread = m_buildThread.data();
     ProcessWorker *worker = m_worker.data();
+    QPointer<TConsole> safeConsole(console);
 
-    connect(m_worker, &ProcessWorker::finished, this, [this, console, thread](int code) {
-        console->appendPlainTextThreadSafe(
-            "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
-            + QString::number(code) + ")\n"
-            );
+    connect(m_worker, &ProcessWorker::finished, this, [this, safeConsole, thread](int code) {
+        if (safeConsole) {
+            safeConsole->appendPlainTextThreadSafe(
+                "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
+                + QString::number(code) + ")\n"
+                );
+            safeConsole->startCmd();
+        }
         if (thread) {
             thread->quit();
         }

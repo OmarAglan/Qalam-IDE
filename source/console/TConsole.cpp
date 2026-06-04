@@ -9,8 +9,12 @@
 #include <QRegularExpression>
 #include <QTextBlockFormat>
 #include <QApplication>
+#include <QMutexLocker>
+#include <QFontDatabase>
 #include <QTextBlock>
+#include <QTextOption>
 #include <QProcessEnvironment>
+#include <utility>
 
 namespace {
 QString decodeProcessBytes(const QByteArray &data)
@@ -117,8 +121,8 @@ void TConsole::stopCmd()
 void TConsole::clear()
 {
     m_output->clear();
+    QMutexLocker locker(&m_pendingMutex);
     m_pending.clear();
-    m_buffer.clear();
 }
 
 void TConsole::setConsoleRTL()
@@ -133,13 +137,10 @@ void TConsole::setConsoleRTL()
 
 void TConsole::appendPlainTextThreadSafe(const QString &text)
 {
+    if (text.isEmpty()) return;
+
     QMutexLocker locker(&m_pendingMutex);
-    QStringList parts = text.split('\n');
-    for (QString s : parts) {
-        if (s.endsWith('\r')) s.chop(1);
-        m_pending.append(s);
-    }
-    locker.unlock();
+    m_pending.append(text);
 }
 
 void TConsole::processStdout()
@@ -191,11 +192,11 @@ void TConsole::onInputReturn()
     // send to process (CRLF on Windows)
 #if defined(Q_OS_WIN)
     if (m_process->state() != QProcess::NotRunning) {
-        m_process->write((cmd + "\r\n").toLocal8Bit());
+        m_process->write((cmd + "\r\n").toUtf8());
     }
 #else
     if (m_process->state() != QProcess::NotRunning) {
-        m_process->write((cmd + "\n").toLocal8Bit());
+        m_process->write((cmd + "\n").toUtf8());
     }
 #endif
 
@@ -203,38 +204,29 @@ void TConsole::onInputReturn()
     m_input->clear();
 }
 
-void TConsole::flushPending() {
-    QStringList items;
+void TConsole::flushPending()
+{
+    QString chunk;
     {
         QMutexLocker locker(&m_pendingMutex);
         if (m_pending.isEmpty()) return;
-        items = std::move(m_pending);
+        chunk = std::move(m_pending);
         m_pending.clear();
     }
 
-    // Use incremental append instead of rebuilding entire document
     QTextCursor cursor(m_output->document());
     cursor.movePosition(QTextCursor::End);
-    
-    for (const QString &line : items) {
-        cursor.insertText(line + "\n");
-        m_buffer.append(line);
-    }
-    
-    // Trim buffer and document if needed (batch removal instead of O(n^2) pop_front loop)
-    int excess = m_buffer.size() - m_maxLines;
-    if (excess > 0) {
-        m_buffer = m_buffer.mid(excess);
+    cursor.insertText(chunk);
 
-        // Remove the first 'excess' lines from the document in one operation
+    const int excessBlocks = m_output->document()->blockCount() - m_maxLines;
+    if (excessBlocks > 0) {
         QTextCursor trimCursor(m_output->document());
         trimCursor.movePosition(QTextCursor::Start);
-        for (int i = 0; i < excess; ++i) {
-            trimCursor.movePosition(QTextCursor::Down, QTextCursor::KeepAnchor);
+        for (int i = 0; i < excessBlocks; ++i) {
+            trimCursor.movePosition(QTextCursor::NextBlock, QTextCursor::KeepAnchor);
         }
-        // Select to start of the next line (include trailing newline)
-        trimCursor.movePosition(QTextCursor::StartOfBlock, QTextCursor::KeepAnchor);
         trimCursor.removeSelectedText();
+        trimCursor.deleteChar();
     }
 
     if (m_autoscroll) {
@@ -333,11 +325,13 @@ bool TConsole::eventFilter(QObject *obj, QEvent *ev)
         } else if (ke->key() == Qt::Key_Down) {
             if (m_history.isEmpty()) return true;
             if (m_historyIndex == -1) return true;
-            m_historyIndex = qMin(m_history.size() - 1, m_historyIndex + 1);
-            if (m_historyIndex >= 0 && m_historyIndex < m_history.size())
-                m_input->setText(m_history[m_historyIndex]);
-            else
+            if (m_historyIndex >= m_history.size() - 1) {
+                m_historyIndex = -1;
                 m_input->clear();
+            } else {
+                ++m_historyIndex;
+                m_input->setText(m_history[m_historyIndex]);
+            }
             return true;
         } else if (ke->matches(QKeySequence::Copy)) {
             return QWidget::eventFilter(obj, ev);

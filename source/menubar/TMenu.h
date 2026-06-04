@@ -3,6 +3,8 @@
 #include <QMenuBar>
 #include <QFileSystemModel>
 #include <QTreeView>
+#include <QAction>
+#include <QKeySequence>
 
 
 

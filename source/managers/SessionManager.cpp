@@ -71,6 +71,9 @@ void SessionManager::syncOpenEditors(TExplorerView *explorerView)
             // Use tab text if no file path (unsaved file)
             if (filePath.isEmpty()) {
                 filePath = m_tabWidget->tabText(i);
+                if (filePath.endsWith("[*]")) {
+                    filePath.chop(3);
+                }
             }
             explorerView->addOpenEditor(filePath, modified);
         }

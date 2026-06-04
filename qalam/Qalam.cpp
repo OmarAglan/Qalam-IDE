@@ -151,8 +151,6 @@ void Qalam::connectSignals()
     auto *findShortcut = new QShortcut(QKeySequence::Find, this);
     connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
 
-    auto *saveShortcut = new QShortcut(QKeySequence::Save, this);
-    connect(saveShortcut, &QShortcut::activated, m_fileManager, &FileManager::saveFile);
 
     auto *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
     connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
@@ -201,18 +199,17 @@ void Qalam::connectSignals()
     // --- FileManager signals ---
     connect(m_fileManager, &FileManager::fileStateChanged, this, &Qalam::updateWindowTitle);
     connect(m_fileManager, &FileManager::fileStateChanged, this, [this]() {
-        // Update modification indicator on tab text
-        TEditor *editor = currentEditor();
-        if (editor) {
-            int index = tabWidget->indexOf(editor);
-            if (index != -1) {
-                bool modified = editor->document()->isModified();
-                QString currentText = tabWidget->tabText(index);
-                if (modified and not currentText.endsWith("[*]")) {
-                    tabWidget->setTabText(index, currentText + "[*]");
-                } else if (not modified and currentText.endsWith("[*]")) {
-                    tabWidget->setTabText(index, currentText.left(currentText.length() - 3));
-                }
+        // Update modification indicators for every editor, not only the active tab.
+        for (int index = 0; index < tabWidget->count(); ++index) {
+            TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(index));
+            if (!editor) continue;
+
+            const bool modified = editor->document()->isModified();
+            QString tabText = tabWidget->tabText(index);
+            if (modified and not tabText.endsWith("[*]")) {
+                tabWidget->setTabText(index, tabText + "[*]");
+            } else if (not modified and tabText.endsWith("[*]")) {
+                tabWidget->setTabText(index, tabText.left(tabText.length() - 3));
             }
         }
     });
@@ -378,9 +375,6 @@ void Qalam::openSettings() {
 
 
 void Qalam::exitApp() {
-    if (!maybeSaveAllModified()) {
-        return;
-    }
     close();
 }
 
@@ -450,10 +444,10 @@ void Qalam::runBaa() {
         if (filePath.isEmpty() or editor->document()->isModified()) return;
     }
 
-    // Show the panel area with output tab
+    // Show the terminal tab because Baa programs may ask for input.
     auto *panelArea = m_layoutManager->panelArea();
     if (!panelArea) return;
-    panelArea->setCurrentTab(TPanelArea::Tab::Output);
+    panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
     panelArea->setCollapsed(false);
 
@@ -598,6 +592,8 @@ void Qalam::closeTab(int index)
 
 bool Qalam::maybeSaveAllModified()
 {
+    const int previousIndex = tabWidget->currentIndex();
+
     for (int i = 0; i < tabWidget->count(); ++i) {
         TEditor *editor = qobject_cast<TEditor*>(tabWidget->widget(i));
         if (!editor or !editor->document()->isModified()) {
@@ -607,13 +603,18 @@ bool Qalam::maybeSaveAllModified()
         tabWidget->setCurrentIndex(i);
         auto result = m_fileManager->needSave(editor);
         if (result == FileManager::SaveAction::Cancel) {
+            tabWidget->setCurrentIndex(previousIndex);
             return false;
         }
         if (result == FileManager::SaveAction::Save and !m_fileManager->saveEditor(editor)) {
+            tabWidget->setCurrentIndex(previousIndex);
             return false;
         }
     }
 
+    if (previousIndex >= 0 and previousIndex < tabWidget->count()) {
+        tabWidget->setCurrentIndex(previousIndex);
+    }
     return true;
 }
 
@@ -697,6 +698,14 @@ void Qalam::performProjectSearch(const QString &query, bool caseSensitive, bool 
     while (it.hasNext()) {
         const QString path = it.next();
         const QFileInfo info(path);
+        const QString normalizedPath = QDir::fromNativeSeparators(path);
+        if (normalizedPath.contains("/.git/")
+            or normalizedPath.contains("/build/")
+            or normalizedPath.contains("/dist/")
+            or normalizedPath.contains("/node_modules/")
+            or normalizedPath.contains("/.cache/")) {
+            continue;
+        }
         if (!allowedExtensions.contains(info.suffix().toLower())) {
             continue;
         }

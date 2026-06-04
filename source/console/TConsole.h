@@ -38,7 +38,7 @@ private:
     QTimer *m_flushTimer{};
 
     QMutex m_pendingMutex{};
-    QStringList m_pending{}; // staging lines
+    QString m_pending{}; // staging text waiting for GUI flush
 
     // history
     QVector<QString> m_history{};
@@ -52,7 +52,6 @@ private:
     QString ansiToHtmlFragment(const QString &chunk); // simple ansi -> html/text formatting
     bool eventFilter(QObject *obj, QEvent *ev) override;
 
-    QStringList m_buffer{};          // تخزين جميع الأسطر
     int m_maxLines = 2000;         // آخر 2000 سطر
 };
 

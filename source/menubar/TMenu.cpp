@@ -20,6 +20,14 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     aboutAction = new QAction("عن المحرر", parent);
 
+    newAction->setShortcut(QKeySequence::New);
+    openFileAction->setShortcut(QKeySequence::Open);
+    saveAction->setShortcut(QKeySequence::Save);
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    SettingsAction->setShortcut(QKeySequence::Preferences);
+    exitAction->setShortcut(QKeySequence::Quit);
+    runAction->setShortcut(QKeySequence(Qt::Key_F5));
+
 
     fileMenu->addAction(newAction);
     fileMenu->addAction(openFileAction);
