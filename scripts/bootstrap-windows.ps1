@@ -31,12 +31,24 @@ function Refresh-Path {
     $env:PATH = "$machinePath;$userPath;$env:PATH"
 
     $commonPaths = @(
-        "$env:LOCALAPPDATA\Programs\Python\Python312",
-        "$env:LOCALAPPDATA\Programs\Python\Python312\Scripts",
         'C:\Program Files\CMake\bin',
         'C:\Program Files\Git\cmd',
         'C:\Program Files\Git\bin'
     )
+
+    $pythonRoots = @(
+        "$env:LOCALAPPDATA\Programs\Python",
+        'C:\Program Files',
+        'C:\Program Files (x86)'
+    )
+
+    foreach ($root in $pythonRoots) {
+        if (!$root -or !(Test-Path $root)) { continue }
+        Get-ChildItem $root -Directory -Filter 'Python3*' -ErrorAction SilentlyContinue | ForEach-Object {
+            $commonPaths += $_.FullName
+            $commonPaths += (Join-Path $_.FullName 'Scripts')
+        }
+    }
 
     foreach ($path in $commonPaths) {
         if ($path -and (Test-Path $path)) {
@@ -87,29 +99,41 @@ function Test-PythonExecutable {
     )
 
     if (!$PythonPath) { return $false }
+    if ($PythonPath -match '\\WindowsApps\\python(3)?\.exe$') { return $false }
 
-    $arguments = @('-c', 'import sys; print(sys.executable); print("%d.%d" % sys.version_info[:2])')
+    $probeCode = 'import sys; print(sys.executable); print(str(sys.version_info[0]) + "." + str(sys.version_info[1]))'
+    $probeArguments = @('-c', $probeCode)
     if ($UseLauncher) {
-        $arguments = @('-3') + $arguments
+        $probeArguments = @('-3') + $probeArguments
     }
 
-    $output = & $PythonPath @arguments 2>$null
-    $exitCode = $LASTEXITCODE
-    if ($null -eq $exitCode) { $exitCode = 0 }
+    try {
+        $output = & $PythonPath @probeArguments 2>&1
+        $exitCode = $LASTEXITCODE
+        if ($null -eq $exitCode) { $exitCode = 0 }
+    } catch {
+        return $false
+    }
 
     if ($exitCode -ne 0) { return $false }
-    if (!$output -or $output.Count -lt 2) { return $false }
-    if (($output[-1] -as [string]) -notmatch '^3\.(1[0-9]|[8-9])$') { return $false }
+
+    $lines = @($output | ForEach-Object { ($_ -as [string]).Trim() } | Where-Object { $_ })
+    if ($lines.Count -lt 2) { return $false }
+
+    $versionText = $lines[-1]
+    if ($versionText -notmatch '^3\.(\d+)$') { return $false }
+
+    $minor = [int]$Matches[1]
+    if ($minor -lt 8) { return $false }
 
     return $true
 }
 
 function Get-PythonCommand {
-    $pyLauncher = Get-CommandOrNull 'py.exe'
-    if ($pyLauncher -and (Test-PythonExecutable -PythonPath $pyLauncher.Source -UseLauncher)) {
-        return @{ Path = $pyLauncher.Source; UseLauncher = $true }
-    }
+    Refresh-Path
 
+    # Prefer real python.exe/python3.exe first. Some machines have a broken or stale py.exe launcher,
+    # and Windows Store aliases can pretend Python exists when it does not.
     $candidates = @('python.exe', 'python3.exe')
     foreach ($candidate in $candidates) {
         $commands = @(Get-Command $candidate -ErrorAction SilentlyContinue -All)
@@ -120,6 +144,12 @@ function Get-PythonCommand {
                 return @{ Path = $cmd.Source; UseLauncher = $false }
             }
         }
+    }
+
+    # Fall back to the Python launcher only if it can actually run Python 3.
+    $pyLauncher = Get-CommandOrNull 'py.exe'
+    if ($pyLauncher -and (Test-PythonExecutable -PythonPath $pyLauncher.Source -UseLauncher)) {
+        return @{ Path = $pyLauncher.Source; UseLauncher = $true }
     }
 
     return $null
