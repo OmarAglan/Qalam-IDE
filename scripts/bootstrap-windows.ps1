@@ -50,6 +50,24 @@ function Get-CommandOrNull {
     return Get-Command $Name -ErrorAction SilentlyContinue
 }
 
+function Invoke-Native {
+    param(
+        [string]$FilePath,
+        [string[]]$Arguments,
+        [switch]$AllowFailure
+    )
+
+    & $FilePath @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) { $exitCode = 0 }
+
+    if (($exitCode -ne 0) -and !$AllowFailure) {
+        throw "$FilePath failed with exit code $exitCode."
+    }
+
+    return $exitCode
+}
+
 function Require-Winget {
     if (Get-CommandOrNull winget.exe) { return }
     throw @'
@@ -62,13 +80,83 @@ Then run scripts/build-windows.ps1.
 '@
 }
 
+function Test-PythonExecutable {
+    param(
+        [string]$PythonPath,
+        [switch]$UseLauncher
+    )
+
+    if (!$PythonPath) { return $false }
+
+    $arguments = @('-c', 'import sys; print(sys.executable); print("%d.%d" % sys.version_info[:2])')
+    if ($UseLauncher) {
+        $arguments = @('-3') + $arguments
+    }
+
+    $output = & $PythonPath @arguments 2>$null
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) { $exitCode = 0 }
+
+    if ($exitCode -ne 0) { return $false }
+    if (!$output -or $output.Count -lt 2) { return $false }
+    if (($output[-1] -as [string]) -notmatch '^3\.(1[0-9]|[8-9])$') { return $false }
+
+    return $true
+}
+
+function Get-PythonCommand {
+    $pyLauncher = Get-CommandOrNull 'py.exe'
+    if ($pyLauncher -and (Test-PythonExecutable -PythonPath $pyLauncher.Source -UseLauncher)) {
+        return @{ Path = $pyLauncher.Source; UseLauncher = $true }
+    }
+
+    $candidates = @('python.exe', 'python3.exe')
+    foreach ($candidate in $candidates) {
+        $commands = @(Get-Command $candidate -ErrorAction SilentlyContinue -All)
+        foreach ($cmd in $commands) {
+            if (!$cmd.Source) { continue }
+            if ($cmd.Source -match '\\WindowsApps\\python(3)?\.exe$') { continue }
+            if (Test-PythonExecutable -PythonPath $cmd.Source) {
+                return @{ Path = $cmd.Source; UseLauncher = $false }
+            }
+        }
+    }
+
+    return $null
+}
+
+function Invoke-Python {
+    param([string[]]$Arguments)
+    $python = Get-PythonCommand
+    if (!$python) {
+        throw @'
+Python is installed incorrectly or only the Microsoft Store alias exists.
+Fix options:
+  1. Run: winget install --id Python.Python.3.12 --exact --source winget --accept-package-agreements --accept-source-agreements
+  2. Close and reopen PowerShell, then rerun build-qalam-windows.cmd
+  3. Or disable the App Installer python.exe/python3.exe aliases from Windows Settings > Apps > Advanced app settings > App execution aliases.
+'@
+    }
+
+    if ($python.UseLauncher) {
+        Invoke-Native -FilePath $python.Path -Arguments (@('-3') + $Arguments) | Out-Null
+    } else {
+        Invoke-Native -FilePath $python.Path -Arguments $Arguments | Out-Null
+    }
+}
+
 function Install-WingetPackage {
     param(
         [string]$Id,
         [string]$CommandName
     )
 
-    if ($CommandName -and (Get-CommandOrNull $CommandName)) {
+    if ($Id -like 'Python.*') {
+        if (Get-PythonCommand) {
+            Write-Host 'Already installed: working Python 3'
+            return
+        }
+    } elseif ($CommandName -and (Get-CommandOrNull $CommandName)) {
         Write-Host "Already installed: $CommandName"
         return
     }
@@ -80,29 +168,11 @@ function Install-WingetPackage {
 
     Require-Winget
     Write-Step "Installing $Id"
-    winget install --id $Id --exact --source winget --accept-package-agreements --accept-source-agreements
+    Invoke-Native -FilePath 'winget.exe' -Arguments @(
+        'install', '--id', $Id, '--exact', '--source', 'winget',
+        '--accept-package-agreements', '--accept-source-agreements'
+    ) | Out-Null
     Refresh-Path
-}
-
-function Get-PythonCommand {
-    $candidates = @('py.exe', 'python.exe', 'python3.exe')
-    foreach ($candidate in $candidates) {
-        $cmd = Get-CommandOrNull $candidate
-        if ($cmd) { return $cmd.Source }
-    }
-    return $null
-}
-
-function Invoke-Python {
-    param([string[]]$Arguments)
-    $python = Get-PythonCommand
-    if (!$python) { throw 'Python was not found after installation.' }
-
-    if ((Split-Path -Leaf $python) -ieq 'py.exe') {
-        & $python -3 @Arguments
-    } else {
-        & $python @Arguments
-    }
 }
 
 function Find-QtRoot {
@@ -240,7 +310,7 @@ Install-WingetPackage -Id 'Python.Python.3.12' -CommandName 'python.exe'
 Install-WingetPackage -Id 'Kitware.CMake' -CommandName 'cmake.exe'
 Refresh-Path
 
-if (!(Get-PythonCommand)) { throw 'Python is required but was not found.' }
+if (!(Get-PythonCommand)) { throw 'A working Python 3 was not found. The Microsoft Store alias does not count as a real Python install.' }
 if (!(Get-CommandOrNull 'cmake.exe')) { throw 'CMake is required but was not found.' }
 
 $resolvedQtRoot = Install-QtIfNeeded

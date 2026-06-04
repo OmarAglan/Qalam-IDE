@@ -226,3 +226,18 @@ The following shortcuts are implemented:
 - Qt mirror list: https://download.qt.io/static/mirrorlist/
 - Example installer mirror usage:
   - `NameOfQtOnlineInstaller.exe --mirror https://mirrors.ocf.berkeley.edu/qt/`
+
+
+### Windows Python alias troubleshooting
+
+If the bootstrap prints `Python was not found; run without arguments to install from the Microsoft Store`, Windows is exposing the Microsoft Store Python alias instead of a real Python install. The bootstrap script now tests Python by actually running it and ignores `WindowsApps\python.exe` aliases.
+
+Manual recovery commands:
+
+```powershell
+winget install --id Python.Python.3.12 --exact --source winget --accept-package-agreements --accept-source-agreements
+# Close and reopen PowerShell, then:
+.\build-qalam-windows.cmd
+```
+
+Alternative: open Windows Settings → Apps → Advanced app settings → App execution aliases, then switch off the App Installer `python.exe` and `python3.exe` aliases.

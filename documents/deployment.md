@@ -236,3 +236,15 @@ The repository includes `.github/workflows/build.yml` for Windows and Linux buil
 ---
 
 *[← Back to User Guide](USER_GUIDE.md) | [→ Compiler Internals](INTERNALS.md)*
+
+## Windows Python alias issue
+
+On some Windows machines, `python.exe` exists only as a Microsoft Store/App Installer alias. This makes `Get-Command python.exe` succeed even though Python is not actually usable. `scripts/bootstrap-windows.ps1` now validates Python by running a small `python -c` command, skips `WindowsApps\python.exe`, and fails immediately if `pip` or `aqtinstall` cannot run.
+
+Recovery command:
+
+```powershell
+winget install --id Python.Python.3.12 --exact --source winget --accept-package-agreements --accept-source-agreements
+```
+
+After installing, close and reopen PowerShell so the updated PATH is loaded, then run `build-qalam-windows.cmd`.
