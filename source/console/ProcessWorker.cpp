@@ -2,6 +2,21 @@
 #include <QDebug>
 #include <QMutexLocker>
 
+namespace {
+QString decodeProcessBytes(const QByteArray &data)
+{
+#if defined(Q_OS_WIN)
+    const QString utf8 = QString::fromUtf8(data);
+    if (!utf8.contains(QChar::ReplacementCharacter)) {
+        return utf8;
+    }
+    return QString::fromLocal8Bit(data);
+#else
+    return QString::fromUtf8(data);
+#endif
+}
+}
+
 ProcessWorker::ProcessWorker(const QString &program, const QStringList &args, const QString &workingDir)
     : program(program), args(args), workingDir(workingDir), process(nullptr), flushTimer(nullptr)
 {
@@ -59,13 +74,13 @@ void ProcessWorker::start() {
 }
 void ProcessWorker::onReadyReadOutput() {
     QMutexLocker locker(&bufferMutex);
-    QString s = QString::fromLocal8Bit(process->readAllStandardOutput());
+    QString s = decodeProcessBytes(process->readAllStandardOutput());
     outputBuffer.append(s);
 }
 
 void ProcessWorker::onReadyReadError() {
     QMutexLocker locker(&bufferMutex);
-    QString s = QString::fromLocal8Bit(process->readAllStandardError());
+    QString s = decodeProcessBytes(process->readAllStandardError());
     errorBuffer.append(s);
 }
 

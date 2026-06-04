@@ -1,43 +1,77 @@
-QT += core gui
-
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT += core gui widgets
 
 CONFIG += c++23
 
 TARGET = Qalam
+TEMPLATE = app
 
-RESOURCES += \
-    resources.qrc
+RESOURCES += resources.qrc
 
+INCLUDEPATH += . \
+    ../source/components \
+    ../source/console \
+    ../source/managers \
+    ../source/menubar \
+    ../source/pages \
+    ../source/settings \
+    ../source/sidebar \
+    ../source/texteditor \
+    ../source/texteditor/autocomplete \
+    ../source/texteditor/highlighter \
+    ../source/ui
 
-# Include directories
-INCLUDEPATH +=  ../source/texteditor \
-                ../source/texteditor/highlighter \
-                ../source/texteditor/autocomplete \
-                ../source/components \
-                ../source/console \
-                ../source/menubar   \
-                ../source/pages \
-                ../source/settings  \
-
-SOURCES += \
+SOURCES += Qalam.cpp \
+    main.cpp \
+    ../source/components/TFlatButton.cpp \
+    ../source/components/TSearchPanel.cpp \
+    ../source/console/ProcessWorker.cpp \
+    ../source/console/TConsole.cpp \
+    ../source/managers/BuildManager.cpp \
+    ../source/managers/FileManager.cpp \
+    ../source/managers/LayoutManager.cpp \
+    ../source/managers/SessionManager.cpp \
+    ../source/menubar/TMenu.cpp \
+    ../source/pages/TWelcomePage.cpp \
+    ../source/settings/TSettings.cpp \
+    ../source/sidebar/TExplorerView.cpp \
+    ../source/sidebar/TSearchView.cpp \
+    ../source/texteditor/TAutoSave.cpp \
+    ../source/texteditor/TBracketHandler.cpp \
+    ../source/texteditor/TEditor.cpp \
+    ../source/texteditor/TSnippetManager.cpp \
     ../source/texteditor/autocomplete/AutoComplete.cpp \
     ../source/texteditor/autocomplete/AutoCompleteUI.cpp \
     ../source/texteditor/highlighter/TLexer.cpp \
     ../source/texteditor/highlighter/TSyntaxDefinition.cpp \
     ../source/texteditor/highlighter/TSyntaxHighlighter.cpp \
-    Qalam.cpp \
-    main.cpp \
-    ../source/texteditor/TEditor.cpp \
-    ../source/components/TFlatButton.cpp \
-    ../source/components/TSearchPanel.cpp \
-    ../source/console/TConsole.cpp \
-    ../source/console/ProcessWorker.cpp \
-    ../source/menubar/TMenu.cpp    \
-    ../source/pages/TWelcomeWindow.cpp  \
-    ../source/settings/TSettings.cpp   \
+    ../source/ui/QalamTheme.cpp \
+    ../source/ui/QalamWindow.cpp \
+    ../source/ui/TActivityBar.cpp \
+    ../source/ui/TBreadcrumb.cpp \
+    ../source/ui/TPanelArea.cpp \
+    ../source/ui/TSidebar.cpp \
+    ../source/ui/TStatusBar.cpp \
+    ../source/ui/TTitleBar.cpp
 
-HEADERS += \
+HEADERS += Qalam.h \
+    Constants.h \
+    ../source/components/TFlatButton.h \
+    ../source/components/TSearchPanel.h \
+    ../source/console/ProcessWorker.h \
+    ../source/console/TConsole.h \
+    ../source/managers/BuildManager.h \
+    ../source/managers/FileManager.h \
+    ../source/managers/LayoutManager.h \
+    ../source/managers/SessionManager.h \
+    ../source/menubar/TMenu.h \
+    ../source/pages/TWelcomePage.h \
+    ../source/settings/TSettings.h \
+    ../source/sidebar/TExplorerView.h \
+    ../source/sidebar/TSearchView.h \
+    ../source/texteditor/TAutoSave.h \
+    ../source/texteditor/TBracketHandler.h \
+    ../source/texteditor/TEditor.h \
+    ../source/texteditor/TSnippetManager.h \
     ../source/texteditor/autocomplete/AutoComplete.h \
     ../source/texteditor/autocomplete/AutoCompleteUI.h \
     ../source/texteditor/highlighter/TLexer.h \
@@ -45,28 +79,26 @@ HEADERS += \
     ../source/texteditor/highlighter/TSyntaxHighlighter.h \
     ../source/texteditor/highlighter/TSyntaxThemes.h \
     ../source/texteditor/highlighter/TToken.h \
-    Qalam.h  \
-    ../source/texteditor/TEditor.h \
-    ../source/components/TFlatButton.h \
-    ../source/components/TSearchPanel.h \
-    ../source/console/TConsole.h \
-    ../source/console/ProcessWorker.h \
-    ../source/menubar/TMenu.h  \
-    ../source/pages/TWelcomeWindow.h \
-    ../source/settings/TSettings.h \
+    ../source/texteditor/highlighter/ThemeManager.h \
+    ../source/ui/QalamTheme.h \
+    ../source/ui/QalamWindow.h \
+    ../source/ui/TActivityBar.h \
+    ../source/ui/TBreadcrumb.h \
+    ../source/ui/TPanelArea.h \
+    ../source/ui/TSidebar.h \
+    ../source/ui/TStatusBar.h \
+    ../source/ui/TTitleBar.h
 
+# Windows executable icon and native frame libraries
+win32 {
+    RC_ICONS += resources/QalamLogo.ico
+    LIBS += -ldwmapi -luser32
+}
 
-
-# Add the application icon (Windows)
-win32:RC_ICONS += resources/QalamLogo.ico
-
-# Add the application icon (macOS/Linux)
+# macOS bundle icon
 macx:ICON = resources/QalamLogo.icns
-unix:!macx:ICON = resources/QalamLogo.png
 
-# Default rules for deployment.
+# Default install path for Unix-like systems
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-

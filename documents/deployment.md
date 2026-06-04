@@ -1,155 +1,166 @@
 # Deployment Guide
 
-This document provides instructions for deploying and packaging Qalam IDE on different platforms.
+This document explains how to build and package Qalam IDE on Windows, Linux, and macOS.
 
 ## Prerequisites
 
-Before deploying, ensure you have:
-- Qt 6.10.2 or later installed via [Qt Online Installer](https://download.qt.io/static/mirrorlist/)
+- Qt 6.x with Widgets / GUI / Core installed
 - CMake 3.21+
-- MinGW 13.1+ (Windows), GCC 13+ (Linux), or Clang 16+ (macOS)
-
-## Windows (MinGW)
-
-### 1. Build
-
-Use CMake to build the `Qalam.exe` executable in Release mode:
-
-```powershell
-# Configure
-cmake --preset windows-release
-
-# Build
-cmake --build build --preset release
-```
-
-Output: `build/qalam/Qalam.exe`
-
-**Note:** The `.pro` file (qmake) is deprecated and cannot build the current codebase. Use CMake only.
-
-### 2. Deploy with windeployqt
-
-Run `windeployqt` to copy necessary DLLs to the build folder:
-
-```powershell
-# Adjust path to your Qt installation
-~:\Qt\6.10.2\mingw_64\bin\windeployqt6.exe .\build\qalam\Qalam.exe
-```
-
-This will copy:
-- Qt runtime DLLs
-- Platform plugins (`platforms/`, `styles/`)
-- Required image format plugins
-
-### 3. Package (Optional)
-
-For distribution, you can:
-- Zip the entire `qalam/` folder containing the executable and DLLs
-- Or create an installer using Qt Installer Framework (if you have config files set up)
-
-```powershell
-# Zip for distribution
-Compress-Archive -Path .\build\qalam\* -DestinationPath Qalam-v3.3.0-win64.zip
-```
-
-### 4. Single-Instance Check
-
-Qalam uses `QLockFile` to ensure only one instance runs. If the app fails to start, check for a stale lock file at `%TEMP%/qalam.lock`.
+- C++23 compiler
+  - Windows: Qt MinGW kit recommended
+  - Linux: GCC 13+ recommended
+  - macOS: Clang 16+ recommended
 
 ---
 
-## Linux (Ubuntu 22.04+)
+## Windows: Build and Package
 
-### 1. Install Dependencies
+### Option A: PowerShell scripts (recommended)
+
+From the repository root:
+
+```powershell
+# Optional when Qt is not installed under C:\Qt
+$env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
+
+.\scripts\build-windows.ps1 -Configuration Release
+.\scripts\package-windows.ps1 -SkipBuild
+```
+
+Outputs:
+
+- Executable: `build/windows-release/qalam/Qalam.exe`
+- Portable folder: `dist/Qalam-win64/`
+- ZIP package: `dist/Qalam-win64.zip`
+
+The packaging script runs `windeployqt.exe`, which copies the Qt runtime DLLs, platform plugins, styles, and related runtime files into the package folder.
+
+### Option B: CMake presets
+
+When Qt is not in the default `C:\Qt\6.10.2\mingw_64` location:
+
+```powershell
+$env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
+cmake --preset windows-release
+cmake --build --preset release
+.\scripts\package-windows.ps1 -SkipBuild
+```
+
+When Qt is exactly in `C:\Qt\6.10.2\mingw_64` and MinGW is exactly in `C:\Qt\Tools\mingw1310_64`:
+
+```powershell
+cmake --preset windows-release-qt6102
+cmake --build --preset release-qt6102
+.\scripts\package-windows.ps1 -SkipBuild
+```
+
+### Optional: Deploy after every build
+
+This is convenient for local manual testing, but slower for normal development:
+
+```powershell
+.\scripts\build-windows.ps1 -Configuration Release -DeployAfterBuild
+```
+
+### Baa compiler location on Windows
+
+The IDE now resolves the Baa compiler in this order:
+
+1. The configured compiler path from settings.
+2. `baa/baa.exe` next to `Qalam.exe`.
+3. `baa.exe` next to `Qalam.exe`.
+4. `baa.exe` or `baa` from `PATH`.
+
+For portable releases, place the compiler here:
+
+```text
+Qalam-win64/
+  Qalam.exe
+  baa/
+    baa.exe
+```
+
+---
+
+## Windows Application Icon
+
+The Windows executable icon is configured through `qalam/resources/Qalam.rc` and included by CMake. The `.qrc` file still embeds icons for use inside the running Qt application, but the `.rc` file is what gives `Qalam.exe` its Explorer/taskbar icon.
+
+---
+
+## Linux
+
+### Install dependencies on Ubuntu/Debian
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential qt6-base-dev qt6-base-dev-tools cmake
-sudo apt install -y libxcb-cursor0 libxcb-cursor-dev
+sudo apt install -y build-essential cmake qt6-base-dev qt6-base-dev-tools libxcb-cursor0 libxcb-cursor-dev
 ```
 
-### 2. Environment Setup
-
-Add the Qt bin directory to your `PATH` if you installed Qt in a non-standard location:
+### Build
 
 ```bash
-export PATH=/opt/Qt/6.10.2/gcc_64/bin:$PATH
+./scripts/build-linux.sh Release
 ```
 
-### 3. Build
+Or manually:
 
 ```bash
-# Configure (Note: Linux presets need to be added - see ROADMAP.md Phase 7)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/Qt/6.10.2/gcc_64
-
-# Build
-cmake --build build -j$(nproc)
+cmake -S . -B build/linux-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/Qt/6.x/gcc_64
+cmake --build build/linux-release --parallel
 ```
 
-### 4. Deploy with linuxdeployqt
+### Runtime compiler layout
+
+Place the Baa compiler beside the executable:
+
+```text
+build/linux-release/qalam/
+  Qalam
+  baa/
+    baa
+```
+
+Make it executable:
 
 ```bash
-sudo apt install -y libfuse2
-
-# Download linuxdeployqt
-curl -LO https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
-chmod a+x linuxdeployqt-continuous-x86_64.AppImage
-
-# Deploy
-./linuxdeployqt-continuous-x86_64.AppImage build/qalam/Qalam -appimage -always-overwrite
+chmod +x build/linux-release/qalam/baa/baa
 ```
-
-**Note for Ubuntu 24.04+:** You may need `-unsupported-bundle-everything -unsupported-allow-new-glibc` flags.
 
 ---
 
 ## macOS
 
-### 1. Build
-
 ```bash
-# Configure (Note: macOS presets need to be added - see ROADMAP.md Phase 7)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/usr/local/Qt/6.10.2/macos
-
-# Build
-cmake --build build -j$(sysctl -n hw.ncpu)
+export QALAM_QT_DIR=/Users/$USER/Qt/6.x/macos
+cmake --preset macos-release
+cmake --build --preset macos-release
+macdeployqt build/macos-release/qalam/Qalam.app
 ```
 
-### 2. Deploy with macdeployqt
+Runtime compiler layout inside or beside the app should be finalized when macOS packaging is ready.
 
-```bash
-macdeployqt build/qalam/Qalam.app
+---
+
+## qmake Fallback
+
+`qalam/Qalam.pro` has been refreshed and includes the current source tree, Windows native libraries, and the Windows icon. However, CMake remains the primary supported build system.
+
+```powershell
+cd qalam
+qmake Qalam.pro
+mingw32-make -j
 ```
 
-This bundles Qt frameworks into the .app bundle for distribution.
-
 ---
 
-## CI/CD Pipeline (Future)
+## Known Issues / Next Work
 
-Automated builds are planned. See [ROADMAP.md](ROADMAP.md) Phase 7 for details on:
-- GitHub Actions workflows
-- Multi-platform build matrix
-- Automated testing with `ctest`
-- Release artifact publishing
-
----
-
-## Known Issues
-
-1. **Vulkan DLL Warning:** During Windows linking, you may see a warning about Vulkan DLL. This is harmless and can be ignored.
-
-2. **RTL on Windows:** The frameless window implementation uses native Windows APIs (`dwmapi`, `user32`) which work best on Windows 10/11.
-
-3. **Console Colors:** ANSI color codes in the embedded console are planned but not yet fully functional (see ROADMAP.md Phase 5.4).
-
----
-
-## Additional Resources
-
-- **Qt Downloads:** https://download.qt.io/static/mirrorlist/
-- **Qt Installer CLI:** `NameOfQtOnlineInstaller.exe --mirror https://mirrors.ocf.berkeley.edu/qt/`
-- **Project Documentation:** See `documents/` folder for [INTERNALS.md](INTERNALS.md), [LANGUAGE.md](LANGUAGE.md), and [ROADMAP.md](ROADMAP.md)
+1. **Compiler settings UI:** The key already exists (`compilerPath`), but the settings window still needs a proper compiler path picker.
+2. **Windows terminal:** The embedded terminal starts `cmd.exe` using UTF-8 code page setup, but a future terminal layer should support PowerShell and better ANSI color rendering.
+3. **CI:** GitHub Actions should build Windows, Linux, and macOS artifacts automatically.
+4. **Packaging installer:** Current Windows packaging creates a portable ZIP. A proper installer can be added later with Qt Installer Framework or another installer system.
+5. **Baa compiler bundling:** `scripts/package-windows.ps1` copies a local `baa/` folder if present. If the compiler lives in another repository, the release process should fetch or build it first.
 
 ---
 

@@ -70,47 +70,69 @@
 
 Qalam IDE is a Qt Widgets application written in C++23.
 
-### Requirements (all platforms)
+### Requirements
 
-- Qt **6.x** (Widgets / GUI / Core)
+- Qt 6.x with the Widgets / GUI / Core modules
+- CMake 3.21+
 - A C++23-capable compiler
-- **CMake** 3.21+ (recommended) or qmake
+  - Windows: Qt MinGW kit is the easiest path
+  - Linux: GCC 13+ recommended
+  - macOS: Clang 16+ recommended
 
----
+### Windows: recommended quick path
 
-## Building with CMake (Recommended)
-
-From the repository root:
+Install Qt 6 with the MinGW kit, then run PowerShell from the repository root:
 
 ```powershell
-mkdir build
-cd build
-cmake ..
-cmake --build .
+# Optional when Qt is not installed under C:\Qt
+$env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
+
+.\scripts\build-windows.ps1 -Configuration Release
+.\scripts\package-windows.ps1 -SkipBuild
+```
+
+Output:
+
+- Build: `build/windows-release/qalam/Qalam.exe`
+- Portable package: `dist/Qalam-win64.zip`
+
+### Windows: manual CMake path
+
+```powershell
+$env:QALAM_QT_DIR = "C:\Qt\6.10.2\mingw_64"
+cmake --preset windows-release
+cmake --build --preset release
+```
+
+If your Qt is exactly at `C:\Qt\6.10.2\mingw_64`, you can also use:
+
+```powershell
+cmake --preset windows-release-qt6102
+cmake --build --preset release-qt6102
+```
+
+### Linux
+
+```bash
+./scripts/build-linux.sh Release
+```
+
+Or manually:
+
+```bash
+cmake -S . -B build/linux-release -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/opt/Qt/6.x/gcc_64
+cmake --build build/linux-release --parallel
 ```
 
 ### Build with Qt Creator
-1. Open `CMakeLists.txt` from the root directory.
+
+1. Open the root `CMakeLists.txt`.
 2. Select a Qt 6 kit.
-3. Build & run.
+3. Configure, build, and run.
 
----
+### qmake fallback
 
-## Building with qmake (Legacy)
-
-The qmake project file is located at `qalam/Qalam.pro`.
-
-### Build with Qt Creator
-1. Open `qalam/Qalam.pro`.
-2. Select a Qt 6 kit.
-3. Build & run.
-
-### Build with command line
-```powershell
-cd qalam
-qmake .\Qalam.pro
-mingw32-make -j
-```
+`qalam/Qalam.pro` has been refreshed for the current source tree, but CMake is still the main supported build system. Use qmake only as a fallback.
 
 ---
 
@@ -118,7 +140,6 @@ mingw32-make -j
 
 For detailed instructions on how to deploy Qalam IDE on Windows, Linux, and macOS, see [`documents/deployment.md`](documents/deployment.md).
 
----
 
 ## Keyboard Shortcuts
 

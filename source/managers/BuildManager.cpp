@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
+#include <QStandardPaths>
 
 BuildManager::BuildManager(QObject *parent)
     : QObject(parent)
@@ -26,23 +27,37 @@ bool BuildManager::isRunning() const
 QString BuildManager::resolveCompilerPath() const
 {
     QSettings settings(Constants::OrgName, Constants::AppName);
-    QString program = settings.value(Constants::SettingsKeyCompilerPath).toString();
+    const QString configuredProgram = settings.value(Constants::SettingsKeyCompilerPath).toString().trimmed();
 
-    if (program.isEmpty()) {
-        QString appDir = QCoreApplication::applicationDirPath();
-#if defined(Q_OS_WIN)
-        QString localBaa = QDir(appDir).filePath("baa/baa.exe");
-        if (QFile::exists(localBaa)) {
-            program = localBaa;
-        } else {
-            program = "baa/baa.exe"; // Fallback to PATH or relative
-        }
-#elif defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
-        program = QDir(appDir).filePath("baa/baa");
-#endif
+    if (!configuredProgram.isEmpty()) {
+        return configuredProgram;
     }
 
-    return program;
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+#if defined(Q_OS_WIN)
+        QDir(appDir).filePath("baa/baa.exe"),
+        QDir(appDir).filePath("baa.exe"),
+        QStandardPaths::findExecutable("baa.exe"),
+        QStandardPaths::findExecutable("baa")
+#else
+        QDir(appDir).filePath("baa/baa"),
+        QDir(appDir).filePath("baa"),
+        QStandardPaths::findExecutable("baa")
+#endif
+    };
+
+    for (const QString &candidate : candidates) {
+        if (!candidate.isEmpty() and QFileInfo(candidate).isExecutable()) {
+            return candidate;
+        }
+    }
+
+#if defined(Q_OS_WIN)
+    return QDir(appDir).filePath("baa/baa.exe");
+#else
+    return QDir(appDir).filePath("baa/baa");
+#endif
 }
 
 void BuildManager::cleanupBuild()
@@ -75,13 +90,21 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
 
     QString program = resolveCompilerPath();
 
-    if (!QFile::exists(program)) {
+    if (!QFileInfo(program).isExecutable()) {
+        const QString pathProgram = QStandardPaths::findExecutable(program);
+        if (!pathProgram.isEmpty()) {
+            program = pathProgram;
+        }
+    }
+
+    if (!QFileInfo(program).isExecutable()) {
         console->clear();
         console->appendPlainTextThreadSafe("❌ خطأ: لم يتم العثور على مترجم باء!");
         console->appendPlainTextThreadSafe("المسار المتوقع: " + program);
+        console->appendPlainTextThreadSafe("يمكنك وضع المترجم بجانب التطبيق داخل baa/ أو ضبط مساره من الإعدادات.");
 
-#if defined(Q_OS_LINUX)
-        console->appendPlainTextThreadSafe("تأكد من أن ملف 'alif' موجود ولديه صلاحية التنفيذ (chmod +x).");
+#if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
+        console->appendPlainTextThreadSafe("تأكد من أن ملف baa لديه صلاحية التنفيذ (chmod +x).");
 #endif
         return;
     }

@@ -5,6 +5,7 @@
 #include <QMessageBox>
 #include <QDebug>
 #include <QFontDatabase>
+#include <QIcon>
 
 #include <QFileDialog>
 #include <QLockFile>
@@ -16,11 +17,14 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QCoreApplication::setOrganizationName(Constants::OrgName);
     QCoreApplication::setApplicationName(Constants::AppName);
+    QCoreApplication::setApplicationVersion(Constants::AppVersion);
+    app.setWindowIcon(QIcon(":/icons/resources/QalamLogo.png"));
     app.setLayoutDirection(Qt::RightToLeft);
 
 
     QString lockPath = QDir::tempPath() + "/qalam_ide.lock";
     QLockFile lockFile(lockPath);
+    lockFile.setStaleLockTime(0);
 
     if (!lockFile.tryLock(100)) {
         QMessageBox::warning(nullptr, "قلم",

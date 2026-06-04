@@ -25,7 +25,7 @@ Qalam IDE is built using **Qt 6 (C++23)** and follows a modular design. The proj
 ├── sidebar             # TExplorerView, TSearchView
 ├── ui                  # QalamWindow, QalamTheme, TTitleBar, TActivityBar, TSidebar, TPanelArea, TStatusBar, TBreadcrumb
 ├── managers            # FileManager, BuildManager, SessionManager, LayoutManager
-└── pages               # TWelcomeWindow
+└── pages               # TWelcomePage
 ```
 
 ### Key Components

@@ -45,7 +45,7 @@ One deferred item from Phase 2:
 | `AutoCompleteUI.cpp` | 49-57, 62-71, 130 | Hardcoded colors (`#1e202e`, `#4b5263`, `#abb2bf`, `#3e4451`) instead of `QalamTheme`/`Constants` |
 | `TMenu.cpp` | (inline CSS) | Menu bar/dropdown CSS hardcoded, not using `QalamTheme` |
 | `TSettings.cpp` | 8 | Hardcoded `#1e202e` |
-| `TWelcomeWindow.cpp` | 247 | Hardcoded `#5cb8ff` |
+| `TWelcomePage.cpp` | 247 | Hardcoded `#5cb8ff` |
 | `LayoutManager.cpp` | 61 | Hardcoded `#007acc` splitter color |
 | `LayoutManager.cpp` | 79 | Hardcoded splitter sizes `{700, 200}` |
 | `TEditor.cpp` | 113-114 | Zoom limits `5.0`/`50` not in Constants |
@@ -63,7 +63,7 @@ One deferred item from Phase 2:
 - `Constants.h` lines 5-6 use `const QString` at namespace scope (per-TU copies) -- should be `inline const`
 - `QalamWindow.h:23` declares `void initFrameless()` but it's never defined or called
 - `TEditor.h:88` -- QCompleter member named `c` -- poor naming
-- `TWelcomeWindow.cpp` includes `<QtWidgets>` (kitchen-sink include)
+- `TWelcomePage.cpp` includes `<QtWidgets>` (kitchen-sink include)
 - Mixed logical operators: some files use `and`/`or`/`not`, others use `&&`/`||`/`!`
 - `.pro` file is stale and can't build the current codebase
 
@@ -86,7 +86,7 @@ One deferred item from Phase 2:
 
 - `TEditor` still 927 lines with broad responsibilities despite decomposition
 - `QalamTheme` at 805 lines -- growing, may need sub-theme modules
-- `TWelcomeWindow::applyStyles()` is 144 lines of inline CSS -- should use `QalamTheme`
+- `TWelcomePage::applyStyles()` is 144 lines of inline CSS -- should use `QalamTheme`
 - `QSettings` construction repeated ~15 times instead of a helper
 - Tab iteration pattern (`for i in tabWidget.count, qobject_cast<TEditor*>`) repeated ~5 times across `Qalam.cpp` and `SessionManager.cpp`
 - ANSI color switch blocks duplicated in `TConsole.cpp` (lines 264-277 and 278-292)
@@ -125,16 +125,16 @@ One deferred item from Phase 2:
 - [ ] 4.3.7 Remove redundant `QString value` from `TToken` (carried from Phase 2.7)
 - [ ] 4.3.8 Delete or update stale `.pro` file
 - [ ] 4.3.9 Remove redundant Arabic digit checks in `TLexer` (`QChar::isDigit()` already covers them)
-- [ ] 4.3.10 Replace `<QtWidgets>` include in `TWelcomeWindow.cpp` with specific headers
+- [ ] 4.3.10 Replace `<QtWidgets>` include in `TWelcomePage.cpp` with specific headers
 
 ### 4.4 Theme Consistency
 
 - [ ] 4.4.1 Migrate `AutoCompleteUI.cpp` hardcoded colors to `QalamTheme`/`Constants`
 - [ ] 4.4.2 Migrate `TMenu.cpp` inline CSS to `QalamTheme::menuBarStyleSheet()`
 - [ ] 4.4.3 Migrate `TSettings.cpp` hardcoded color to `Constants`
-- [ ] 4.4.4 Migrate `TWelcomeWindow.cpp` hardcoded color to `Constants`
+- [ ] 4.4.4 Migrate `TWelcomePage.cpp` hardcoded color to `Constants`
 - [ ] 4.4.5 Migrate `LayoutManager.cpp` hardcoded splitter color to `Constants`
-- [ ] 4.4.6 Move `TWelcomeWindow::applyStyles()` (144 lines) to use `QalamTheme`
+- [ ] 4.4.6 Move `TWelcomePage::applyStyles()` (144 lines) to use `QalamTheme`
 
 ### 4.5 Code Deduplication
 

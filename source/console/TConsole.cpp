@@ -10,7 +10,22 @@
 #include <QTextBlockFormat>
 #include <QApplication>
 #include <QTextBlock>
+#include <QProcessEnvironment>
 
+namespace {
+QString decodeProcessBytes(const QByteArray &data)
+{
+#if defined(Q_OS_WIN)
+    const QString utf8 = QString::fromUtf8(data);
+    if (!utf8.contains(QChar::ReplacementCharacter)) {
+        return utf8;
+    }
+    return QString::fromLocal8Bit(data);
+#else
+    return QString::fromUtf8(data);
+#endif
+}
+}
 
 TConsole::TConsole(QWidget *parent)
     : QWidget(parent),
@@ -66,7 +81,10 @@ void TConsole::startCmd()
     if (m_process->state() != QProcess::NotRunning) return;
 
 #if defined(Q_OS_WIN)
-    m_process->start("cmd.exe");
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("TERM", "dumb");
+    m_process->setProcessEnvironment(env);
+    m_process->start("cmd.exe", {"/Q", "/K", "chcp 65001 > nul"});
 #elif defined(Q_OS_MACOS)
     QStringList args;
     args << "-i" << "-l"; // Interactive login shell
@@ -127,11 +145,7 @@ void TConsole::appendPlainTextThreadSafe(const QString &text)
 void TConsole::processStdout()
 {
     QByteArray d = m_process->readAllStandardOutput();
-#if defined(Q_OS_WIN)
-    QString s = QString::fromLocal8Bit(d);
-#else
-    QString s = QString::fromUtf8(d); // لينكس يستخدم UTF-8
-#endif
+    QString s = decodeProcessBytes(d);
     appendPlainTextThreadSafe(s);
 
 }
@@ -139,7 +153,7 @@ void TConsole::processStdout()
 void TConsole::processStderr()
 {
     QByteArray d = m_process->readAllStandardError();
-    QString s = QString::fromLocal8Bit(d);
+    QString s = decodeProcessBytes(d);
     appendPlainTextThreadSafe(s);
 }
 

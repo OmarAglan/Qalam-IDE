@@ -7,6 +7,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+if(WIN32)
+    enable_language(RC)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Core)
 
 add_subdirectory(source)

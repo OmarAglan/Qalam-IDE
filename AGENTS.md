@@ -47,7 +47,7 @@ source/               # Static library (qalam_core)
 ├── ui/               # QalamWindow, QalamTheme, TTitleBar, TActivityBar, TSidebar,
 │                     # TBreadcrumb, TPanelArea, TStatusBar
 ├── managers/         # FileManager, BuildManager, SessionManager, LayoutManager
-└── pages/            # TWelcomeWindow
+└── pages/            # TWelcomePage
 documents/            # ROADMAP.md, INTERNALS.md, USER_GUIDE.md, LANGUAGE.md
 ```
 
