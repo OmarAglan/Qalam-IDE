@@ -1,0 +1,36 @@
+#include "CommandRegistry.h"
+
+#include <QtTest/QtTest>
+#include <algorithm>
+
+class TestCommandRegistry : public QObject
+{
+    Q_OBJECT
+
+private slots:
+    void replacesCommandsById();
+    void exposesDefaultCommands();
+};
+
+void TestCommandRegistry::replacesCommandsById()
+{
+    CommandRegistry registry;
+    registry.registerCommand({"file.save", "Save", "old", "Ctrl+S"});
+    registry.registerCommand({"file.save", "حفظ", "new", "Ctrl+S"});
+
+    QCOMPARE(registry.commands().size(), 1);
+    QCOMPARE(registry.command("file.save").title, QString("حفظ"));
+    QVERIFY(registry.contains("file.save"));
+}
+
+void TestCommandRegistry::exposesDefaultCommands()
+{
+    const auto commands = CommandRegistry::defaultCommands();
+    QVERIFY(!commands.isEmpty());
+    QVERIFY(std::any_of(commands.begin(), commands.end(), [](const auto &command) {
+        return command.id == "quick.open";
+    }));
+}
+
+QTEST_MAIN(TestCommandRegistry)
+#include "TestCommandRegistry.moc"

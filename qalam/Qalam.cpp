@@ -29,14 +29,16 @@
 #include <QRegularExpression>
 #include <QKeyEvent>
 #include <QInputDialog>
-#include <QDialog>
-#include <QListWidget>
-#include <QLineEdit>
-#include <QLabel>
 #include <QSet>
 #include <QVector>
 #include <QTextBlock>
 #include "TSearchView.h"
+#include "CommandRegistry.h"
+#include "DiagnosticParser.h"
+#include "DiagnosticsModel.h"
+#include "WorkspaceIndexer.h"
+#include "BreakpointModel.h"
+#include "TCommandPalette.h"
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -56,6 +58,13 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     m_fileManager = new FileManager(tabWidget, this, this);
     m_buildManager = new BuildManager(this);
     m_sessionManager = new SessionManager(tabWidget, this);
+    m_commandRegistry = new CommandRegistry(this);
+    for (const auto &command : CommandRegistry::defaultCommands()) {
+        m_commandRegistry->registerCommand(command);
+    }
+    m_diagnosticsModel = new DiagnosticsModel(this);
+    m_workspaceIndexer = new WorkspaceIndexer(this);
+    m_breakpointModel = new BreakpointModel(this);
 
     searchBar = new SearchPanel(this);
     searchBar->hide();
@@ -204,20 +213,23 @@ void Qalam::connectSignals()
 
     connect(m_buildManager, &BuildManager::outputChunk, this, &Qalam::handleBuildOutput);
     connect(m_buildManager, &BuildManager::buildFinished, this, [this](int exitCode) {
-        if (exitCode != 0 and m_layoutManager and m_layoutManager->panelArea()
-            and m_layoutManager->panelArea()->problemCount() == 0) {
+        if (exitCode != 0 and m_diagnosticsModel and m_diagnosticsModel->count() == 0) {
             QString filePath;
             if (TEditor *editor = currentEditor()) {
                 filePath = editor->currentFilePath();
             }
-            m_layoutManager->panelArea()->addProblem("فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.",
-                                                      filePath, 1, 1, "error");
-            if (!filePath.isEmpty()) {
-                m_diagnostics.push_back({filePath, 1, 1, "error",
-                                         "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل."});
-                applyDiagnosticsToEditors();
-            }
+            QVector<Diagnostic> runnerDiagnostics;
+            runnerDiagnostics.push_back({filePath, 1, 1, "error",
+                                         "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.",
+                                         "runner"});
+            m_diagnosticsModel->addDiagnostics(runnerDiagnostics);
         }
+        updateProblemsStatusBar();
+    });
+
+    connect(m_diagnosticsModel, &DiagnosticsModel::diagnosticsChanged, this, [this]() {
+        rebuildProblemsPanel();
+        applyDiagnosticsToEditors();
         updateProblemsStatusBar();
     });
 
@@ -362,6 +374,9 @@ void Qalam::toggleConsole()
 void Qalam::loadFolder(const QString &path)
 {
     this->folderPath = path;
+    if (m_workspaceIndexer) {
+        m_workspaceIndexer->setRootPath(path);
+    }
     m_layoutManager->loadFolder(path);
 }
 
@@ -491,11 +506,13 @@ void Qalam::runBaa() {
     // Show the terminal tab because Baa programs may ask for input.
     auto *panelArea = m_layoutManager->panelArea();
     if (!panelArea) return;
-    m_seenDiagnostics.clear();
-    m_diagnostics.clear();
     panelArea->clearProblems();
-    applyDiagnosticsToEditors();
-    updateProblemsStatusBar();
+    if (m_diagnosticsModel) {
+        m_diagnosticsModel->clear();
+    } else {
+        applyDiagnosticsToEditors();
+        updateProblemsStatusBar();
+    }
     panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
     panelArea->setCollapsed(false);
@@ -739,29 +756,11 @@ void Qalam::performProjectSearch(const QString &query, bool caseSensitive, bool 
         return;
     }
 
-    const QStringList allowedExtensions = {"baa", "baahd", "txt"};
     int fileCount = 0;
     int matchCount = 0;
 
-    QDirIterator it(folderPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        const QString path = it.next();
-        const QFileInfo info(path);
-        const QString normalizedPath = QDir::fromNativeSeparators(path);
-        if (normalizedPath.contains("/.git/")
-            or normalizedPath.contains("/build/")
-            or normalizedPath.contains("/dist/")
-            or normalizedPath.contains("/node_modules/")
-            or normalizedPath.contains("/.cache/")) {
-            continue;
-        }
-        if (!allowedExtensions.contains(info.suffix().toLower())) {
-            continue;
-        }
-        if (info.size() > 5 * 1024 * 1024) {
-            continue;
-        }
-
+    const QStringList indexedFiles = collectProjectFiles();
+    for (const QString &path : indexedFiles) {
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
             continue;
@@ -833,32 +832,10 @@ void Qalam::openDebugPanel()
 
 QStringList Qalam::collectProjectFiles() const
 {
-    QStringList files;
-    if (folderPath.isEmpty() or !QDir(folderPath).exists()) {
-        return files;
+    if (m_workspaceIndexer) {
+        return m_workspaceIndexer->quickOpenFiles();
     }
-
-    const QStringList allowedExtensions = {"baa", "baahd", "txt", "md", "json", "cmake", "cpp", "h", "hpp"};
-    QDirIterator it(folderPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
-    while (it.hasNext()) {
-        const QString path = it.next();
-        const QString normalized = QDir::fromNativeSeparators(path);
-        if (normalized.contains("/.git/")
-            or normalized.contains("/build/")
-            or normalized.contains("/dist/")
-            or normalized.contains("/node_modules/")
-            or normalized.contains("/.cache/")) {
-            continue;
-        }
-
-        QFileInfo info(path);
-        if (info.size() > 5 * 1024 * 1024) continue;
-        if (!allowedExtensions.contains(info.suffix().toLower())) continue;
-        files << QDir::cleanPath(path);
-    }
-
-    files.sort(Qt::CaseInsensitive);
-    return files;
+    return {};
 }
 
 bool Qalam::runCommandById(const QString &commandId)
@@ -885,91 +862,23 @@ bool Qalam::runCommandById(const QString &commandId)
 
 void Qalam::showCommandPalette()
 {
-    struct CommandItem {
-        QString id;
-        QString title;
-        QString shortcut;
-    };
-
-    const QVector<CommandItem> commands = {
-        {"file.new", "ملف: ملف جديد", "Ctrl+N"},
-        {"file.open", "ملف: فتح ملف", "Ctrl+O"},
-        {"folder.open", "ملف: فتح مجلد", ""},
-        {"file.save", "ملف: حفظ", "Ctrl+S"},
-        {"file.saveAs", "ملف: حفظ باسم", "Ctrl+Shift+S"},
-        {"quick.open", "انتقال: فتح سريع للملفات", "Ctrl+P"},
-        {"go.line", "انتقال: الذهاب إلى سطر", "Ctrl+G"},
-        {"view.search", "عرض: البحث في الملفات", "Ctrl+Shift+F"},
-        {"view.sidebar", "عرض: إظهار/إخفاء الشريط الجانبي", "Ctrl+B"},
-        {"view.panel", "عرض: إظهار/إخفاء اللوحة السفلية", "Ctrl+J"},
-        {"view.problems", "عرض: المشاكل", "Ctrl+Shift+M"},
-        {"view.debug", "عرض: لوحة التصحيح", "Ctrl+Shift+D"},
-        {"code.definition", "الشفرة: الانتقال إلى التعريف", "F12"},
-        {"code.references", "الشفرة: البحث عن المراجع", "Shift+F12"},
-        {"run.baa", "تشغيل: تشغيل ملف باء", "F5"},
-        {"settings.open", "إعدادات: فتح الإعدادات", ""},
-        {"help.about", "مساعدة: عن قلم", ""},
-    };
-
-    QDialog dialog(this);
-    dialog.setWindowTitle("لوحة الأوامر");
-    dialog.setLayoutDirection(Qt::RightToLeft);
-    dialog.resize(620, 430);
-
-    auto *layout = new QVBoxLayout(&dialog);
-    layout->setContentsMargins(12, 12, 12, 12);
-    layout->setSpacing(8);
-
-    auto *input = new QLineEdit(&dialog);
-    input->setPlaceholderText("اكتب اسم الأمر...");
-    input->setClearButtonEnabled(true);
-    layout->addWidget(input);
-
-    auto *list = new QListWidget(&dialog);
-    list->setLayoutDirection(Qt::RightToLeft);
-    layout->addWidget(list, 1);
-
-    auto refill = [list, &commands](const QString &filterText) {
-        list->clear();
-        const QString filter = filterText.trimmed();
-        for (const auto &cmd : commands) {
-            const QString searchable = (cmd.title + " " + cmd.shortcut).toLower();
-            bool visible = filter.isEmpty();
-            if (!visible) {
-                visible = true;
-                for (const QString &part : filter.toLower().split(' ', Qt::SkipEmptyParts)) {
-                    if (!searchable.contains(part)) {
-                        visible = false;
-                        break;
-                    }
-                }
-            }
-            if (!visible) continue;
-
-            auto *item = new QListWidgetItem(cmd.shortcut.isEmpty()
-                                             ? cmd.title
-                                             : QString("%1\t%2").arg(cmd.title, cmd.shortcut));
-            item->setData(Qt::UserRole, cmd.id);
-            list->addItem(item);
+    QVector<TCommandPalette::Entry> entries;
+    if (m_commandRegistry) {
+        for (const CommandRegistry::Command &command : m_commandRegistry->commands()) {
+            entries.push_back({command.id, command.title, command.description, command.shortcut, QString()});
         }
-        if (list->count() > 0) {
-            list->setCurrentRow(0);
-        }
-    };
-
-    refill(QString());
-    connect(input, &QLineEdit::textChanged, &dialog, refill);
-    connect(input, &QLineEdit::returnPressed, &dialog, [&dialog, list]() {
-        if (list->currentItem()) dialog.accept();
-    });
-    connect(list, &QListWidget::itemActivated, &dialog, [&dialog](QListWidgetItem *) {
-        dialog.accept();
-    });
-
-    input->setFocus();
-    if (dialog.exec() == QDialog::Accepted and list->currentItem()) {
-        runCommandById(list->currentItem()->data(Qt::UserRole).toString());
     }
+
+    auto *palette = new TCommandPalette(this);
+    palette->setAttribute(Qt::WA_DeleteOnClose);
+    palette->setWindowTitle("لوحة الأوامر");
+    palette->setPlaceholderText("اكتب اسم الأمر...");
+    palette->setEmptyText("لا يوجد أمر مطابق");
+    palette->setEntries(entries);
+    connect(palette, &TCommandPalette::entryActivated, this, [this](const QString &id, const QString &) {
+        runCommandById(id);
+    });
+    palette->show();
 }
 
 void Qalam::showQuickOpen()
@@ -984,171 +893,60 @@ void Qalam::showQuickOpen()
         return;
     }
 
-    QDialog dialog(this);
-    dialog.setWindowTitle("فتح سريع");
-    dialog.setLayoutDirection(Qt::RightToLeft);
-    dialog.resize(640, 460);
-
-    auto *layout = new QVBoxLayout(&dialog);
-    layout->setContentsMargins(12, 12, 12, 12);
-    layout->setSpacing(8);
-
-    auto *input = new QLineEdit(&dialog);
-    input->setPlaceholderText("اكتب اسم الملف...");
-    input->setClearButtonEnabled(true);
-    layout->addWidget(input);
-
-    auto *list = new QListWidget(&dialog);
-    list->setLayoutDirection(Qt::RightToLeft);
-    layout->addWidget(list, 1);
-
-    auto refill = [this, list, files](const QString &filterText) {
-        list->clear();
-        const QString filter = filterText.trimmed().toLower();
-        int added = 0;
-        for (const QString &file : files) {
-            const QString relative = QDir(folderPath).relativeFilePath(file);
-            const QString searchable = relative.toLower();
-            bool visible = filter.isEmpty();
-            if (!visible) {
-                visible = true;
-                for (const QString &part : filter.split(' ', Qt::SkipEmptyParts)) {
-                    if (!searchable.contains(part)) {
-                        visible = false;
-                        break;
-                    }
-                }
-            }
-            if (!visible) continue;
-
-            auto *item = new QListWidgetItem(relative);
-            item->setData(Qt::UserRole, file);
-            item->setToolTip(file);
-            list->addItem(item);
-            if (++added >= 250) break;
-        }
-        if (list->count() > 0) {
-            list->setCurrentRow(0);
-        }
-    };
-
-    refill(QString());
-    connect(input, &QLineEdit::textChanged, &dialog, refill);
-    connect(input, &QLineEdit::returnPressed, &dialog, [&dialog, list]() {
-        if (list->currentItem()) dialog.accept();
-    });
-    connect(list, &QListWidget::itemActivated, &dialog, [&dialog](QListWidgetItem *) {
-        dialog.accept();
-    });
-
-    input->setFocus();
-    if (dialog.exec() == QDialog::Accepted and list->currentItem()) {
-        openFileFromUi(list->currentItem()->data(Qt::UserRole).toString());
+    QVector<TCommandPalette::Entry> entries;
+    entries.reserve(qMin(files.size(), 600));
+    for (const QString &file : files) {
+        const QString relative = QDir(folderPath).relativeFilePath(file);
+        entries.push_back({"file.open.path", relative, QFileInfo(file).absolutePath(), QString(), file});
+        if (entries.size() >= 600) break;
     }
+
+    auto *palette = new TCommandPalette(this);
+    palette->setAttribute(Qt::WA_DeleteOnClose);
+    palette->setWindowTitle("فتح سريع");
+    palette->setPlaceholderText("اكتب اسم الملف...");
+    palette->setEmptyText("لا يوجد ملف مطابق");
+    palette->setEntries(entries);
+    connect(palette, &TCommandPalette::entryActivated, this, [this](const QString &id, const QString &payload) {
+        if (id == "file.open.path" and !payload.isEmpty()) {
+            openFileFromUi(payload);
+        }
+    });
+    palette->show();
 }
 
 void Qalam::updateProblemsStatusBar()
 {
-    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
     auto *status = m_layoutManager ? m_layoutManager->statusBar() : nullptr;
-    if (!panel or !status) return;
-    status->setProblemsCount(panel->errorCount(), panel->warningCount());
+    if (!status || !m_diagnosticsModel) return;
+    status->setProblemsCount(m_diagnosticsModel->errorCount(), m_diagnosticsModel->warningCount());
+}
+
+void Qalam::rebuildProblemsPanel()
+{
+    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
+    if (!panel || !m_diagnosticsModel) return;
+
+    panel->clearProblems();
+    for (const Diagnostic &diagnostic : m_diagnosticsModel->diagnostics()) {
+        panel->addProblem(diagnostic.message, diagnostic.file,
+                          diagnostic.line, diagnostic.column,
+                          diagnostic.severity);
+    }
 }
 
 void Qalam::handleBuildOutput(const QString &text)
 {
-    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
-    if (!panel) return;
+    if (!m_diagnosticsModel) return;
 
     QString fallbackFile;
     if (TEditor *editor = currentEditor()) {
         fallbackFile = editor->currentFilePath();
     }
 
-    const QList<QRegularExpression> patterns = {
-        QRegularExpression(R"(([^:\n]+):(\d+):(\d+):\s*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
-                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption),
-        QRegularExpression(R"(([^:\n]+):(\d+):\s*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
-                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption),
-        QRegularExpression(R"((?:line|السطر)\s+(\d+)(?:[,،]\s*(?:column|العمود)\s+(\d+))?.*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
-                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption)
-    };
-
-    for (const QString &rawLine : text.split('\n')) {
-        const QString lineText = rawLine.trimmed();
-        if (lineText.isEmpty()) continue;
-
-        QString file = fallbackFile;
-        int line = 1;
-        int column = 1;
-        QString severity = "error";
-        QString message;
-        bool matched = false;
-
-        QRegularExpressionMatch match = patterns[0].match(lineText);
-        if (match.hasMatch()) {
-            file = match.captured(1).trimmed();
-            line = match.captured(2).toInt();
-            column = qMax(1, match.captured(3).toInt());
-            severity = match.captured(4).contains("warning", Qt::CaseInsensitive)
-                       or match.captured(4).contains("تحذير") ? "warning" : "error";
-            message = match.captured(5).trimmed();
-            matched = true;
-        }
-
-        if (!matched) {
-            match = patterns[1].match(lineText);
-            if (match.hasMatch()) {
-                file = match.captured(1).trimmed();
-                line = match.captured(2).toInt();
-                severity = match.captured(3).contains("warning", Qt::CaseInsensitive)
-                           or match.captured(3).contains("تحذير") ? "warning" : "error";
-                message = match.captured(4).trimmed();
-                matched = true;
-            }
-        }
-
-        if (!matched) {
-            match = patterns[2].match(lineText);
-            if (match.hasMatch()) {
-                line = match.captured(1).toInt();
-                column = qMax(1, match.captured(2).toInt());
-                severity = match.captured(3).contains("warning", Qt::CaseInsensitive)
-                           or match.captured(3).contains("تحذير") ? "warning" : "error";
-                message = match.captured(4).trimmed();
-                matched = true;
-            }
-        }
-
-        if (!matched) continue;
-        if (message.isEmpty()) message = lineText;
-
-        if (!file.isEmpty()) {
-            QFileInfo fileInfo(file);
-            if (fileInfo.isRelative()) {
-                if (!fallbackFile.isEmpty()) {
-                    file = QFileInfo(fallbackFile).absoluteDir().filePath(file);
-                } else if (!folderPath.isEmpty()) {
-                    file = QDir(folderPath).filePath(file);
-                }
-            }
-            file = QDir::cleanPath(file);
-        }
-
-        const QString key = QString("%1|%2|%3|%4|%5").arg(file).arg(line).arg(column).arg(severity, message);
-        if (m_seenDiagnostics.contains(key)) continue;
-        m_seenDiagnostics.insert(key);
-
-        const int normalizedLine = qMax(1, line);
-        const int normalizedColumn = qMax(1, column);
-        panel->addProblem(message, file, normalizedLine, normalizedColumn, severity);
-        m_diagnostics.push_back({file, normalizedLine, normalizedColumn, severity, message});
-    }
-
-    applyDiagnosticsToEditors();
-    updateProblemsStatusBar();
+    const QVector<Diagnostic> diagnostics = DiagnosticParser::parseCompilerOutput(text, fallbackFile, folderPath);
+    m_diagnosticsModel->addDiagnostics(diagnostics);
 }
-
 
 void Qalam::applyDiagnosticsToEditors()
 {
@@ -1157,12 +955,11 @@ void Qalam::applyDiagnosticsToEditors()
         if (!editor) continue;
 
         QVector<TEditor::Diagnostic> editorDiagnostics;
-        const QString editorPath = QDir::cleanPath(editor->currentFilePath());
-        for (const WorkbenchDiagnostic &diagnostic : m_diagnostics) {
-            if (diagnostic.file.isEmpty()) continue;
-            if (QDir::cleanPath(diagnostic.file) != editorPath) continue;
-            editorDiagnostics.push_back({diagnostic.file, diagnostic.line, diagnostic.column,
-                                         diagnostic.severity, diagnostic.message});
+        if (m_diagnosticsModel) {
+            for (const Diagnostic &diagnostic : m_diagnosticsModel->diagnosticsForFile(editor->currentFilePath())) {
+                editorDiagnostics.push_back({diagnostic.file, diagnostic.line, diagnostic.column,
+                                             diagnostic.severity, diagnostic.message});
+            }
         }
         editor->setDiagnostics(editorDiagnostics);
     }
@@ -1192,39 +989,17 @@ QString Qalam::symbolUnderCursor() const
 
 bool Qalam::findDefinitionLocation(const QString &symbol, QString *filePath, int *line, int *column) const
 {
-    if (symbol.trimmed().isEmpty()) return false;
+    if (symbol.trimmed().isEmpty() || !m_workspaceIndexer) return false;
 
-    QStringList files = collectProjectFiles();
-    if (files.isEmpty()) {
-        const TEditor *editor = const_cast<Qalam*>(this)->currentEditor();
-        if (editor && !editor->currentFilePath().isEmpty()) {
-            files << editor->currentFilePath();
-        }
+    WorkspaceIndexer::SymbolLocation location;
+    if (!m_workspaceIndexer->findDefinition(symbol, &location)) {
+        return false;
     }
 
-    const QString escaped = QRegularExpression::escape(symbol);
-    const QRegularExpression definitionPattern(
-        QStringLiteral(R"((?:^|\s)(?:دالة|صنف|ثابت|صحيح|عدد|نص|منطقي|حرف)\s+%1(?:\s|\(|=|\.|$))").arg(escaped),
-        QRegularExpression::UseUnicodePropertiesOption);
-
-    for (const QString &candidate : files) {
-        QFile file(candidate);
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
-        QTextStream stream(&file);
-        stream.setEncoding(QStringConverter::Utf8);
-        int currentLine = 0;
-        while (!stream.atEnd()) {
-            const QString text = stream.readLine();
-            ++currentLine;
-            const QRegularExpressionMatch match = definitionPattern.match(text);
-            if (!match.hasMatch()) continue;
-            if (filePath) *filePath = candidate;
-            if (line) *line = currentLine;
-            if (column) *column = qMax(1, text.indexOf(symbol) + 1);
-            return true;
-        }
-    }
-    return false;
+    if (filePath) *filePath = location.file;
+    if (line) *line = location.line;
+    if (column) *column = location.column;
+    return true;
 }
 
 void Qalam::goToDefinition()
@@ -1259,7 +1034,13 @@ void Qalam::findReferences()
 
     focusSearchInFiles();
     performProjectSearch(symbol, false, true, false);
-    if (m_layoutManager && m_layoutManager->statusBar()) {
+    if (m_workspaceIndexer) {
+        const auto references = m_workspaceIndexer->findReferences(symbol);
+        if (m_layoutManager && m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage(
+                QString("تم العثور على %1 مرجع/مراجع لـ: %2").arg(references.size()).arg(symbol));
+        }
+    } else if (m_layoutManager && m_layoutManager->statusBar()) {
         m_layoutManager->statusBar()->showMessage("تم البحث عن المراجع: " + symbol);
     }
 }

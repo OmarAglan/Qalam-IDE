@@ -173,6 +173,7 @@ void TCommandPalette::addVisibleEntry(const Entry &entry)
 {
     auto *item = new QListWidgetItem(m_list);
     item->setData(Qt::UserRole, entry.id);
+    item->setData(Qt::UserRole + 1, entry.payload);
     item->setSizeHint(QSize(0, 54));
     m_list->addItem(item);
 
@@ -217,9 +218,11 @@ void TCommandPalette::activateItem(QListWidgetItem *item)
 {
     if (!item) return;
     const QString id = item->data(Qt::UserRole).toString();
+    const QString payload = item->data(Qt::UserRole + 1).toString();
     if (id.isEmpty()) return;
 
     emit commandActivated(id);
+    emit entryActivated(id, payload);
     accept();
 }
 

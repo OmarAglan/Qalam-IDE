@@ -1,4 +1,19 @@
 add_library(qalam_core STATIC
+    # Core platform
+    core/CommandRegistry.cpp
+    core/CommandRegistry.h
+    # Language / IDE services
+    language/Diagnostic.h
+    language/DiagnosticParser.cpp
+    language/DiagnosticParser.h
+    language/DiagnosticsModel.cpp
+    language/DiagnosticsModel.h
+    # Workspace services
+    workspace/WorkspaceIndexer.cpp
+    workspace/WorkspaceIndexer.h
+    # Debug services
+    debug/BreakpointModel.cpp
+    debug/BreakpointModel.h
     # Text Editor
     texteditor/TEditor.cpp
     texteditor/TBracketHandler.cpp
@@ -48,6 +63,10 @@ target_include_directories(qalam_core PUBLIC
     texteditor
     texteditor/highlighter
     texteditor/autocomplete
+    core
+    language
+    workspace
+    debug
     components
     console
     menubar

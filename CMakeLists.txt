@@ -13,5 +13,15 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Core)
 
+option(QALAM_BUILD_TESTS "Build Qalam IDE tests" ON)
+if(QALAM_BUILD_TESTS)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    enable_testing()
+endif()
+
 add_subdirectory(source)
 add_subdirectory(qalam)
+
+if(QALAM_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

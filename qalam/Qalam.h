@@ -10,11 +10,14 @@
 #include "../ui/QalamWindow.h"
 
 #include "TActivityBar.h"
-#include <QSet>
 #include <QStringList>
 #include <QVector>
 
+class BreakpointModel;
+class CommandRegistry;
+class DiagnosticsModel;
 class TWelcomePage;
+class WorkspaceIndexer;
 
 class Qalam : public QalamWindow
 {
@@ -82,6 +85,7 @@ private:
     QStringList collectProjectFiles() const;
     bool runCommandById(const QString &commandId);
     void updateProblemsStatusBar();
+    void rebuildProblemsPanel();
     void applyDiagnosticsToEditors();
     QString symbolUnderCursor() const;
     bool findDefinitionLocation(const QString &symbol, QString *filePath, int *line, int *column) const;
@@ -96,18 +100,12 @@ private:
     BuildManager *m_buildManager{};
     SessionManager *m_sessionManager{};
     LayoutManager *m_layoutManager{};
+    CommandRegistry *m_commandRegistry{};
+    DiagnosticsModel *m_diagnosticsModel{};
+    WorkspaceIndexer *m_workspaceIndexer{};
+    BreakpointModel *m_breakpointModel{};
 
     SearchPanel *searchBar{};
     TWelcomePage *m_welcomePage{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
-    struct WorkbenchDiagnostic {
-        QString file;
-        int line = 1;
-        int column = 1;
-        QString severity;
-        QString message;
-    };
-
-    QVector<WorkbenchDiagnostic> m_diagnostics;
-    QSet<QString> m_seenDiagnostics;
 };

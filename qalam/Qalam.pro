@@ -8,6 +8,10 @@ TEMPLATE = app
 RESOURCES += resources.qrc
 
 INCLUDEPATH += . \
+    ../source/core \
+    ../source/language \
+    ../source/workspace \
+    ../source/debug \
     ../source/components \
     ../source/console \
     ../source/managers \
@@ -22,8 +26,14 @@ INCLUDEPATH += . \
 
 SOURCES += Qalam.cpp \
     main.cpp \
+    ../source/core/CommandRegistry.cpp \
+    ../source/language/DiagnosticParser.cpp \
+    ../source/language/DiagnosticsModel.cpp \
+    ../source/workspace/WorkspaceIndexer.cpp \
+    ../source/debug/BreakpointModel.cpp \
     ../source/components/TFlatButton.cpp \
     ../source/components/TSearchPanel.cpp \
+    ../source/components/TCommandPalette.cpp \
     ../source/console/ProcessWorker.cpp \
     ../source/console/TConsole.cpp \
     ../source/managers/BuildManager.cpp \
@@ -55,8 +65,15 @@ SOURCES += Qalam.cpp \
 
 HEADERS += Qalam.h \
     Constants.h \
+    ../source/core/CommandRegistry.h \
+    ../source/language/Diagnostic.h \
+    ../source/language/DiagnosticParser.h \
+    ../source/language/DiagnosticsModel.h \
+    ../source/workspace/WorkspaceIndexer.h \
+    ../source/debug/BreakpointModel.h \
     ../source/components/TFlatButton.h \
     ../source/components/TSearchPanel.h \
+    ../source/components/TCommandPalette.h \
     ../source/console/ProcessWorker.h \
     ../source/console/TConsole.h \
     ../source/managers/BuildManager.h \

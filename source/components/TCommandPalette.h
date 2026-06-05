@@ -24,6 +24,7 @@ public:
         QString title;
         QString subtitle;
         QString shortcut;
+        QString payload;
     };
 
     explicit TCommandPalette(QWidget *parent = nullptr);
@@ -35,6 +36,7 @@ public:
 
 signals:
     void commandActivated(const QString &id);
+    void entryActivated(const QString &id, const QString &payload);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
