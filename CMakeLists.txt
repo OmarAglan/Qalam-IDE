@@ -13,7 +13,7 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets Gui Core)
 
-option(QALAM_BUILD_TESTS "Build Qalam IDE tests" ON)
+option(QALAM_BUILD_TESTS "Build Qalam IDE tests" OFF)
 if(QALAM_BUILD_TESTS)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     enable_testing()

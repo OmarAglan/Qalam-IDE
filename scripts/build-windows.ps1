@@ -6,7 +6,9 @@ param(
 
     [string]$BuildDir = '',
 
-    [switch]$DeployAfterBuild
+    [switch]$DeployAfterBuild,
+
+    [switch]$BuildTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -14,6 +16,20 @@ Set-Location (Split-Path -Parent $PSScriptRoot)
 
 if (!$BuildDir) {
     $BuildDir = "build/windows-$($Configuration.ToLowerInvariant())"
+}
+
+function Invoke-Native {
+    param(
+        [string]$FilePath,
+        [string[]]$Arguments
+    )
+
+    & $FilePath @Arguments
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) { $exitCode = 0 }
+    if ($exitCode -ne 0) {
+        throw "$FilePath failed with exit code $exitCode."
+    }
 }
 
 function Resolve-QtRoot {
@@ -68,16 +84,27 @@ $Gxx = Join-Path $MingwBin 'g++.exe'
 $env:PATH = "$MingwBin;$QtRoot/bin;$env:PATH"
 
 $deployFlag = if ($DeployAfterBuild) { 'ON' } else { 'OFF' }
+$testsFlag = if ($BuildTests) { 'ON' } else { 'OFF' }
 
-cmake -S . -B $BuildDir -G 'MinGW Makefiles' `
-    -DCMAKE_PREFIX_PATH="$QtRoot" `
-    -DCMAKE_CXX_COMPILER="$Gxx" `
-    -DCMAKE_MAKE_PROGRAM="$MakeProgram" `
-    -DCMAKE_BUILD_TYPE=$Configuration `
-    -DCMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders=TRUE `
-    -DQALAM_DEPLOY_AFTER_BUILD=$deployFlag
+Invoke-Native -FilePath 'cmake' -Arguments @(
+    '-S', '.',
+    '-B', $BuildDir,
+    '-G', 'MinGW Makefiles',
+    "-DCMAKE_PREFIX_PATH=$QtRoot",
+    "-DCMAKE_CXX_COMPILER=$Gxx",
+    "-DCMAKE_MAKE_PROGRAM=$MakeProgram",
+    "-DCMAKE_BUILD_TYPE=$Configuration",
+    '-DCMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders=TRUE',
+    "-DQALAM_DEPLOY_AFTER_BUILD=$deployFlag",
+    "-DQALAM_BUILD_TESTS=$testsFlag"
+)
 
-cmake --build $BuildDir --parallel
+Invoke-Native -FilePath 'cmake' -Arguments @('--build', $BuildDir, '--target', 'Qalam', '--parallel')
+
+if ($BuildTests) {
+    Invoke-Native -FilePath 'cmake' -Arguments @('--build', $BuildDir, '--target', 'test_diagnostic_parser', 'test_workspace_indexer', 'test_command_registry', '--parallel')
+    Invoke-Native -FilePath 'ctest' -Arguments @('--test-dir', $BuildDir, '--output-on-failure')
+}
 
 Write-Host "Built Qalam successfully:" -ForegroundColor Green
 Write-Host "  $BuildDir/qalam/Qalam.exe"
