@@ -10,6 +10,8 @@
 #include "../ui/QalamWindow.h"
 
 #include "TActivityBar.h"
+#include <QSet>
+#include <QStringList>
 
 class TWelcomePage;
 
@@ -50,11 +52,12 @@ private slots:
     void hideFindBar();
 
     void goToLine();
-    void openCommandPalette();
-    void openQuickOpen();
-    void showProjectSearch();
-    void executeCommandPaletteAction(const QString &id);
-
+    void showCommandPalette();
+    void showQuickOpen();
+    void focusSearchInFiles();
+    void openProblemsPanel();
+    void handleBuildOutput(const QString &text);
+    
     // VSCode-like component slots
     void onActivityViewChanged(TActivityBar::ViewType view);
     void onSidebarFileSelected(const QString &filePath);
@@ -72,7 +75,9 @@ private:
     void goToLocation(const QString &filePath, int line, int column);
     void performProjectSearch(const QString &query, bool caseSensitive, bool wholeWord, bool regex);
     void closeEditorByPath(const QString &filePath);
-    void updateGitBranch(const QString &rootPath);
+    QStringList collectProjectFiles() const;
+    bool runCommandById(const QString &commandId);
+    void updateProblemsStatusBar();
 
 private:
     QTabWidget *tabWidget{};
@@ -88,4 +93,5 @@ private:
     SearchPanel *searchBar{};
     TWelcomePage *m_welcomePage{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
+    QSet<QString> m_seenDiagnostics;
 };

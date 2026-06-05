@@ -18,6 +18,7 @@
 #include <QSplitter>
 #include <QStatusBar>
 #include <QDir>
+#include <QTabBar>
 
 LayoutManager::LayoutManager(QMainWindow *window, QTabWidget *tabWidget,
                              SearchPanel *searchBar, QObject *parent)
@@ -40,30 +41,35 @@ void LayoutManager::setupLayout()
     m_breadcrumb  = new TBreadcrumb(m_window);
     m_panelArea   = new TPanelArea(m_window);
 
-    // Keep the workbench chrome in VS Code's familiar LTR structure
-    // (Activity Bar + Primary Side Bar on the left), while individual
-    // Arabic controls/editors can still use RTL text alignment internally.
-    m_tabWidget->setLayoutDirection(Qt::LeftToRight);
+    // RTL-first workbench: Qalam targets Arabic-speaking developers, so the
+    // Primary Side Bar and Activity Bar live on the right side. The editor text
+    // and search UI remain RTL-aware, while the file paths/breadcrumbs can still
+    // render naturally when they contain Latin segments.
+    m_tabWidget->setLayoutDirection(Qt::RightToLeft);
+    if (m_tabWidget->tabBar()) {
+        m_tabWidget->tabBar()->setLayoutDirection(Qt::RightToLeft);
+        m_tabWidget->tabBar()->setUsesScrollButtons(true);
+    }
     m_searchBar->setLayoutDirection(Qt::RightToLeft);
 
     // =========================================================
-    // Build the main layout - VS Code-like workbench
-    // Activity Bar (far left), Primary Side Bar, Editor, Panel, Status Bar.
+    // Build the main layout - VS Code-like workbench, mirrored for RTL.
+    // Editor/Panel region -> Primary Side Bar -> Activity Bar (far right).
     // =========================================================
 
     QWidget *centralContainer = new QWidget(m_window);
+    // Keep the workbench shell itself LTR so Qt does not mirror our explicit
+    // geometry order. Individual Arabic-facing widgets below still opt into RTL.
+    // This fixes the broken state where the Activity Bar jumped to the far left
+    // while the Primary Side Bar stayed on the right.
     centralContainer->setLayoutDirection(Qt::LeftToRight);
 
     QVBoxLayout *mainVLayout = new QVBoxLayout(centralContainer);
     mainVLayout->setContentsMargins(0, 0, 0, 0);
     mainVLayout->setSpacing(0);
 
-    // Create horizontal layout for Activity Bar + resizable workbench area.
-    QHBoxLayout *contentLayout = new QHBoxLayout();
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(0);
-
     QSplitter *workbenchSplitter = new QSplitter(Qt::Horizontal);
+    workbenchSplitter->setLayoutDirection(Qt::LeftToRight);
     workbenchSplitter->setHandleWidth(1);
     workbenchSplitter->setChildrenCollapsible(false);
 
@@ -89,19 +95,26 @@ void LayoutManager::setupLayout()
     editorPanelSplitter->addWidget(m_panelArea);
     editorPanelSplitter->setSizes({700, 200});
 
-    // Add widgets in the same visual order VS Code uses by default:
-    // Activity Bar -> Primary Side Bar -> Editor/Panel region.
-    workbenchSplitter->addWidget(m_sidebar);
+    // Explicit visual order for the RTL-first workbench:
+    // [Editor + Panel] [Primary Side Bar] [Activity Bar]
+    // The Activity Bar is now in the same splitter as the side bar, which makes
+    // the right edge deterministic even when the global app direction is RTL.
+    m_activityBar->setLayoutDirection(Qt::LeftToRight);
     workbenchSplitter->addWidget(editorPanelSplitter);
-    workbenchSplitter->setStretchFactor(0, 0);
-    workbenchSplitter->setStretchFactor(1, 1);
-    workbenchSplitter->setSizes({Constants::Layout::SidebarDefaultWidth, 1000});
+    workbenchSplitter->addWidget(m_sidebar);
+    workbenchSplitter->addWidget(m_activityBar);
+    workbenchSplitter->setCollapsible(0, false);
+    workbenchSplitter->setCollapsible(1, false);
+    workbenchSplitter->setCollapsible(2, false);
+    workbenchSplitter->setStretchFactor(0, 1);
+    workbenchSplitter->setStretchFactor(1, 0);
+    workbenchSplitter->setStretchFactor(2, 0);
+    workbenchSplitter->setSizes({1000,
+                                 Constants::Layout::SidebarDefaultWidth,
+                                 Constants::Layout::ActivityBarWidth});
 
-    contentLayout->addWidget(m_activityBar);
-    contentLayout->addWidget(workbenchSplitter, 1);
-
-    // Add content layout to main vertical layout
-    mainVLayout->addLayout(contentLayout, 1);
+    // Add workbench to main vertical layout.
+    mainVLayout->addWidget(workbenchSplitter, 1);
 
     // Add status bar at bottom
     mainVLayout->addWidget(m_statusBar);

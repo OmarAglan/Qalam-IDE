@@ -11,8 +11,8 @@
  * Blue background (#007acc) with clickable status items.
  * RTL layout with items flowing right-to-left.
  * 
- * Left side (in LTR, right in RTL): Line/Column, Indentation, Encoding, Language
- * Right side (in LTR, left in RTL): Problems count, Branch name
+ * Right side: Problems count and Git branch.
+ * Left side: Line/Column, Indentation, Encoding, Line Ending, Language.
  */
 class TStatusBar : public QWidget
 {
@@ -65,11 +65,11 @@ private:
 
     QHBoxLayout* m_layout{nullptr};
     
-    // Right side items (in RTL layout, these appear on the right)
+    // Primary/workspace items (appear on the right in RTL)
     QPushButton* m_problemsBtn{nullptr};
     QPushButton* m_branchBtn{nullptr};
     
-    // Left side items (in RTL layout, these appear on the left)
+    // Context editor items (appear on the left in RTL)
     QPushButton* m_cursorPosBtn{nullptr};
     QPushButton* m_indentationBtn{nullptr};
     QPushButton* m_encodingBtn{nullptr};

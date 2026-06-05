@@ -21,13 +21,16 @@ public:
     QAction* saveAsAction;
     QAction* SettingsAction;
     QAction* exitAction;
-    QAction* commandPaletteAction;
-    QAction* quickOpenAction;
-    QAction* searchInFilesAction;
-    QAction* toggleSidebarAction;
-    QAction* toggleTerminalAction;
     QAction* runAction;
     QAction* aboutAction;
+    QAction* commandPaletteAction;
+    QAction* quickOpenAction;
+    QAction* findAction;
+    QAction* findInFilesAction;
+    QAction* goToLineAction;
+    QAction* toggleSidebarAction;
+    QAction* togglePanelAction;
+    QAction* problemsAction;
 
 signals:
     void newRequested();
@@ -38,12 +41,15 @@ signals:
     void settingsRequest();
     void exitRequested();
     void runRequested();
+    void aboutRequested();
     void commandPaletteRequested();
     void quickOpenRequested();
-    void searchInFilesRequested();
+    void findRequested();
+    void findInFilesRequested();
+    void goToLineRequested();
     void toggleSidebarRequested();
-    void toggleTerminalRequested();
-    void aboutRequested();
+    void togglePanelRequested();
+    void problemsRequested();
 
 private slots:
 
@@ -55,10 +61,13 @@ private slots:
     void onSettingsAction();
     void onExitApp();
     void onRunAction();
+    void onAboutAction();
     void onCommandPaletteAction();
     void onQuickOpenAction();
-    void onSearchInFilesAction();
+    void onFindAction();
+    void onFindInFilesAction();
+    void onGoToLineAction();
     void onToggleSidebarAction();
-    void onToggleTerminalAction();
-    void onAboutAction();
+    void onTogglePanelAction();
+    void onProblemsAction();
 };

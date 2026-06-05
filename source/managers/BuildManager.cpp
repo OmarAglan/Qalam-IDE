@@ -136,10 +136,14 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
 
     connect(m_buildThread, &QThread::started, m_worker, &ProcessWorker::start);
 
-    connect(m_worker, &ProcessWorker::outputReady,
-            console, &TConsole::appendPlainTextThreadSafe);
-    connect(m_worker, &ProcessWorker::errorReady,
-            console, &TConsole::appendPlainTextThreadSafe);
+    connect(m_worker, &ProcessWorker::outputReady, this, [this, console](const QString &text) {
+        console->appendPlainTextThreadSafe(text);
+        emit outputChunk(text);
+    });
+    connect(m_worker, &ProcessWorker::errorReady, this, [this, console](const QString &text) {
+        console->appendPlainTextThreadSafe(text);
+        emit outputChunk(text);
+    });
 
     QThread *thread = m_buildThread.data();
     ProcessWorker *worker = m_worker.data();

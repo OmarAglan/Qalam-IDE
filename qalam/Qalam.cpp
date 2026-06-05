@@ -11,7 +11,6 @@
 #include "TPanelArea.h"
 #include "TBreadcrumb.h"
 #include "TExplorerView.h"
-#include "TCommandPalette.h"
 
 #include <QVBoxLayout>
 #include <QMessageBox>
@@ -30,63 +29,13 @@
 #include <QRegularExpression>
 #include <QKeyEvent>
 #include <QInputDialog>
+#include <QDialog>
+#include <QListWidget>
+#include <QLineEdit>
+#include <QLabel>
+#include <QSet>
 #include <QVector>
 #include "TSearchView.h"
-
-namespace {
-QString commandSubtitle(const QString &shortcut, const QString &description)
-{
-    return shortcut.isEmpty() ? description : QString("%1 — %2").arg(shortcut, description);
-}
-
-bool shouldSkipQuickOpenPath(const QString &path)
-{
-    const QString normalized = QDir::fromNativeSeparators(path);
-    return normalized.contains("/.git/")
-        || normalized.contains("/build/")
-        || normalized.contains("/dist/")
-        || normalized.contains("/node_modules/")
-        || normalized.contains("/.cache/")
-        || normalized.contains("/.vs/");
-}
-
-QVector<TCommandPalette::Entry> collectQuickOpenEntries(const QString &rootPath)
-{
-    QVector<TCommandPalette::Entry> entries;
-    if (rootPath.isEmpty() || !QDir(rootPath).exists()) {
-        return entries;
-    }
-
-    const QStringList allowedExtensions = {"baa", "baahd", "txt", "md", "json", "h", "hpp", "cpp", "cmake"};
-    QDir root(rootPath);
-    QDirIterator it(rootPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
-
-    while (it.hasNext() && entries.size() < 600) {
-        const QString path = it.next();
-        if (shouldSkipQuickOpenPath(path)) {
-            continue;
-        }
-
-        const QFileInfo info(path);
-        const QString suffix = info.suffix().toLower();
-        const bool cmakeFile = info.fileName().compare("CMakeLists.txt", Qt::CaseInsensitive) == 0;
-        if (!cmakeFile && !allowedExtensions.contains(suffix)) {
-            continue;
-        }
-
-        const QString relativePath = QDir::toNativeSeparators(root.relativeFilePath(path));
-        entries.push_back({
-            QStringLiteral("open-file:%1").arg(path),
-            relativePath,
-            info.absolutePath(),
-            QString()
-        });
-    }
-
-    return entries;
-}
-}
-
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -142,7 +91,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     connectSignals();
     onCurrentTabChanged();
     syncOpenEditors();
-
+    
     // ===================================================================
     // الخطوة 6: تحميل الملف المبدئي أو استعادة الجلسة السابقة
     // ===================================================================
@@ -205,27 +154,9 @@ Qalam::~Qalam() {
 void Qalam::connectSignals()
 {
     // --- Keyboard shortcuts ---
-    auto *findShortcut = new QShortcut(QKeySequence::Find, this);
-    connect(findShortcut, &QShortcut::activated, this, &Qalam::showFindBar);
-
-
-    auto *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
-    connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
-
-    auto *commandPaletteShortcut = new QShortcut(QKeySequence("Ctrl+Shift+P"), this);
-    connect(commandPaletteShortcut, &QShortcut::activated, this, &Qalam::openCommandPalette);
-
-    auto *quickOpenShortcut = new QShortcut(QKeySequence("Ctrl+P"), this);
-    connect(quickOpenShortcut, &QShortcut::activated, this, &Qalam::openQuickOpen);
-
-    auto *searchFilesShortcut = new QShortcut(QKeySequence("Ctrl+Shift+F"), this);
-    connect(searchFilesShortcut, &QShortcut::activated, this, &Qalam::showProjectSearch);
-
-    auto *toggleSidebarShortcut = new QShortcut(QKeySequence("Ctrl+B"), this);
-    connect(toggleSidebarShortcut, &QShortcut::activated, this, &Qalam::toggleSidebar);
-
-    auto *togglePanelShortcut = new QShortcut(QKeySequence("Ctrl+J"), this);
-    connect(togglePanelShortcut, &QShortcut::activated, this, &Qalam::toggleConsole);
+    // Global workbench shortcuts are owned by TMenuBar QActions so they show
+    // in the menus and avoid duplicate Qt shortcut ambiguity. Editor-only
+    // shortcuts stay here.
 
     auto *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
     connect(commentShortcut, &QShortcut::activated, this, [this](){
@@ -255,15 +186,31 @@ void Qalam::connectSignals()
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
     connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
-    connect(menuBar, &TMenuBar::commandPaletteRequested, this, &Qalam::openCommandPalette);
-    connect(menuBar, &TMenuBar::quickOpenRequested, this, &Qalam::openQuickOpen);
-    connect(menuBar, &TMenuBar::searchInFilesRequested, this, &Qalam::showProjectSearch);
-    connect(menuBar, &TMenuBar::toggleSidebarRequested, this, &Qalam::toggleSidebar);
-    connect(menuBar, &TMenuBar::toggleTerminalRequested, this, &Qalam::toggleConsole);
     connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
     connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+    connect(menuBar, &TMenuBar::commandPaletteRequested, this, &Qalam::showCommandPalette);
+    connect(menuBar, &TMenuBar::quickOpenRequested, this, &Qalam::showQuickOpen);
+    connect(menuBar, &TMenuBar::findRequested, this, &Qalam::showFindBar);
+    connect(menuBar, &TMenuBar::findInFilesRequested, this, &Qalam::focusSearchInFiles);
+    connect(menuBar, &TMenuBar::goToLineRequested, this, &Qalam::goToLine);
+    connect(menuBar, &TMenuBar::toggleSidebarRequested, this, &Qalam::toggleSidebar);
+    connect(menuBar, &TMenuBar::togglePanelRequested, this, &Qalam::toggleConsole);
+    connect(menuBar, &TMenuBar::problemsRequested, this, &Qalam::openProblemsPanel);
+    connect(this, &QalamWindow::commandCenterClicked, this, &Qalam::showCommandPalette);
 
-    connect(this, &QalamWindow::commandCenterRequested, this, &Qalam::openCommandPalette);
+    connect(m_buildManager, &BuildManager::outputChunk, this, &Qalam::handleBuildOutput);
+    connect(m_buildManager, &BuildManager::buildFinished, this, [this](int exitCode) {
+        if (exitCode != 0 and m_layoutManager and m_layoutManager->panelArea()
+            and m_layoutManager->panelArea()->problemCount() == 0) {
+            QString filePath;
+            if (TEditor *editor = currentEditor()) {
+                filePath = editor->currentFilePath();
+            }
+            m_layoutManager->panelArea()->addProblem("فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.",
+                                                      filePath, 1, 1, "error");
+        }
+        updateProblemsStatusBar();
+    });
 
     // --- Tab widget signals ---
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
@@ -328,6 +275,8 @@ void Qalam::connectSignals()
         m_layoutManager->panelArea()->setCurrentTab(TPanelArea::Tab::Problems);
         m_layoutManager->panelArea()->show();
     });
+
+    connect(panelArea, &TPanelArea::problemClicked, this, &Qalam::goToLocation);
 
     connect(panelArea, &TPanelArea::closeRequested, this, [this]() {
         m_layoutManager->panelArea()->hide();
@@ -405,7 +354,6 @@ void Qalam::loadFolder(const QString &path)
 {
     this->folderPath = path;
     m_layoutManager->loadFolder(path);
-    updateGitBranch(path);
 }
 
 void Qalam::handleOpenFolderMenu()
@@ -429,7 +377,7 @@ void Qalam::toggleSidebar()
 
 void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
-
+ 
     connect(setting, &TSettings::fontSizeChanged, this, [this](int size){
         for (int i = 0; i < tabWidget->count(); ++i) {
             TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
@@ -449,7 +397,7 @@ void Qalam::openSettings() {
             if (editor) editor->updateHighlighterTheme(theme);
         }
     }, Qt::UniqueConnection);
-
+ 
     setting->show();
 }
 
@@ -464,11 +412,6 @@ void Qalam::onCurrentTabChanged()
     updateCursorPosition();
 
     TEditor* editor = currentEditor();
-
-    if (m_layoutManager && m_layoutManager->breadcrumb()) {
-        const bool showBreadcrumb = editor && !editor->currentFilePath().isEmpty();
-        m_layoutManager->breadcrumb()->setVisible(showBreadcrumb);
-    }
 
     // Disconnect the previous editor to avoid accumulating connections.
     // Also clear the raw pointer so closing the last editor does not leave a dangling reference.
@@ -488,8 +431,14 @@ void Qalam::onCurrentTabChanged()
 
         // Keep search panel pointing at the active editor
         searchBar->setEditor(editor);
+        if (m_layoutManager->breadcrumb()) {
+            m_layoutManager->breadcrumb()->setVisible(!editor->currentFilePath().isEmpty());
+        }
     } else {
         searchBar->setEditor(nullptr);
+        if (m_layoutManager->breadcrumb()) {
+            m_layoutManager->breadcrumb()->hide();
+        }
     }
 }
 
@@ -505,7 +454,7 @@ void Qalam::updateCursorPosition()
         if (m_layoutManager->statusBar()) {
             m_layoutManager->statusBar()->setCursorPosition(line, column);
         }
-
+        
         // Update breadcrumb with current file
         if (m_layoutManager->breadcrumb()) {
             QString filePath = editor->currentFilePath();
@@ -532,6 +481,9 @@ void Qalam::runBaa() {
     // Show the terminal tab because Baa programs may ask for input.
     auto *panelArea = m_layoutManager->panelArea();
     if (!panelArea) return;
+    m_seenDiagnostics.clear();
+    panelArea->clearProblems();
+    updateProblemsStatusBar();
     panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
     panelArea->setCollapsed(false);
@@ -832,120 +784,336 @@ void Qalam::performProjectSearch(const QString &query, bool caseSensitive, bool 
 }
 
 
-void Qalam::openCommandPalette()
+void Qalam::focusSearchInFiles()
 {
-    QVector<TCommandPalette::Entry> entries = {
-        {"new-file", "ملف جديد", commandSubtitle("Ctrl+N", "إنشاء ملف باء جديد"), "Ctrl+N"},
-        {"open-file-dialog", "فتح ملف...", commandSubtitle("Ctrl+O", "اختيار ملف من الجهاز"), "Ctrl+O"},
-        {"open-folder-dialog", "فتح مجلد...", commandSubtitle("Ctrl+K Ctrl+O", "فتح مشروع أو مجلد عمل"), "Ctrl+K Ctrl+O"},
-        {"quick-open", "فتح سريع للملفات", commandSubtitle("Ctrl+P", "البحث داخل ملفات المجلد الحالي"), "Ctrl+P"},
-        {"save-file", "حفظ", commandSubtitle("Ctrl+S", "حفظ الملف الحالي"), "Ctrl+S"},
-        {"save-file-as", "حفظ باسم...", commandSubtitle("Ctrl+Shift+S", "حفظ نسخة باسم جديد"), "Ctrl+Shift+S"},
-        {"search-files", "بحث في الملفات", commandSubtitle("Ctrl+Shift+F", "فتح بحث المشروع في الشريط الجانبي"), "Ctrl+Shift+F"},
-        {"go-to-line", "الذهاب إلى سطر", commandSubtitle("Ctrl+G", "القفز إلى رقم سطر"), "Ctrl+G"},
-        {"toggle-sidebar", "إظهار/إخفاء الشريط الجانبي", commandSubtitle("Ctrl+B", "تبديل الشريط الجانبي مثل VS Code"), "Ctrl+B"},
-        {"toggle-terminal", "إظهار/إخفاء الطرفية", commandSubtitle("Ctrl+J", "فتح أو إغلاق اللوحة السفلية"), "Ctrl+J"},
-        {"run-baa", "تشغيل ملف باء", commandSubtitle("F5", "حفظ وتشغيل الملف الحالي"), "F5"},
-        {"settings", "الإعدادات", "تخصيص الخط والثيم ومسار المترجم", QString()},
-        {"welcome", "صفحة الترحيب", "فتح صفحة البداية والملفات الأخيرة", QString()},
-        {"about", "عن محرر قلم", "معلومات الإصدار والمشروع", QString()}
-    };
-
-    auto *palette = new TCommandPalette(this);
-    palette->setAttribute(Qt::WA_DeleteOnClose);
-    palette->setPlaceholderText("اكتب أمراً لتشغيله...");
-    palette->setEntries(entries);
-    connect(palette, &TCommandPalette::commandActivated,
-            this, &Qalam::executeCommandPaletteAction);
-    palette->show();
-}
-
-void Qalam::openQuickOpen()
-{
-    if (folderPath.isEmpty()) {
-        if (m_layoutManager && m_layoutManager->statusBar()) {
-            m_layoutManager->statusBar()->showMessage("افتح مجلداً أولاً لاستخدام الفتح السريع");
-        }
-        handleOpenFolderMenu();
-        return;
-    }
-
-    QVector<TCommandPalette::Entry> entries = collectQuickOpenEntries(folderPath);
-    if (entries.isEmpty()) {
-        if (m_layoutManager && m_layoutManager->statusBar()) {
-            m_layoutManager->statusBar()->showMessage("لا توجد ملفات قابلة للفتح في هذا المجلد");
-        }
-        return;
-    }
-
-    auto *palette = new TCommandPalette(this);
-    palette->setAttribute(Qt::WA_DeleteOnClose);
-    palette->setPlaceholderText("اكتب اسم ملف للفتح السريع...");
-    palette->setEmptyText("لا يوجد ملف مطابق");
-    palette->setEntries(entries);
-    connect(palette, &TCommandPalette::commandActivated,
-            this, &Qalam::executeCommandPaletteAction);
-    palette->show();
-}
-
-void Qalam::showProjectSearch()
-{
-    if (!m_layoutManager || !m_layoutManager->sidebar()) return;
+    if (!m_layoutManager or !m_layoutManager->sidebar()) return;
 
     m_layoutManager->sidebar()->show();
     m_layoutManager->sidebar()->setCurrentView(TActivityBar::ViewType::Search);
     if (m_layoutManager->activityBar()) {
         m_layoutManager->activityBar()->setCurrentView(TActivityBar::ViewType::Search);
     }
-
-    if (folderPath.isEmpty() && m_layoutManager->statusBar()) {
-        m_layoutManager->statusBar()->showMessage("افتح مجلداً ليعمل البحث داخل الملفات");
+    if (m_layoutManager->sidebar()->searchView()) {
+        m_layoutManager->sidebar()->searchView()->focusSearchInput();
     }
 }
 
-void Qalam::executeCommandPaletteAction(const QString &id)
+void Qalam::openProblemsPanel()
 {
-    if (id.startsWith("open-file:")) {
-        openFileFromUi(id.mid(QStringLiteral("open-file:").size()));
+    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
+    if (!panel) return;
+
+    panel->setCurrentTab(TPanelArea::Tab::Problems);
+    panel->show();
+    panel->setCollapsed(false);
+}
+
+QStringList Qalam::collectProjectFiles() const
+{
+    QStringList files;
+    if (folderPath.isEmpty() or !QDir(folderPath).exists()) {
+        return files;
+    }
+
+    const QStringList allowedExtensions = {"baa", "baahd", "txt", "md", "json", "cmake", "cpp", "h", "hpp"};
+    QDirIterator it(folderPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        const QString path = it.next();
+        const QString normalized = QDir::fromNativeSeparators(path);
+        if (normalized.contains("/.git/")
+            or normalized.contains("/build/")
+            or normalized.contains("/dist/")
+            or normalized.contains("/node_modules/")
+            or normalized.contains("/.cache/")) {
+            continue;
+        }
+
+        QFileInfo info(path);
+        if (info.size() > 5 * 1024 * 1024) continue;
+        if (!allowedExtensions.contains(info.suffix().toLower())) continue;
+        files << QDir::cleanPath(path);
+    }
+
+    files.sort(Qt::CaseInsensitive);
+    return files;
+}
+
+bool Qalam::runCommandById(const QString &commandId)
+{
+    if (commandId == "file.new") { newFileFromUi(); return true; }
+    if (commandId == "file.open") { openFileFromUi(QString()); return true; }
+    if (commandId == "folder.open") { handleOpenFolderMenu(); return true; }
+    if (commandId == "file.save") { m_fileManager->saveFile(); return true; }
+    if (commandId == "file.saveAs") { m_fileManager->saveFileAs(); return true; }
+    if (commandId == "view.search") { focusSearchInFiles(); return true; }
+    if (commandId == "view.sidebar") { toggleSidebar(); return true; }
+    if (commandId == "view.panel") { toggleConsole(); return true; }
+    if (commandId == "view.problems") { openProblemsPanel(); return true; }
+    if (commandId == "run.baa") { runBaa(); return true; }
+    if (commandId == "quick.open") { showQuickOpen(); return true; }
+    if (commandId == "go.line") { goToLine(); return true; }
+    if (commandId == "settings.open") { openSettings(); return true; }
+    if (commandId == "help.about") { aboutQalam(); return true; }
+    return false;
+}
+
+void Qalam::showCommandPalette()
+{
+    struct CommandItem {
+        QString id;
+        QString title;
+        QString shortcut;
+    };
+
+    const QVector<CommandItem> commands = {
+        {"file.new", "ملف: ملف جديد", "Ctrl+N"},
+        {"file.open", "ملف: فتح ملف", "Ctrl+O"},
+        {"folder.open", "ملف: فتح مجلد", ""},
+        {"file.save", "ملف: حفظ", "Ctrl+S"},
+        {"file.saveAs", "ملف: حفظ باسم", "Ctrl+Shift+S"},
+        {"quick.open", "انتقال: فتح سريع للملفات", "Ctrl+P"},
+        {"go.line", "انتقال: الذهاب إلى سطر", "Ctrl+G"},
+        {"view.search", "عرض: البحث في الملفات", "Ctrl+Shift+F"},
+        {"view.sidebar", "عرض: إظهار/إخفاء الشريط الجانبي", "Ctrl+B"},
+        {"view.panel", "عرض: إظهار/إخفاء اللوحة السفلية", "Ctrl+J"},
+        {"view.problems", "عرض: المشاكل", "Ctrl+Shift+M"},
+        {"run.baa", "تشغيل: تشغيل ملف باء", "F5"},
+        {"settings.open", "إعدادات: فتح الإعدادات", ""},
+        {"help.about", "مساعدة: عن قلم", ""},
+    };
+
+    QDialog dialog(this);
+    dialog.setWindowTitle("لوحة الأوامر");
+    dialog.setLayoutDirection(Qt::RightToLeft);
+    dialog.resize(620, 430);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
+
+    auto *input = new QLineEdit(&dialog);
+    input->setPlaceholderText("اكتب اسم الأمر...");
+    input->setClearButtonEnabled(true);
+    layout->addWidget(input);
+
+    auto *list = new QListWidget(&dialog);
+    list->setLayoutDirection(Qt::RightToLeft);
+    layout->addWidget(list, 1);
+
+    auto refill = [list, &commands](const QString &filterText) {
+        list->clear();
+        const QString filter = filterText.trimmed();
+        for (const auto &cmd : commands) {
+            const QString searchable = (cmd.title + " " + cmd.shortcut).toLower();
+            bool visible = filter.isEmpty();
+            if (!visible) {
+                visible = true;
+                for (const QString &part : filter.toLower().split(' ', Qt::SkipEmptyParts)) {
+                    if (!searchable.contains(part)) {
+                        visible = false;
+                        break;
+                    }
+                }
+            }
+            if (!visible) continue;
+
+            auto *item = new QListWidgetItem(cmd.shortcut.isEmpty()
+                                             ? cmd.title
+                                             : QString("%1\t%2").arg(cmd.title, cmd.shortcut));
+            item->setData(Qt::UserRole, cmd.id);
+            list->addItem(item);
+        }
+        if (list->count() > 0) {
+            list->setCurrentRow(0);
+        }
+    };
+
+    refill(QString());
+    connect(input, &QLineEdit::textChanged, &dialog, refill);
+    connect(input, &QLineEdit::returnPressed, &dialog, [&dialog, list]() {
+        if (list->currentItem()) dialog.accept();
+    });
+    connect(list, &QListWidget::itemActivated, &dialog, [&dialog](QListWidgetItem *) {
+        dialog.accept();
+    });
+
+    input->setFocus();
+    if (dialog.exec() == QDialog::Accepted and list->currentItem()) {
+        runCommandById(list->currentItem()->data(Qt::UserRole).toString());
+    }
+}
+
+void Qalam::showQuickOpen()
+{
+    const QStringList files = collectProjectFiles();
+    if (files.isEmpty()) {
+        if (folderPath.isEmpty()) {
+            QMessageBox::information(this, "فتح سريع", "افتح مجلدًا أولًا لاستخدام الفتح السريع.");
+        } else {
+            QMessageBox::information(this, "فتح سريع", "لا توجد ملفات مناسبة داخل المجلد الحالي.");
+        }
         return;
     }
 
-    if (id == "new-file") newFileFromUi();
-    else if (id == "open-file-dialog") openFileFromUi(QString());
-    else if (id == "open-folder-dialog") handleOpenFolderMenu();
-    else if (id == "quick-open") openQuickOpen();
-    else if (id == "save-file") m_fileManager->saveFile();
-    else if (id == "save-file-as") m_fileManager->saveFileAs();
-    else if (id == "search-files") showProjectSearch();
-    else if (id == "go-to-line") goToLine();
-    else if (id == "toggle-sidebar") toggleSidebar();
-    else if (id == "toggle-terminal") toggleConsole();
-    else if (id == "run-baa") runBaa();
-    else if (id == "settings") openSettings();
-    else if (id == "welcome") showWelcomeTab();
-    else if (id == "about") aboutQalam();
+    QDialog dialog(this);
+    dialog.setWindowTitle("فتح سريع");
+    dialog.setLayoutDirection(Qt::RightToLeft);
+    dialog.resize(640, 460);
+
+    auto *layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
+
+    auto *input = new QLineEdit(&dialog);
+    input->setPlaceholderText("اكتب اسم الملف...");
+    input->setClearButtonEnabled(true);
+    layout->addWidget(input);
+
+    auto *list = new QListWidget(&dialog);
+    list->setLayoutDirection(Qt::RightToLeft);
+    layout->addWidget(list, 1);
+
+    auto refill = [this, list, files](const QString &filterText) {
+        list->clear();
+        const QString filter = filterText.trimmed().toLower();
+        int added = 0;
+        for (const QString &file : files) {
+            const QString relative = QDir(folderPath).relativeFilePath(file);
+            const QString searchable = relative.toLower();
+            bool visible = filter.isEmpty();
+            if (!visible) {
+                visible = true;
+                for (const QString &part : filter.split(' ', Qt::SkipEmptyParts)) {
+                    if (!searchable.contains(part)) {
+                        visible = false;
+                        break;
+                    }
+                }
+            }
+            if (!visible) continue;
+
+            auto *item = new QListWidgetItem(relative);
+            item->setData(Qt::UserRole, file);
+            item->setToolTip(file);
+            list->addItem(item);
+            if (++added >= 250) break;
+        }
+        if (list->count() > 0) {
+            list->setCurrentRow(0);
+        }
+    };
+
+    refill(QString());
+    connect(input, &QLineEdit::textChanged, &dialog, refill);
+    connect(input, &QLineEdit::returnPressed, &dialog, [&dialog, list]() {
+        if (list->currentItem()) dialog.accept();
+    });
+    connect(list, &QListWidget::itemActivated, &dialog, [&dialog](QListWidgetItem *) {
+        dialog.accept();
+    });
+
+    input->setFocus();
+    if (dialog.exec() == QDialog::Accepted and list->currentItem()) {
+        openFileFromUi(list->currentItem()->data(Qt::UserRole).toString());
+    }
 }
 
-void Qalam::updateGitBranch(const QString &rootPath)
+void Qalam::updateProblemsStatusBar()
 {
+    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
     auto *status = m_layoutManager ? m_layoutManager->statusBar() : nullptr;
-    if (!status) return;
+    if (!panel or !status) return;
+    status->setProblemsCount(panel->errorCount(), panel->warningCount());
+}
 
-    QFile headFile(QDir(rootPath).filePath(".git/HEAD"));
-    if (!headFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        status->setBranch(QString());
-        return;
+void Qalam::handleBuildOutput(const QString &text)
+{
+    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
+    if (!panel) return;
+
+    QString fallbackFile;
+    if (TEditor *editor = currentEditor()) {
+        fallbackFile = editor->currentFilePath();
     }
 
-    const QString head = QString::fromUtf8(headFile.readAll()).trimmed();
-    if (head.startsWith("ref:")) {
-        const QString branch = head.section('/', -1);
-        status->setBranch(branch);
-    } else if (!head.isEmpty()) {
-        status->setBranch(head.left(7));
-    } else {
-        status->setBranch(QString());
+    const QList<QRegularExpression> patterns = {
+        QRegularExpression(R"(([^:\n]+):(\d+):(\d+):\s*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
+                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption),
+        QRegularExpression(R"(([^:\n]+):(\d+):\s*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
+                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption),
+        QRegularExpression(R"((?:line|السطر)\s+(\d+)(?:[,،]\s*(?:column|العمود)\s+(\d+))?.*(error|warning|خطأ|تحذير)[:：]?\s*(.*))",
+                           QRegularExpression::CaseInsensitiveOption | QRegularExpression::UseUnicodePropertiesOption)
+    };
+
+    for (const QString &rawLine : text.split('\n')) {
+        const QString lineText = rawLine.trimmed();
+        if (lineText.isEmpty()) continue;
+
+        QString file = fallbackFile;
+        int line = 1;
+        int column = 1;
+        QString severity = "error";
+        QString message;
+        bool matched = false;
+
+        QRegularExpressionMatch match = patterns[0].match(lineText);
+        if (match.hasMatch()) {
+            file = match.captured(1).trimmed();
+            line = match.captured(2).toInt();
+            column = qMax(1, match.captured(3).toInt());
+            severity = match.captured(4).contains("warning", Qt::CaseInsensitive)
+                       or match.captured(4).contains("تحذير") ? "warning" : "error";
+            message = match.captured(5).trimmed();
+            matched = true;
+        }
+
+        if (!matched) {
+            match = patterns[1].match(lineText);
+            if (match.hasMatch()) {
+                file = match.captured(1).trimmed();
+                line = match.captured(2).toInt();
+                severity = match.captured(3).contains("warning", Qt::CaseInsensitive)
+                           or match.captured(3).contains("تحذير") ? "warning" : "error";
+                message = match.captured(4).trimmed();
+                matched = true;
+            }
+        }
+
+        if (!matched) {
+            match = patterns[2].match(lineText);
+            if (match.hasMatch()) {
+                line = match.captured(1).toInt();
+                column = qMax(1, match.captured(2).toInt());
+                severity = match.captured(3).contains("warning", Qt::CaseInsensitive)
+                           or match.captured(3).contains("تحذير") ? "warning" : "error";
+                message = match.captured(4).trimmed();
+                matched = true;
+            }
+        }
+
+        if (!matched) continue;
+        if (message.isEmpty()) message = lineText;
+
+        if (!file.isEmpty()) {
+            QFileInfo fileInfo(file);
+            if (fileInfo.isRelative()) {
+                if (!fallbackFile.isEmpty()) {
+                    file = QFileInfo(fallbackFile).absoluteDir().filePath(file);
+                } else if (!folderPath.isEmpty()) {
+                    file = QDir(folderPath).filePath(file);
+                }
+            }
+            file = QDir::cleanPath(file);
+        }
+
+        const QString key = QString("%1|%2|%3|%4|%5").arg(file).arg(line).arg(column).arg(severity, message);
+        if (m_seenDiagnostics.contains(key)) continue;
+        m_seenDiagnostics.insert(key);
+
+        panel->addProblem(message, file, qMax(1, line), qMax(1, column), severity);
     }
+
+    updateProblemsStatusBar();
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */

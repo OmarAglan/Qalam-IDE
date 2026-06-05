@@ -28,6 +28,8 @@ signals:
     void buildStarted();
     /// Emitted when a build finishes with the given exit code
     void buildFinished(int exitCode);
+    /// Raw output chunks from the compiler/process, for diagnostics parsing.
+    void outputChunk(const QString &text);
 
 private:
     /// Resolve the compiler path from settings or default locations

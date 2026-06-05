@@ -12,9 +12,9 @@ TStatusBar::TStatusBar(QWidget* parent)
     m_layout = new QHBoxLayout(this);
     m_layout->setContentsMargins(8, 0, 8, 0);
     m_layout->setSpacing(0);
-    m_layout->setDirection(QBoxLayout::LeftToRight);  // VS Code-like status bar: primary items left, context items right.
+    m_layout->setDirection(QBoxLayout::RightToLeft);  // RTL-first status bar: workspace indicators start on the right.
     
-    // Primary/workspace indicators on the left.
+    // Primary/workspace indicators on the right in RTL.
     // Problems indicator
     m_problemsBtn = createStatusItem("", "المشاكل");
     m_problemsBtn->setVisible(false);  // Hidden until there are problems
@@ -39,7 +39,7 @@ TStatusBar::TStatusBar(QWidget* parent)
     
     m_layout->addStretch();
     
-    // Contextual editor indicators on the right.
+    // Contextual editor indicators on the left in RTL.
     // Cursor position: السطر X، العمود Y
     m_cursorPosBtn = createStatusItem("السطر 1، العمود 1", "الموضع");
     connect(m_cursorPosBtn, &QPushButton::clicked, this, &TStatusBar::cursorPositionClicked);

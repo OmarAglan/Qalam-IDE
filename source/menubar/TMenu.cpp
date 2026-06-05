@@ -1,4 +1,5 @@
 #include "TMenu.h"
+#include <QMenu>
 
 TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     setLayoutDirection(Qt::LeftToRight);
@@ -7,14 +8,14 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     QMenu* editMenu = addMenu("تحرير");
     QMenu* viewMenu = addMenu("عرض");
     QMenu* runMenu = addMenu("تشغيل");
-    QMenu* terminalMenu = addMenu("طرفية");
+    QMenu* terminalMenu = addMenu("الطرفية");
     QMenu* helpMenu = addMenu("مساعدة");
 
-    fileMenu->setMinimumWidth(210);
-    editMenu->setMinimumWidth(210);
-    viewMenu->setMinimumWidth(230);
+    fileMenu->setMinimumWidth(220);
+    editMenu->setMinimumWidth(220);
+    viewMenu->setMinimumWidth(240);
     runMenu->setMinimumWidth(200);
-    terminalMenu->setMinimumWidth(200);
+    terminalMenu->setMinimumWidth(220);
     helpMenu->setMinimumWidth(200);
     newAction = new QAction("جديد", parent);
     openFileAction = new QAction("فتح ملف", parent);
@@ -24,27 +25,32 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     SettingsAction = new QAction("الإعدادات", parent);
     exitAction = new QAction("خروج", parent);
 
-    commandPaletteAction = new QAction("لوحة الأوامر...", parent);
-    quickOpenAction = new QAction("فتح سريع للملفات...", parent);
-    searchInFilesAction = new QAction("بحث في الملفات", parent);
-    toggleSidebarAction = new QAction("إظهار/إخفاء الشريط الجانبي", parent);
-    toggleTerminalAction = new QAction("إظهار/إخفاء الطرفية", parent);
-
     runAction = new QAction("تشغيل", parent);
 
-    aboutAction = new QAction("عن المحرر", parent);
+    commandPaletteAction = new QAction("لوحة الأوامر", parent);
+    quickOpenAction = new QAction("فتح سريع", parent);
+    findAction = new QAction("بحث في الملف", parent);
+    findInFilesAction = new QAction("بحث في الملفات", parent);
+    goToLineAction = new QAction("الذهاب إلى سطر", parent);
+    toggleSidebarAction = new QAction("إظهار/إخفاء الشريط الجانبي", parent);
+    togglePanelAction = new QAction("إظهار/إخفاء اللوحة", parent);
+    problemsAction = new QAction("المشاكل", parent);
 
     newAction->setShortcut(QKeySequence("Ctrl+N"));
     openFileAction->setShortcut(QKeySequence("Ctrl+O"));
-    openFolderAction->setShortcut(QKeySequence("Ctrl+K, Ctrl+O"));
     saveAction->setShortcut(QKeySequence("Ctrl+S"));
     saveAsAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    runAction->setShortcut(QKeySequence("F5"));
     commandPaletteAction->setShortcut(QKeySequence("Ctrl+Shift+P"));
     quickOpenAction->setShortcut(QKeySequence("Ctrl+P"));
-    searchInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
+    findAction->setShortcut(QKeySequence("Ctrl+F"));
+    findInFilesAction->setShortcut(QKeySequence("Ctrl+Shift+F"));
+    goToLineAction->setShortcut(QKeySequence("Ctrl+G"));
     toggleSidebarAction->setShortcut(QKeySequence("Ctrl+B"));
-    toggleTerminalAction->setShortcut(QKeySequence("Ctrl+J"));
-    runAction->setShortcut(QKeySequence("F5"));
+    togglePanelAction->setShortcut(QKeySequence("Ctrl+J"));
+    problemsAction->setShortcut(QKeySequence("Ctrl+Shift+M"));
+
+    aboutAction = new QAction("عن المحرر", parent);
 
 
     fileMenu->addAction(newAction);
@@ -57,15 +63,21 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
-    editMenu->addAction(commandPaletteAction);
-    editMenu->addAction(quickOpenAction);
+    editMenu->addAction(findAction);
+    editMenu->addAction(findInFilesAction);
+    editMenu->addSeparator();
+    editMenu->addAction(goToLineAction);
 
-    viewMenu->addAction(searchInFilesAction);
+    viewMenu->addAction(commandPaletteAction);
+    viewMenu->addAction(quickOpenAction);
+    viewMenu->addSeparator();
     viewMenu->addAction(toggleSidebarAction);
+    viewMenu->addAction(togglePanelAction);
+    viewMenu->addAction(problemsAction);
 
     runMenu->addAction(runAction);
 
-    terminalMenu->addAction(toggleTerminalAction);
+    terminalMenu->addAction(togglePanelAction);
 
     helpMenu->addAction(aboutAction);
 
@@ -78,13 +90,15 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     connect(SettingsAction, &QAction::triggered, this, &TMenuBar::onSettingsAction);
     connect(exitAction, &QAction::triggered, this, &TMenuBar::onExitApp);
 
+    connect(runAction, &QAction::triggered, this, &TMenuBar::onRunAction);
     connect(commandPaletteAction, &QAction::triggered, this, &TMenuBar::onCommandPaletteAction);
     connect(quickOpenAction, &QAction::triggered, this, &TMenuBar::onQuickOpenAction);
-    connect(searchInFilesAction, &QAction::triggered, this, &TMenuBar::onSearchInFilesAction);
+    connect(findAction, &QAction::triggered, this, &TMenuBar::onFindAction);
+    connect(findInFilesAction, &QAction::triggered, this, &TMenuBar::onFindInFilesAction);
+    connect(goToLineAction, &QAction::triggered, this, &TMenuBar::onGoToLineAction);
     connect(toggleSidebarAction, &QAction::triggered, this, &TMenuBar::onToggleSidebarAction);
-    connect(toggleTerminalAction, &QAction::triggered, this, &TMenuBar::onToggleTerminalAction);
-
-    connect(runAction, &QAction::triggered, this, &TMenuBar::onRunAction);
+    connect(togglePanelAction, &QAction::triggered, this, &TMenuBar::onTogglePanelAction);
+    connect(problemsAction, &QAction::triggered, this, &TMenuBar::onProblemsAction);
 
     connect(aboutAction, &QAction::triggered, this, &TMenuBar::onAboutAction);
 }
@@ -97,10 +111,14 @@ void TMenuBar::onSaveAsAction() { emit saveAsRequested(); }
 void TMenuBar::onSettingsAction() { emit settingsRequest(); }
 void TMenuBar::onExitApp() { emit exitRequested(); }
 void TMenuBar::onRunAction() { emit runRequested(); }
-void TMenuBar::onCommandPaletteAction() { emit commandPaletteRequested(); }
-void TMenuBar::onQuickOpenAction() { emit quickOpenRequested(); }
-void TMenuBar::onSearchInFilesAction() { emit searchInFilesRequested(); }
-void TMenuBar::onToggleSidebarAction() { emit toggleSidebarRequested(); }
-void TMenuBar::onToggleTerminalAction() { emit toggleTerminalRequested(); }
 void TMenuBar::onAboutAction() { emit aboutRequested(); }
 
+
+void TMenuBar::onCommandPaletteAction() { emit commandPaletteRequested(); }
+void TMenuBar::onQuickOpenAction() { emit quickOpenRequested(); }
+void TMenuBar::onFindAction() { emit findRequested(); }
+void TMenuBar::onFindInFilesAction() { emit findInFilesRequested(); }
+void TMenuBar::onGoToLineAction() { emit goToLineRequested(); }
+void TMenuBar::onToggleSidebarAction() { emit toggleSidebarRequested(); }
+void TMenuBar::onTogglePanelAction() { emit togglePanelRequested(); }
+void TMenuBar::onProblemsAction() { emit problemsRequested(); }

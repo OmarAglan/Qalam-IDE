@@ -81,17 +81,17 @@ void TWelcomePage::setupUi()
     scroll->setWidget(scrollContent);
 
     auto *outerLayout = new QVBoxLayout(scrollContent);
-    outerLayout->setContentsMargins(0, 54, 0, 0);
+    outerLayout->setContentsMargins(0, 48, 0, 0);
     outerLayout->setSpacing(0);
 
     auto *container = new QWidget(scrollContent);
     container->setObjectName("welcomeContainer");
-    container->setMaximumWidth(1080);
+    container->setMaximumWidth(940);
     outerLayout->addWidget(container, 0, Qt::AlignHCenter | Qt::AlignTop);
 
     auto *containerLayout = new QVBoxLayout(container);
-    containerLayout->setContentsMargins(44, 0, 44, 30);
-    containerLayout->setSpacing(28);
+    containerLayout->setContentsMargins(38, 0, 38, 30);
+    containerLayout->setSpacing(24);
 
     // Header
     auto *header = new QWidget(container);
@@ -133,7 +133,7 @@ void TWelcomePage::setupUi()
     // Columns (Start / Recent)
     auto *columns = new QHBoxLayout();
     columns->setContentsMargins(0, 0, 0, 0);
-    columns->setSpacing(34);
+    columns->setSpacing(28);
     columns->setDirection(QBoxLayout::RightToLeft);
 
     // Start column
@@ -258,7 +258,7 @@ void TWelcomePage::applyStyles()
 
         #welcomeTitle {
             color: %2;
-            font-size: 34px;
+            font-size: 32px;
             font-weight: 600;
             font-family: 'Tajawal', 'Segoe UI', sans-serif;
         }
@@ -356,8 +356,8 @@ void TWelcomePage::applyStyles()
             background-color: #252526;
             border: 1px solid #2d2d2d;
             border-radius: 6px;
-            min-width: 210px;
-            max-width: 260px;
+            min-width: 200px;
+            max-width: 235px;
         }
 
         #welcomeCard:hover {

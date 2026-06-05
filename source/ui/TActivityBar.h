@@ -8,7 +8,8 @@
 /**
  * @brief Activity Bar - Vertical icon bar for switching views (like VSCode)
  * 
- * Uses the familiar VS Code placement on the LEFT side of the workbench.
+ * Uses a mirrored VS Code placement on the RIGHT side of the workbench for
+ * Arabic/RTL users.
  * Contains icon buttons for: Explorer, Search, Source Control, Run, Extensions, Settings.
  * Settings button is pushed to the bottom.
  */

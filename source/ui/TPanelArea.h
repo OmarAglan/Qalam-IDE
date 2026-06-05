@@ -51,6 +51,8 @@ public:
                     const QString& severity = "error");
     void clearProblems();
     int problemCount() const;
+    int errorCount() const { return m_errorCount; }
+    int warningCount() const { return m_warningCount; }
     
     /// Add output text
     void appendOutput(const QString& text);
