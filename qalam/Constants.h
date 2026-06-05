@@ -50,16 +50,16 @@ namespace Constants {
     // ==========================================================================
     namespace Colors {
         // Surfaces
-        constexpr const char* WindowBackground = "#1e1e1e";
-        constexpr const char* EditorBackground = "#1e1e1e";
-        constexpr const char* SidebarBackground = "#252526";
-        constexpr const char* SidebarHeaderBackground = "#252526";
-        constexpr const char* ConsoleBackground = "#1e1e1e";
+        constexpr const char* WindowBackground = "#1f1f1f";
+        constexpr const char* EditorBackground = "#1f1f1f";
+        constexpr const char* SidebarBackground = "#181818";
+        constexpr const char* SidebarHeaderBackground = "#181818";
+        constexpr const char* ConsoleBackground = "#1f1f1f";
         constexpr const char* MenuBackground = "#252526";
 
         // Activity Bar
-        constexpr const char* ActivityBarBackground = "#333333";
-        constexpr const char* ActivityBarBorder = "#2a2a2a";
+        constexpr const char* ActivityBarBackground = "#181818";
+        constexpr const char* ActivityBarBorder = "#2b2b2b";
         constexpr const char* IconInactive = "#c5c5c5";
         constexpr const char* IconActive = "#ffffff";
         constexpr const char* ActivityIndicator = "#007acc";
@@ -67,9 +67,9 @@ namespace Constants {
 
         // Tabs
         constexpr const char* TabBackground = "#2d2d2d";
-        constexpr const char* TabActiveBackground = "#1e1e1e";
+        constexpr const char* TabActiveBackground = "#1f1f1f";
         constexpr const char* TabHoverBackground = "#2b2d2e";
-        constexpr const char* TabBorder = "#252526";
+        constexpr const char* TabBorder = "#181818";
 
         // Accent
         constexpr const char* Accent = "#007acc";
@@ -109,12 +109,12 @@ namespace Constants {
         constexpr const char* StatusBarNoFolder = "#68217a";
 
         // Breadcrumb
-        constexpr const char* BreadcrumbBackground = "#1e1e1e";
+        constexpr const char* BreadcrumbBackground = "#1f1f1f";
         constexpr const char* BreadcrumbForeground = "#9e9e9e";
         constexpr const char* BreadcrumbFocusForeground = "#e7e7e7";
 
         // Panel / Console Area
-        constexpr const char* PanelBackground = "#1e1e1e";
+        constexpr const char* PanelBackground = "#1f1f1f";
         constexpr const char* PanelBorder = "#2a2a2a";
         constexpr const char* PanelTabActive = "#1e1e1e";
         constexpr const char* PanelTabInactive = "transparent";
@@ -140,8 +140,8 @@ namespace Constants {
         constexpr const char* ListInactiveBackground = "#37373d";
 
         // Title Bar
-        constexpr const char* TitleBarBackground = "#3c3c3c";
-        constexpr const char* TitleBarActiveBackground = "#3c3c3c";
+        constexpr const char* TitleBarBackground = "#181818";
+        constexpr const char* TitleBarActiveBackground = "#181818";
     }
 
     // ==========================================================================
@@ -176,14 +176,14 @@ namespace Constants {
         constexpr int ActivityIndicatorWidth = 3;
 
         // Sidebar
-        constexpr int SidebarDefaultWidth = 260;
-        constexpr int SidebarMinWidth = 180;
+        constexpr int SidebarDefaultWidth = 280;
+        constexpr int SidebarMinWidth = 210;
         constexpr int SidebarMaxWidth = 520;
         constexpr int SidebarHeaderHeight = 32;
         constexpr int SidebarSectionHeaderHeight = 22;
 
         // Editor Area
-        constexpr int TabBarHeight = 36;
+        constexpr int TabBarHeight = 35;
         constexpr int BreadcrumbHeight = 22;
         constexpr int IconSize = 16;
 

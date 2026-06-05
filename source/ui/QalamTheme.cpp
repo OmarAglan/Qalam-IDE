@@ -336,7 +336,7 @@ QString QalamTheme::activityBarStyleSheet() {
     return QString(R"(
         TActivityBar {
             background-color: %1;
-            border-left: 1px solid %2;
+            border-right: 1px solid %2;
         }
         
         TActivityBar QPushButton {
@@ -373,7 +373,7 @@ QString QalamTheme::sidebarStyleSheet() {
     return QString(R"(
         TSidebar {
             background-color: %1;
-            border-left: 1px solid %2;
+            border-right: 1px solid %2;
         }
         
         #sidebarHeader {
@@ -771,11 +771,12 @@ QString QalamTheme::tabBarStyleSheet() {
         QTabBar::tab {
             background: %3;
             color: %4;
-            padding: 7px 16px;
+            padding: 7px 28px 7px 14px;
             border: none;
-            border-left: 1px solid %5;
+            border-right: 1px solid %5;
             border-top: 1px solid transparent;
             min-width: 110px;
+            min-height: 20px;
         }
         
         QTabBar::tab:selected {
@@ -794,7 +795,7 @@ QString QalamTheme::tabBarStyleSheet() {
             border: none;
             padding: 2px;
             margin: 2px;
-            subcontrol-position: left;
+            subcontrol-position: right;
         }
         
         QTabBar::close-button:hover {

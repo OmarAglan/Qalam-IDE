@@ -1,6 +1,8 @@
 #include "TMenu.h"
 
 TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
+    setLayoutDirection(Qt::LeftToRight);
+
     QMenu* fileMenu = addMenu("ملف");
     QMenu* runMenu = addMenu("تشغيل");
     QMenu* helpMenu = addMenu("مساعدة");
@@ -19,14 +21,6 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     runAction = new QAction("تشغيل", parent);
 
     aboutAction = new QAction("عن المحرر", parent);
-
-    newAction->setShortcut(QKeySequence::New);
-    openFileAction->setShortcut(QKeySequence::Open);
-    saveAction->setShortcut(QKeySequence::Save);
-    saveAsAction->setShortcut(QKeySequence::SaveAs);
-    SettingsAction->setShortcut(QKeySequence::Preferences);
-    exitAction->setShortcut(QKeySequence::Quit);
-    runAction->setShortcut(QKeySequence(Qt::Key_F5));
 
 
     fileMenu->addAction(newAction);

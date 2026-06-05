@@ -8,8 +8,8 @@
 /**
  * @brief Activity Bar - Vertical icon bar for switching views (like VSCode)
  * 
- * In RTL mode, this appears on the RIGHT side of the window.
- * Contains icon buttons for: Explorer, Search, Settings
+ * Uses the familiar VS Code placement on the LEFT side of the workbench.
+ * Contains icon buttons for: Explorer, Search, Source Control, Run, Extensions, Settings.
  * Settings button is pushed to the bottom.
  */
 class TActivityBar : public QWidget

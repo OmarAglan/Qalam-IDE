@@ -5,6 +5,7 @@
 #include <QStyleOption>
 
 TTitleBar::TTitleBar(QWidget *parent) : QWidget(parent) {
+    setLayoutDirection(Qt::LeftToRight);
     setFixedHeight(Constants::Layout::TitleBarHeight);
     setupUi();
 }
@@ -21,6 +22,7 @@ void TTitleBar::setupUi() {
     // Title
     m_titleLabel = new QLabel(this);
     m_titleLabel->setObjectName("titleLabel");
+    m_titleLabel->setAlignment(Qt::AlignCenter);
     
     // Window Controls
     m_minimizeBtn = createCaptionButton(":/icons/resources/minimize.svg", "captionButton");
@@ -83,6 +85,8 @@ void TTitleBar::setMaximizedState(bool maximized) {
 void TTitleBar::addMenuBar(QWidget *menu) {
     if (!menu) return;
     
+    menu->setLayoutDirection(Qt::LeftToRight);
+
     // Insert menu after icon (index 2: Icon=0, Spacing=1, then insert at 2)
     if (QHBoxLayout *l = qobject_cast<QHBoxLayout*>(layout())) {
         l->insertWidget(2, menu);

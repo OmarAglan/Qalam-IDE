@@ -9,6 +9,7 @@
 #include "TConsole.h"
 #include "TSearchPanel.h"
 #include "TEditor.h"
+#include "Constants.h"
 
 #include <QMainWindow>
 #include <QTabWidget>
@@ -39,12 +40,15 @@ void LayoutManager::setupLayout()
     m_breadcrumb  = new TBreadcrumb(m_window);
     m_panelArea   = new TPanelArea(m_window);
 
-    // Enforce RTL on editor components so tabs and search align correctly to the right
-    m_tabWidget->setLayoutDirection(Qt::RightToLeft);
+    // Keep the workbench chrome in VS Code's familiar LTR structure
+    // (Activity Bar + Primary Side Bar on the left), while individual
+    // Arabic controls/editors can still use RTL text alignment internally.
+    m_tabWidget->setLayoutDirection(Qt::LeftToRight);
     m_searchBar->setLayoutDirection(Qt::RightToLeft);
 
     // =========================================================
-    // Build the main layout - RTL for Arabic (Activity Bar on RIGHT)
+    // Build the main layout - VS Code-like workbench
+    // Activity Bar (far left), Primary Side Bar, Editor, Panel, Status Bar.
     // =========================================================
 
     QWidget *centralContainer = new QWidget(m_window);
@@ -54,10 +58,14 @@ void LayoutManager::setupLayout()
     mainVLayout->setContentsMargins(0, 0, 0, 0);
     mainVLayout->setSpacing(0);
 
-    // Create horizontal layout for Editor + Sidebar + Activity Bar
+    // Create horizontal layout for Activity Bar + resizable workbench area.
     QHBoxLayout *contentLayout = new QHBoxLayout();
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
+
+    QSplitter *workbenchSplitter = new QSplitter(Qt::Horizontal);
+    workbenchSplitter->setHandleWidth(1);
+    workbenchSplitter->setChildrenCollapsible(false);
 
     // Create editor + panel vertical splitter
     QSplitter *editorPanelSplitter = new QSplitter(Qt::Vertical);
@@ -81,10 +89,16 @@ void LayoutManager::setupLayout()
     editorPanelSplitter->addWidget(m_panelArea);
     editorPanelSplitter->setSizes({700, 200});
 
-    // Add widgets: Editor (left), Sidebar (middle-right), ActivityBar (far right)
-    contentLayout->addWidget(editorPanelSplitter, 1);
-    contentLayout->addWidget(m_sidebar);
+    // Add widgets in the same visual order VS Code uses by default:
+    // Activity Bar -> Primary Side Bar -> Editor/Panel region.
+    workbenchSplitter->addWidget(m_sidebar);
+    workbenchSplitter->addWidget(editorPanelSplitter);
+    workbenchSplitter->setStretchFactor(0, 0);
+    workbenchSplitter->setStretchFactor(1, 1);
+    workbenchSplitter->setSizes({Constants::Layout::SidebarDefaultWidth, 1000});
+
     contentLayout->addWidget(m_activityBar);
+    contentLayout->addWidget(workbenchSplitter, 1);
 
     // Add content layout to main vertical layout
     mainVLayout->addLayout(contentLayout, 1);
@@ -97,10 +111,15 @@ void LayoutManager::setupLayout()
 
     // --- Initial visibility ---
     m_activityBar->show();
-    m_sidebar->hide();       // Start collapsed, like VSCode
+    m_sidebar->show();       // VS Code opens with the Primary Side Bar visible.
+    m_sidebar->setCurrentView(TActivityBar::ViewType::Explorer);
     m_statusBar->show();
     m_breadcrumb->hide();    // Hide by default to match VS Code top layout
-    m_panelArea->hide();     // Start collapsed, like VSCode
+    m_panelArea->hide();     // Start collapsed, like VS Code
+
+    if (m_activityBar) {
+        m_activityBar->setCurrentView(TActivityBar::ViewType::Explorer);
+    }
 
     // --- Set initial status bar values ---
     m_statusBar->setCursorPosition(1, 1);

@@ -59,18 +59,17 @@ void TWelcomePage::setupUi()
     scroll->setWidget(scrollContent);
 
     auto *outerLayout = new QVBoxLayout(scrollContent);
-    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setContentsMargins(0, 54, 0, 0);
     outerLayout->setSpacing(0);
-    outerLayout->addStretch(1);
 
     auto *container = new QWidget(scrollContent);
     container->setObjectName("welcomeContainer");
-    container->setMaximumWidth(980);
-    outerLayout->addWidget(container, 0, Qt::AlignHCenter);
+    container->setMaximumWidth(900);
+    outerLayout->addWidget(container, 0, Qt::AlignHCenter | Qt::AlignTop);
 
     auto *containerLayout = new QVBoxLayout(container);
-    containerLayout->setContentsMargins(48, 40, 48, 28);
-    containerLayout->setSpacing(24);
+    containerLayout->setContentsMargins(44, 0, 44, 30);
+    containerLayout->setSpacing(28);
 
     // Header
     auto *header = new QWidget(container);
@@ -83,8 +82,8 @@ void TWelcomePage::setupUi()
     auto *logoLabel = new QLabel(header);
     logoLabel->setObjectName("welcomeLogo");
     logoLabel->setPixmap(QPixmap(":/icons/resources/QalamLogo.ico")
-                             .scaled(72, 72, Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    logoLabel->setFixedSize(72, 72);
+                             .scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    logoLabel->setFixedSize(64, 64);
 
     auto *titleCol = new QVBoxLayout();
     titleCol->setContentsMargins(0, 0, 0, 0);
@@ -112,13 +111,13 @@ void TWelcomePage::setupUi()
     // Columns (Start / Recent)
     auto *columns = new QHBoxLayout();
     columns->setContentsMargins(0, 0, 0, 0);
-    columns->setSpacing(32);
+    columns->setSpacing(54);
     columns->setDirection(QBoxLayout::RightToLeft);
 
     // Start column
     auto *startCol = new QVBoxLayout();
     startCol->setContentsMargins(0, 0, 0, 0);
-    startCol->setSpacing(10);
+    startCol->setSpacing(8);
     startCol->setAlignment(Qt::AlignTop);
 
     startCol->addWidget(createSectionTitle("ابدأ", container));
@@ -144,7 +143,7 @@ void TWelcomePage::setupUi()
     // Recent column
     auto *recentCol = new QVBoxLayout();
     recentCol->setContentsMargins(0, 0, 0, 0);
-    recentCol->setSpacing(10);
+    recentCol->setSpacing(8);
     recentCol->setAlignment(Qt::AlignTop);
 
     auto *recentHeader = new QWidget(container);
@@ -179,6 +178,8 @@ void TWelcomePage::setupUi()
 
     columns->addLayout(startCol, 0);
     columns->addLayout(recentCol, 1);
+    columns->setStretch(0, 0);
+    columns->setStretch(1, 1);
 
     containerLayout->addLayout(columns, 1);
 
@@ -203,7 +204,7 @@ void TWelcomePage::setupUi()
 
     containerLayout->addWidget(footer);
 
-    outerLayout->addStretch(2);
+    outerLayout->addStretch(1);
 }
 
 void TWelcomePage::applyStyles()
@@ -221,8 +222,8 @@ void TWelcomePage::applyStyles()
 
         #welcomeTitle {
             color: %2;
-            font-size: 30px;
-            font-weight: 700;
+            font-size: 34px;
+            font-weight: 600;
             font-family: 'Tajawal', 'Segoe UI', sans-serif;
         }
 
@@ -239,7 +240,7 @@ void TWelcomePage::applyStyles()
 
         #welcomeSectionTitle {
             color: %2;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             padding-bottom: 8px;
             border-bottom: 1px solid %5;
@@ -249,7 +250,7 @@ void TWelcomePage::applyStyles()
             background: transparent;
             border: none;
             border-radius: 0px;
-            padding: 4px 0px;
+            padding: 3px 0px;
             text-align: right;
             color: #3794ff; /* VS Code link blue */
             font-size: 13px;
@@ -283,8 +284,8 @@ void TWelcomePage::applyStyles()
 
         QListWidget#welcomeRecents::item {
             padding: 0px;
-            margin: 2px 0px;
-            border-radius: 6px;
+            margin: 1px 0px;
+            border-radius: 2px;
         }
 
         QListWidget#welcomeRecents::item:hover {
@@ -373,8 +374,8 @@ void TWelcomePage::populateRecents()
         auto *itemWidget = new QWidget(m_recentList);
         itemWidget->setObjectName("welcomeRecentItemWidget");
         auto *layout = new QVBoxLayout(itemWidget);
-        layout->setContentsMargins(10, 8, 10, 8);
-        layout->setSpacing(4);
+        layout->setContentsMargins(10, 6, 10, 6);
+        layout->setSpacing(3);
 
         auto *nameRow = new QHBoxLayout();
         nameRow->setContentsMargins(0, 0, 0, 0);
@@ -410,7 +411,7 @@ void TWelcomePage::populateRecents()
 
         auto *item = new QListWidgetItem(m_recentList);
         item->setData(Qt::UserRole, path);
-        item->setSizeHint(QSize(0, 56));
+        item->setSizeHint(QSize(0, 50));
         m_recentList->addItem(item);
         m_recentList->setItemWidget(item, itemWidget);
     }

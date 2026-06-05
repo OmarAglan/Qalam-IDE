@@ -75,7 +75,7 @@ void TActivityBar::setupUi()
     m_mainLayout->addStretch(1);  // Push settings to bottom
     m_mainLayout->addWidget(bottomSection);
     
-    // Start with no view selected (sidebar is hidden by default)
+    // LayoutManager selects the initial view after all components are wired.
     m_currentView = ViewType::None;
     updateButtonStates();
 }
