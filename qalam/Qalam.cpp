@@ -11,6 +11,7 @@
 #include "TPanelArea.h"
 #include "TBreadcrumb.h"
 #include "TExplorerView.h"
+#include "TCommandPalette.h"
 
 #include <QVBoxLayout>
 #include <QMessageBox>
@@ -29,7 +30,63 @@
 #include <QRegularExpression>
 #include <QKeyEvent>
 #include <QInputDialog>
+#include <QVector>
 #include "TSearchView.h"
+
+namespace {
+QString commandSubtitle(const QString &shortcut, const QString &description)
+{
+    return shortcut.isEmpty() ? description : QString("%1 — %2").arg(shortcut, description);
+}
+
+bool shouldSkipQuickOpenPath(const QString &path)
+{
+    const QString normalized = QDir::fromNativeSeparators(path);
+    return normalized.contains("/.git/")
+        || normalized.contains("/build/")
+        || normalized.contains("/dist/")
+        || normalized.contains("/node_modules/")
+        || normalized.contains("/.cache/")
+        || normalized.contains("/.vs/");
+}
+
+QVector<TCommandPalette::Entry> collectQuickOpenEntries(const QString &rootPath)
+{
+    QVector<TCommandPalette::Entry> entries;
+    if (rootPath.isEmpty() || !QDir(rootPath).exists()) {
+        return entries;
+    }
+
+    const QStringList allowedExtensions = {"baa", "baahd", "txt", "md", "json", "h", "hpp", "cpp", "cmake"};
+    QDir root(rootPath);
+    QDirIterator it(rootPath, QDir::Files | QDir::NoSymLinks, QDirIterator::Subdirectories);
+
+    while (it.hasNext() && entries.size() < 600) {
+        const QString path = it.next();
+        if (shouldSkipQuickOpenPath(path)) {
+            continue;
+        }
+
+        const QFileInfo info(path);
+        const QString suffix = info.suffix().toLower();
+        const bool cmakeFile = info.fileName().compare("CMakeLists.txt", Qt::CaseInsensitive) == 0;
+        if (!cmakeFile && !allowedExtensions.contains(suffix)) {
+            continue;
+        }
+
+        const QString relativePath = QDir::toNativeSeparators(root.relativeFilePath(path));
+        entries.push_back({
+            QStringLiteral("open-file:%1").arg(path),
+            relativePath,
+            info.absolutePath(),
+            QString()
+        });
+    }
+
+    return entries;
+}
+}
+
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
     : QalamWindow(parent)
@@ -85,7 +142,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent)
     connectSignals();
     onCurrentTabChanged();
     syncOpenEditors();
-    
+
     // ===================================================================
     // الخطوة 6: تحميل الملف المبدئي أو استعادة الجلسة السابقة
     // ===================================================================
@@ -155,6 +212,21 @@ void Qalam::connectSignals()
     auto *goToLineShortcut = new QShortcut(QKeySequence("Ctrl+G"), this);
     connect(goToLineShortcut, &QShortcut::activated, this, &Qalam::goToLine);
 
+    auto *commandPaletteShortcut = new QShortcut(QKeySequence("Ctrl+Shift+P"), this);
+    connect(commandPaletteShortcut, &QShortcut::activated, this, &Qalam::openCommandPalette);
+
+    auto *quickOpenShortcut = new QShortcut(QKeySequence("Ctrl+P"), this);
+    connect(quickOpenShortcut, &QShortcut::activated, this, &Qalam::openQuickOpen);
+
+    auto *searchFilesShortcut = new QShortcut(QKeySequence("Ctrl+Shift+F"), this);
+    connect(searchFilesShortcut, &QShortcut::activated, this, &Qalam::showProjectSearch);
+
+    auto *toggleSidebarShortcut = new QShortcut(QKeySequence("Ctrl+B"), this);
+    connect(toggleSidebarShortcut, &QShortcut::activated, this, &Qalam::toggleSidebar);
+
+    auto *togglePanelShortcut = new QShortcut(QKeySequence("Ctrl+J"), this);
+    connect(togglePanelShortcut, &QShortcut::activated, this, &Qalam::toggleConsole);
+
     auto *commentShortcut = new QShortcut(QKeySequence("Ctrl+/"), this);
     connect(commentShortcut, &QShortcut::activated, this, [this](){
         if (TEditor* editor = currentEditor()) editor->toggleComment();
@@ -183,8 +255,15 @@ void Qalam::connectSignals()
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
     connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
+    connect(menuBar, &TMenuBar::commandPaletteRequested, this, &Qalam::openCommandPalette);
+    connect(menuBar, &TMenuBar::quickOpenRequested, this, &Qalam::openQuickOpen);
+    connect(menuBar, &TMenuBar::searchInFilesRequested, this, &Qalam::showProjectSearch);
+    connect(menuBar, &TMenuBar::toggleSidebarRequested, this, &Qalam::toggleSidebar);
+    connect(menuBar, &TMenuBar::toggleTerminalRequested, this, &Qalam::toggleConsole);
     connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
     connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
+
+    connect(this, &QalamWindow::commandCenterRequested, this, &Qalam::openCommandPalette);
 
     // --- Tab widget signals ---
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &Qalam::closeTab);
@@ -326,6 +405,7 @@ void Qalam::loadFolder(const QString &path)
 {
     this->folderPath = path;
     m_layoutManager->loadFolder(path);
+    updateGitBranch(path);
 }
 
 void Qalam::handleOpenFolderMenu()
@@ -349,7 +429,7 @@ void Qalam::toggleSidebar()
 
 void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
- 
+
     connect(setting, &TSettings::fontSizeChanged, this, [this](int size){
         for (int i = 0; i < tabWidget->count(); ++i) {
             TEditor* editor = qobject_cast<TEditor*>(tabWidget->widget(i));
@@ -369,7 +449,7 @@ void Qalam::openSettings() {
             if (editor) editor->updateHighlighterTheme(theme);
         }
     }, Qt::UniqueConnection);
- 
+
     setting->show();
 }
 
@@ -384,6 +464,11 @@ void Qalam::onCurrentTabChanged()
     updateCursorPosition();
 
     TEditor* editor = currentEditor();
+
+    if (m_layoutManager && m_layoutManager->breadcrumb()) {
+        const bool showBreadcrumb = editor && !editor->currentFilePath().isEmpty();
+        m_layoutManager->breadcrumb()->setVisible(showBreadcrumb);
+    }
 
     // Disconnect the previous editor to avoid accumulating connections.
     // Also clear the raw pointer so closing the last editor does not leave a dangling reference.
@@ -420,7 +505,7 @@ void Qalam::updateCursorPosition()
         if (m_layoutManager->statusBar()) {
             m_layoutManager->statusBar()->setCursorPosition(line, column);
         }
-        
+
         // Update breadcrumb with current file
         if (m_layoutManager->breadcrumb()) {
             QString filePath = editor->currentFilePath();
@@ -744,6 +829,123 @@ void Qalam::performProjectSearch(const QString &query, bool caseSensitive, bool 
     }
 
     searchView->setResultCount(fileCount, matchCount);
+}
+
+
+void Qalam::openCommandPalette()
+{
+    QVector<TCommandPalette::Entry> entries = {
+        {"new-file", "ملف جديد", commandSubtitle("Ctrl+N", "إنشاء ملف باء جديد"), "Ctrl+N"},
+        {"open-file-dialog", "فتح ملف...", commandSubtitle("Ctrl+O", "اختيار ملف من الجهاز"), "Ctrl+O"},
+        {"open-folder-dialog", "فتح مجلد...", commandSubtitle("Ctrl+K Ctrl+O", "فتح مشروع أو مجلد عمل"), "Ctrl+K Ctrl+O"},
+        {"quick-open", "فتح سريع للملفات", commandSubtitle("Ctrl+P", "البحث داخل ملفات المجلد الحالي"), "Ctrl+P"},
+        {"save-file", "حفظ", commandSubtitle("Ctrl+S", "حفظ الملف الحالي"), "Ctrl+S"},
+        {"save-file-as", "حفظ باسم...", commandSubtitle("Ctrl+Shift+S", "حفظ نسخة باسم جديد"), "Ctrl+Shift+S"},
+        {"search-files", "بحث في الملفات", commandSubtitle("Ctrl+Shift+F", "فتح بحث المشروع في الشريط الجانبي"), "Ctrl+Shift+F"},
+        {"go-to-line", "الذهاب إلى سطر", commandSubtitle("Ctrl+G", "القفز إلى رقم سطر"), "Ctrl+G"},
+        {"toggle-sidebar", "إظهار/إخفاء الشريط الجانبي", commandSubtitle("Ctrl+B", "تبديل الشريط الجانبي مثل VS Code"), "Ctrl+B"},
+        {"toggle-terminal", "إظهار/إخفاء الطرفية", commandSubtitle("Ctrl+J", "فتح أو إغلاق اللوحة السفلية"), "Ctrl+J"},
+        {"run-baa", "تشغيل ملف باء", commandSubtitle("F5", "حفظ وتشغيل الملف الحالي"), "F5"},
+        {"settings", "الإعدادات", "تخصيص الخط والثيم ومسار المترجم", QString()},
+        {"welcome", "صفحة الترحيب", "فتح صفحة البداية والملفات الأخيرة", QString()},
+        {"about", "عن محرر قلم", "معلومات الإصدار والمشروع", QString()}
+    };
+
+    auto *palette = new TCommandPalette(this);
+    palette->setAttribute(Qt::WA_DeleteOnClose);
+    palette->setPlaceholderText("اكتب أمراً لتشغيله...");
+    palette->setEntries(entries);
+    connect(palette, &TCommandPalette::commandActivated,
+            this, &Qalam::executeCommandPaletteAction);
+    palette->show();
+}
+
+void Qalam::openQuickOpen()
+{
+    if (folderPath.isEmpty()) {
+        if (m_layoutManager && m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage("افتح مجلداً أولاً لاستخدام الفتح السريع");
+        }
+        handleOpenFolderMenu();
+        return;
+    }
+
+    QVector<TCommandPalette::Entry> entries = collectQuickOpenEntries(folderPath);
+    if (entries.isEmpty()) {
+        if (m_layoutManager && m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage("لا توجد ملفات قابلة للفتح في هذا المجلد");
+        }
+        return;
+    }
+
+    auto *palette = new TCommandPalette(this);
+    palette->setAttribute(Qt::WA_DeleteOnClose);
+    palette->setPlaceholderText("اكتب اسم ملف للفتح السريع...");
+    palette->setEmptyText("لا يوجد ملف مطابق");
+    palette->setEntries(entries);
+    connect(palette, &TCommandPalette::commandActivated,
+            this, &Qalam::executeCommandPaletteAction);
+    palette->show();
+}
+
+void Qalam::showProjectSearch()
+{
+    if (!m_layoutManager || !m_layoutManager->sidebar()) return;
+
+    m_layoutManager->sidebar()->show();
+    m_layoutManager->sidebar()->setCurrentView(TActivityBar::ViewType::Search);
+    if (m_layoutManager->activityBar()) {
+        m_layoutManager->activityBar()->setCurrentView(TActivityBar::ViewType::Search);
+    }
+
+    if (folderPath.isEmpty() && m_layoutManager->statusBar()) {
+        m_layoutManager->statusBar()->showMessage("افتح مجلداً ليعمل البحث داخل الملفات");
+    }
+}
+
+void Qalam::executeCommandPaletteAction(const QString &id)
+{
+    if (id.startsWith("open-file:")) {
+        openFileFromUi(id.mid(QStringLiteral("open-file:").size()));
+        return;
+    }
+
+    if (id == "new-file") newFileFromUi();
+    else if (id == "open-file-dialog") openFileFromUi(QString());
+    else if (id == "open-folder-dialog") handleOpenFolderMenu();
+    else if (id == "quick-open") openQuickOpen();
+    else if (id == "save-file") m_fileManager->saveFile();
+    else if (id == "save-file-as") m_fileManager->saveFileAs();
+    else if (id == "search-files") showProjectSearch();
+    else if (id == "go-to-line") goToLine();
+    else if (id == "toggle-sidebar") toggleSidebar();
+    else if (id == "toggle-terminal") toggleConsole();
+    else if (id == "run-baa") runBaa();
+    else if (id == "settings") openSettings();
+    else if (id == "welcome") showWelcomeTab();
+    else if (id == "about") aboutQalam();
+}
+
+void Qalam::updateGitBranch(const QString &rootPath)
+{
+    auto *status = m_layoutManager ? m_layoutManager->statusBar() : nullptr;
+    if (!status) return;
+
+    QFile headFile(QDir(rootPath).filePath(".git/HEAD"));
+    if (!headFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        status->setBranch(QString());
+        return;
+    }
+
+    const QString head = QString::fromUtf8(headFile.readAll()).trimmed();
+    if (head.startsWith("ref:")) {
+        const QString branch = head.section('/', -1);
+        status->setBranch(branch);
+    } else if (!head.isEmpty()) {
+        status->setBranch(head.left(7));
+    } else {
+        status->setBranch(QString());
+    }
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */

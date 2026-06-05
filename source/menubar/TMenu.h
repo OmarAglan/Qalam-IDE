@@ -21,6 +21,11 @@ public:
     QAction* saveAsAction;
     QAction* SettingsAction;
     QAction* exitAction;
+    QAction* commandPaletteAction;
+    QAction* quickOpenAction;
+    QAction* searchInFilesAction;
+    QAction* toggleSidebarAction;
+    QAction* toggleTerminalAction;
     QAction* runAction;
     QAction* aboutAction;
 
@@ -33,6 +38,11 @@ signals:
     void settingsRequest();
     void exitRequested();
     void runRequested();
+    void commandPaletteRequested();
+    void quickOpenRequested();
+    void searchInFilesRequested();
+    void toggleSidebarRequested();
+    void toggleTerminalRequested();
     void aboutRequested();
 
 private slots:
@@ -45,5 +55,10 @@ private slots:
     void onSettingsAction();
     void onExitApp();
     void onRunAction();
+    void onCommandPaletteAction();
+    void onQuickOpenAction();
+    void onSearchInFilesAction();
+    void onToggleSidebarAction();
+    void onToggleTerminalAction();
     void onAboutAction();
 };

@@ -50,7 +50,11 @@ private slots:
     void hideFindBar();
 
     void goToLine();
-    
+    void openCommandPalette();
+    void openQuickOpen();
+    void showProjectSearch();
+    void executeCommandPaletteAction(const QString &id);
+
     // VSCode-like component slots
     void onActivityViewChanged(TActivityBar::ViewType view);
     void onSidebarFileSelected(const QString &filePath);
@@ -68,6 +72,7 @@ private:
     void goToLocation(const QString &filePath, int line, int column);
     void performProjectSearch(const QString &query, bool caseSensitive, bool wholeWord, bool regex);
     void closeEditorByPath(const QString &filePath);
+    void updateGitBranch(const QString &rootPath);
 
 private:
     QTabWidget *tabWidget{};

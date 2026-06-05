@@ -12,6 +12,8 @@ add_library(qalam_core STATIC
     # Components
     components/TFlatButton.cpp
     components/TSearchPanel.cpp
+    components/TCommandPalette.cpp
+    components/TCommandPalette.h
     # Console
     console/TConsole.cpp
     console/ProcessWorker.cpp

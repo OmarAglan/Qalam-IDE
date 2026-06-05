@@ -5,11 +5,13 @@
 #include <QPushButton>
 #include <QHBoxLayout>
 
+class QMenuBar;
+
 class TTitleBar : public QWidget {
     Q_OBJECT
 public:
     explicit TTitleBar(QWidget *parent = nullptr);
-    
+
     void setTitle(const QString &title);
     void setMaximizedState(bool maximized);
     void addMenuBar(QWidget *menu);
@@ -18,6 +20,7 @@ signals:
     void minimizeClicked();
     void maximizeRestoreClicked();
     void closeClicked();
+    void commandCenterClicked();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -27,7 +30,8 @@ protected:
 private:
     QLabel *m_iconLabel;
     QLabel *m_titleLabel;
-    
+    QPushButton *m_commandCenterBtn;
+
     QPushButton *m_minimizeBtn;
     QPushButton *m_maximizeBtn;
     QPushButton *m_closeBtn;

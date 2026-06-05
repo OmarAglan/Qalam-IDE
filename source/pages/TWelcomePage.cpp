@@ -24,6 +24,28 @@ QWidget *createSectionTitle(const QString &text, QWidget *parent)
     label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     return label;
 }
+
+QWidget *createWelcomeCard(const QString &title, const QString &body, QWidget *parent)
+{
+    auto *card = new QWidget(parent);
+    card->setObjectName("welcomeCard");
+    auto *layout = new QVBoxLayout(card);
+    layout->setContentsMargins(12, 10, 12, 10);
+    layout->setSpacing(4);
+
+    auto *titleLabel = new QLabel(title, card);
+    titleLabel->setObjectName("welcomeCardTitle");
+    titleLabel->setAlignment(Qt::AlignRight | Qt::AlignTop);
+
+    auto *bodyLabel = new QLabel(body, card);
+    bodyLabel->setObjectName("welcomeCardBody");
+    bodyLabel->setAlignment(Qt::AlignRight | Qt::AlignTop);
+    bodyLabel->setWordWrap(true);
+
+    layout->addWidget(titleLabel);
+    layout->addWidget(bodyLabel);
+    return card;
+}
 }
 
 TWelcomePage::TWelcomePage(QWidget *parent)
@@ -64,7 +86,7 @@ void TWelcomePage::setupUi()
 
     auto *container = new QWidget(scrollContent);
     container->setObjectName("welcomeContainer");
-    container->setMaximumWidth(900);
+    container->setMaximumWidth(1080);
     outerLayout->addWidget(container, 0, Qt::AlignHCenter | Qt::AlignTop);
 
     auto *containerLayout = new QVBoxLayout(container);
@@ -111,7 +133,7 @@ void TWelcomePage::setupUi()
     // Columns (Start / Recent)
     auto *columns = new QHBoxLayout();
     columns->setContentsMargins(0, 0, 0, 0);
-    columns->setSpacing(54);
+    columns->setSpacing(34);
     columns->setDirection(QBoxLayout::RightToLeft);
 
     // Start column
@@ -176,10 +198,24 @@ void TWelcomePage::setupUi()
     connect(m_recentList, &QListWidget::itemDoubleClicked, this, &TWelcomePage::onRecentItemActivated);
     recentCol->addWidget(m_recentList, 1);
 
+    // Learning / walkthrough column - closer to VS Code's welcome walkthrough cards.
+    auto *learnCol = new QVBoxLayout();
+    learnCol->setContentsMargins(0, 0, 0, 0);
+    learnCol->setSpacing(8);
+    learnCol->setAlignment(Qt::AlignTop);
+
+    learnCol->addWidget(createSectionTitle("دليل سريع", container));
+    learnCol->addWidget(createWelcomeCard("لوحة الأوامر", "اضغط Ctrl+Shift+P للوصول إلى كل الأوامر من مكان واحد.", container));
+    learnCol->addWidget(createWelcomeCard("فتح سريع", "اضغط Ctrl+P للبحث داخل ملفات المشروع الحالي وفتحها بسرعة.", container));
+    learnCol->addWidget(createWelcomeCard("تشغيل باء", "احفظ الملف ثم اضغط F5 لتشغيله داخل الطرفية السفلية.", container));
+    learnCol->addStretch(1);
+
     columns->addLayout(startCol, 0);
     columns->addLayout(recentCol, 1);
+    columns->addLayout(learnCol, 0);
     columns->setStretch(0, 0);
     columns->setStretch(1, 1);
+    columns->setStretch(2, 0);
 
     containerLayout->addLayout(columns, 1);
 
@@ -314,6 +350,31 @@ void TWelcomePage::applyStyles()
         #welcomeRecentsEmptyHint {
             color: %4;
             font-size: 12px;
+        }
+
+        #welcomeCard {
+            background-color: #252526;
+            border: 1px solid #2d2d2d;
+            border-radius: 6px;
+            min-width: 210px;
+            max-width: 260px;
+        }
+
+        #welcomeCard:hover {
+            background-color: #2a2d2e;
+            border-color: #3c3c3c;
+        }
+
+        #welcomeCardTitle {
+            color: %2;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        #welcomeCardBody {
+            color: %4;
+            font-size: 12px;
+            line-height: 130%;
         }
 
         #welcomeRecentName {

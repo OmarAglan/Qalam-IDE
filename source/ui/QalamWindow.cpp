@@ -15,20 +15,21 @@
 QalamWindow::QalamWindow(QWidget *parent) : QMainWindow(parent) {
     // 1. Setup Title Bar
     m_titleBar = new TTitleBar(this);
-    
+
     connect(m_titleBar, &TTitleBar::minimizeClicked, this, &QMainWindow::showMinimized);
     connect(m_titleBar, &TTitleBar::maximizeRestoreClicked, [this]() {
         if (isMaximized()) showNormal();
         else showMaximized();
     });
     connect(m_titleBar, &TTitleBar::closeClicked, this, &QMainWindow::close);
-    
+    connect(m_titleBar, &TTitleBar::commandCenterClicked, this, &QalamWindow::commandCenterRequested);
+
     // Set menu widget to title bar (QMainWindow feature) or add to layout?
     // QMainWindow::setMenuWidget() puts it at top. Perfect.
     setMenuWidget(m_titleBar);
 
     connect(this, &QWidget::windowTitleChanged, m_titleBar, &TTitleBar::setTitle);
-    
+
     // 2. Window Flags for Custom Frame
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowSystemMenuHint | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint);
 }
@@ -56,20 +57,20 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
             case WM_NCHITTEST: {
                 long x = GET_X_LPARAM(msg->lParam);
                 long y = GET_Y_LPARAM(msg->lParam);
-                
+
                 POINT pt = {x, y};
                 ScreenToClient(hwnd, &pt);
 
                 const int borderWidth = 8;
-                
+
                 RECT rw;
                 GetClientRect(hwnd, &rw);
-                
+
                 bool left = pt.x < borderWidth;
                 bool right = pt.x >= rw.right - borderWidth;
                 bool top = pt.y < borderWidth;
                 bool bottom = pt.y >= rw.bottom - borderWidth;
-                
+
                 if (top && left) { *result = HTTOPLEFT; return true; }
                 if (top && right) { *result = HTTOPRIGHT; return true; }
                 if (bottom && left) { *result = HTBOTTOMLEFT; return true; }
@@ -78,7 +79,7 @@ bool QalamWindow::nativeEvent(const QByteArray &eventType, void *message, qintpt
                 if (right) { *result = HTRIGHT; return true; }
                 if (bottom) { *result = HTBOTTOM; return true; }
                 if (top) { *result = HTTOP; return true; }
-                
+
                 if (m_titleBar && m_titleBar->geometry().contains(QPoint(pt.x, pt.y))) {
                     QWidget *child = m_titleBar->childAt(pt.x, pt.y);
                     if (child) {
