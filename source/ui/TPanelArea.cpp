@@ -5,6 +5,7 @@
 #include <QScrollArea>
 #include <QTextEdit>
 #include <QMouseEvent>
+#include <QGroupBox>
 
 TPanelArea::TPanelArea(QWidget* parent)
     : QWidget(parent)
@@ -31,11 +32,13 @@ void TPanelArea::setupUI()
     setupProblemsView();
     setupOutputView();
     setupTerminal();
+    setupDebugView();
     
     // Add to stacked widget
     m_stackedWidget->addWidget(m_problemsView);
     m_stackedWidget->addWidget(m_outputView);
     m_stackedWidget->addWidget(m_terminal);
+    m_stackedWidget->addWidget(m_debugView);
     
     // Connect tab bar
     connect(m_tabBar, &QTabBar::currentChanged, this, [this](int index) {
@@ -93,6 +96,7 @@ void TPanelArea::setupTabBar()
     m_tabBar->addTab(Constants::ProblemsLabel);
     m_tabBar->addTab(Constants::OutputLabel);
     m_tabBar->addTab(Constants::TerminalLabel);
+    m_tabBar->addTab("تصحيح");
     
     // Create problems badge
     m_problemsBadge = new QLabel(this);
@@ -149,6 +153,53 @@ void TPanelArea::setupOutputView()
 void TPanelArea::setupTerminal()
 {
     m_terminal = new TConsole(this);
+}
+
+
+void TPanelArea::setupDebugView()
+{
+    m_debugView = new QWidget(this);
+    auto *layout = new QVBoxLayout(m_debugView);
+    layout->setContentsMargins(12, 10, 12, 10);
+    layout->setSpacing(10);
+    layout->setAlignment(Qt::AlignTop);
+
+    auto *title = new QLabel("لوحة التصحيح", m_debugView);
+    title->setObjectName("debugTitle");
+    title->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(title);
+
+    auto *hint = new QLabel(
+        "هذه واجهة تصحيح أولية تشبه VS Code.\n"
+        "حاليًا يمكنك تشغيل البرنامج عبر F5، وستكون نقاط التوقف والمتغيرات ومكدس الاستدعاء جاهزة للربط عندما يدعم مترجم باء مصححًا حقيقيًا.",
+        m_debugView);
+    hint->setObjectName("debugHint");
+    hint->setWordWrap(true);
+    layout->addWidget(hint);
+
+    auto *buttonsRow = new QHBoxLayout();
+    buttonsRow->setDirection(QBoxLayout::RightToLeft);
+    buttonsRow->setSpacing(8);
+    auto *runButton = new QPushButton("▶ تشغيل F5", m_debugView);
+    runButton->setObjectName("debugActionButton");
+    runButton->setToolTip("استخدم F5 لتشغيل ملف باء الحالي");
+    buttonsRow->addWidget(runButton);
+    auto *stopButton = new QPushButton("■ إيقاف", m_debugView);
+    stopButton->setObjectName("debugActionButton");
+    stopButton->setEnabled(false);
+    buttonsRow->addWidget(stopButton);
+    buttonsRow->addStretch(1);
+    layout->addLayout(buttonsRow);
+
+    auto *stackBox = new QGroupBox("مكدس الاستدعاء", m_debugView);
+    auto *stackLayout = new QVBoxLayout(stackBox);
+    stackLayout->addWidget(new QLabel("لا توجد جلسة تصحيح نشطة", stackBox));
+    layout->addWidget(stackBox);
+
+    auto *varsBox = new QGroupBox("المتغيرات", m_debugView);
+    auto *varsLayout = new QVBoxLayout(varsBox);
+    varsLayout->addWidget(new QLabel("ستظهر المتغيرات هنا عند توفر مصحح باء", varsBox));
+    layout->addWidget(varsBox);
 }
 
 void TPanelArea::setCurrentTab(Tab tab)
@@ -341,6 +392,39 @@ void TPanelArea::applyStyles()
         
         QScrollArea > QWidget > QWidget {
             background: %1;
+        }
+
+        #debugTitle {
+            color: %4;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        #debugHint {
+            color: %3;
+            line-height: 140%;
+        }
+
+        #debugActionButton {
+            border: 1px solid %2;
+            border-radius: 4px;
+            padding: 5px 10px;
+            background: %6;
+            color: %4;
+        }
+
+        QGroupBox {
+            color: %4;
+            border: 1px solid %2;
+            border-radius: 6px;
+            margin-top: 8px;
+            padding: 8px;
+        }
+
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top right;
+            padding: 0 6px;
         }
     )").arg(Constants::Colors::PanelBackground)
       .arg(Constants::Colors::PanelBorder)

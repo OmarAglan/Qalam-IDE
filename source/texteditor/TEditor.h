@@ -4,6 +4,7 @@
 #include <QScrollBar>
 #include <QPlainTextEdit>
 #include <QCompleter>
+#include <QVector>
 #include <memory>
 
 #include "TSettings.h"
@@ -23,7 +24,18 @@ class TEditor : public QPlainTextEdit {
     Q_OBJECT
 
 public:
+    struct Diagnostic {
+        QString file;
+        int line = 1;
+        int column = 1;
+        QString severity;
+        QString message;
+    };
+
     TEditor(QWidget* parent = nullptr);
+
+    void setDiagnostics(const QVector<Diagnostic> &diagnostics);
+    void clearDiagnostics();
 
     void lineNumberAreaPaintEvent(QPaintEvent* event);
     int lineNumberAreaWidth() const;
@@ -57,6 +69,8 @@ protected:
     void dragMoveEvent(QDragMoveEvent* event) override;
     void dragLeaveEvent(QDragLeaveEvent* event) override;
     void wheelEvent(QWheelEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void leaveEvent(QEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
 
     void keyPressEvent(QKeyEvent *e) override;
@@ -77,6 +91,9 @@ private:
 
     void updateFoldRegions();
     void toggleFold(int blockNum);
+    void applyEditorDecorations();
+    Diagnostic diagnosticAtPosition(const QPoint &position) const;
+    bool hasDiagnosticAtPosition(const QPoint &position, Diagnostic *diagnostic) const;
 
     // Extracted helpers
     TBracketHandler m_bracketHandler;
@@ -91,6 +108,7 @@ private:
     CompletionModel *model{};
     std::vector<std::unique_ptr<ICompletionStrategy>> strategies{};
     DynamicWordStrategy* dynamicStrategy{};
+    QVector<Diagnostic> m_diagnostics;
     QString textUnderCursor() const;
     void performCompletion();
     void setupAutoComplete();

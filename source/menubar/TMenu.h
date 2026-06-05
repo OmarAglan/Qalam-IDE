@@ -31,6 +31,9 @@ public:
     QAction* toggleSidebarAction;
     QAction* togglePanelAction;
     QAction* problemsAction;
+    QAction* debugPanelAction;
+    QAction* goToDefinitionAction;
+    QAction* findReferencesAction;
 
 signals:
     void newRequested();
@@ -50,6 +53,9 @@ signals:
     void toggleSidebarRequested();
     void togglePanelRequested();
     void problemsRequested();
+    void debugPanelRequested();
+    void goToDefinitionRequested();
+    void findReferencesRequested();
 
 private slots:
 
@@ -70,4 +76,7 @@ private slots:
     void onToggleSidebarAction();
     void onTogglePanelAction();
     void onProblemsAction();
+    void onDebugPanelAction();
+    void onGoToDefinitionAction();
+    void onFindReferencesAction();
 };

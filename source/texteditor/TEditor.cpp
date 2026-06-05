@@ -11,8 +11,11 @@
 #include <QFile>
 #include <QUrl>
 #include <QHash>
+#include <QToolTip>
 #include "Constants.h"
 #include "highlighter/ThemeManager.h"
+#include "highlighter/TSyntaxDefinition.h"
+#include <QTextCharFormat>
 #include "ui/QalamTheme.h"
 
 
@@ -29,6 +32,7 @@ TEditor::TEditor(QWidget* parent)
       m_bracketHandler(this),
       m_snippetManager(this) {
     setAcceptDrops(true);
+    setMouseTracking(true);
     this->setStyleSheet(QalamTheme::editorStyleSheet());
     this->setTabStopDistance(32);
 
@@ -148,6 +152,18 @@ void TEditor::setFilePath(const QString &path) {
     if (m_autoSave) {
         m_autoSave->filePath = path;
     }
+}
+
+void TEditor::setDiagnostics(const QVector<Diagnostic> &diagnostics) {
+    m_diagnostics = diagnostics;
+    applyEditorDecorations();
+    viewport()->update();
+}
+
+void TEditor::clearDiagnostics() {
+    m_diagnostics.clear();
+    applyEditorDecorations();
+    viewport()->update();
 }
 
 void TEditor::updateFontSize(int size) {
@@ -439,13 +455,15 @@ void TEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
 }
 
 void TEditor::highlightCurrentLine() {
+    applyEditorDecorations();
+}
+
+void TEditor::applyEditorDecorations() {
     QList<QTextEdit::ExtraSelection> extraSelections;
 
     if (!isReadOnly()) {
         QTextEdit::ExtraSelection selection;
-
         QColor lineColor = QColor(Constants::Colors::CurrentLineHighlight);
-
         selection.format.setBackground(lineColor);
         selection.format.setProperty(QTextFormat::FullWidthSelection, true);
         selection.cursor = textCursor();
@@ -453,7 +471,62 @@ void TEditor::highlightCurrentLine() {
         extraSelections.append(selection);
     }
 
+    for (const Diagnostic &diagnostic : m_diagnostics) {
+        const QTextBlock block = document()->findBlockByNumber(qMax(1, diagnostic.line) - 1);
+        if (!block.isValid()) continue;
+
+        QTextCursor cursor(block);
+        const int columnOffset = qMax(0, diagnostic.column - 1);
+        cursor.setPosition(qMin(block.position() + columnOffset, block.position() + block.length() - 1));
+
+        // Underline the closest token. If there is no token at that column,
+        // underline the rest of the line so the diagnostic remains visible.
+        QTextCursor wordCursor = cursor;
+        wordCursor.select(QTextCursor::WordUnderCursor);
+        if (!wordCursor.hasSelection() || wordCursor.selectedText().trimmed().isEmpty()) {
+            wordCursor = cursor;
+            wordCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+            if (!wordCursor.hasSelection()) {
+                wordCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+            }
+        }
+
+        QTextEdit::ExtraSelection diagnosticSelection;
+        diagnosticSelection.cursor = wordCursor;
+        diagnosticSelection.format.setUnderlineStyle(QTextCharFormat::SpellCheckUnderline);
+        diagnosticSelection.format.setUnderlineColor(
+            diagnostic.severity == "warning"
+                ? QColor(Constants::Colors::WarningForeground)
+                : QColor(Constants::Colors::ErrorForeground));
+        diagnosticSelection.format.setToolTip(diagnostic.message);
+        extraSelections.append(diagnosticSelection);
+    }
+
     setExtraSelections(extraSelections);
+}
+
+TEditor::Diagnostic TEditor::diagnosticAtPosition(const QPoint &position) const {
+    Diagnostic result;
+    const QTextCursor cursor = cursorForPosition(position);
+    const int line = cursor.blockNumber() + 1;
+    const int column = cursor.positionInBlock() + 1;
+
+    for (const Diagnostic &diagnostic : m_diagnostics) {
+        if (diagnostic.line != line) continue;
+        // Hover anywhere on the diagnostic line, but prefer the right-side text
+        // range around the reported column.
+        if (column >= qMax(1, diagnostic.column - 2)) {
+            return diagnostic;
+        }
+    }
+    return result;
+}
+
+bool TEditor::hasDiagnosticAtPosition(const QPoint &position, Diagnostic *diagnostic) const {
+    const Diagnostic found = diagnosticAtPosition(position);
+    if (found.message.isEmpty()) return false;
+    if (diagnostic) *diagnostic = found;
+    return true;
 }
 
 void TEditor::updateFoldRegions() {
@@ -655,6 +728,47 @@ void TEditor::dropEvent(QDropEvent* event) {
 
 void TEditor::dragLeaveEvent(QDragLeaveEvent* event) {
     event->accept();
+}
+
+
+void TEditor::mouseMoveEvent(QMouseEvent *event) {
+    Diagnostic diagnostic;
+    if (hasDiagnosticAtPosition(event->position().toPoint(), &diagnostic)) {
+        const QString prefix = diagnostic.severity == "warning" ? "تحذير" : "خطأ";
+        QToolTip::showText(event->globalPosition().toPoint(),
+                           QString("%1: %2").arg(prefix, diagnostic.message),
+                           viewport());
+    } else {
+        const QTextCursor cursor = cursorForPosition(event->position().toPoint());
+        const QString blockText = cursor.block().text();
+        int end = qBound(0, cursor.positionInBlock(), static_cast<int>(blockText.length()));
+        int start = end;
+        while (start > 0 and isCompletionCharacter(blockText.at(start - 1))) --start;
+        while (end < blockText.length() and isCompletionCharacter(blockText.at(end))) ++end;
+        const QString word = blockText.mid(start, end - start);
+        const auto &lang = LanguageDefinition::instance();
+        if (lang.keywordSet.contains(word)) {
+            QToolTip::showText(event->globalPosition().toPoint(),
+                               QString("كلمة محجوزة في لغة باء: %1").arg(word),
+                               viewport());
+        } else if (lang.builtinSet.contains(word)) {
+            QToolTip::showText(event->globalPosition().toPoint(),
+                               QString("دالة مدمجة في لغة باء: %1").arg(word),
+                               viewport());
+        } else if (lang.preprocessorSet.contains(word)) {
+            QToolTip::showText(event->globalPosition().toPoint(),
+                               QString("تعليمة معالجة قبلية: %1").arg(word),
+                               viewport());
+        } else {
+            QToolTip::hideText();
+        }
+    }
+    QPlainTextEdit::mouseMoveEvent(event);
+}
+
+void TEditor::leaveEvent(QEvent *event) {
+    QToolTip::hideText();
+    QPlainTextEdit::leaveEvent(event);
 }
 
 

@@ -12,6 +12,7 @@
 #include "TActivityBar.h"
 #include <QSet>
 #include <QStringList>
+#include <QVector>
 
 class TWelcomePage;
 
@@ -56,7 +57,10 @@ private slots:
     void showQuickOpen();
     void focusSearchInFiles();
     void openProblemsPanel();
+    void openDebugPanel();
     void handleBuildOutput(const QString &text);
+    void goToDefinition();
+    void findReferences();
     
     // VSCode-like component slots
     void onActivityViewChanged(TActivityBar::ViewType view);
@@ -78,6 +82,9 @@ private:
     QStringList collectProjectFiles() const;
     bool runCommandById(const QString &commandId);
     void updateProblemsStatusBar();
+    void applyDiagnosticsToEditors();
+    QString symbolUnderCursor() const;
+    bool findDefinitionLocation(const QString &symbol, QString *filePath, int *line, int *column) const;
 
 private:
     QTabWidget *tabWidget{};
@@ -93,5 +100,14 @@ private:
     SearchPanel *searchBar{};
     TWelcomePage *m_welcomePage{};
     TEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
+    struct WorkbenchDiagnostic {
+        QString file;
+        int line = 1;
+        int column = 1;
+        QString severity;
+        QString message;
+    };
+
+    QVector<WorkbenchDiagnostic> m_diagnostics;
     QSet<QString> m_seenDiagnostics;
 };

@@ -35,6 +35,9 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     toggleSidebarAction = new QAction("إظهار/إخفاء الشريط الجانبي", parent);
     togglePanelAction = new QAction("إظهار/إخفاء اللوحة", parent);
     problemsAction = new QAction("المشاكل", parent);
+    debugPanelAction = new QAction("لوحة التصحيح", parent);
+    goToDefinitionAction = new QAction("الانتقال إلى التعريف", parent);
+    findReferencesAction = new QAction("البحث عن المراجع", parent);
 
     newAction->setShortcut(QKeySequence("Ctrl+N"));
     openFileAction->setShortcut(QKeySequence("Ctrl+O"));
@@ -49,6 +52,9 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     toggleSidebarAction->setShortcut(QKeySequence("Ctrl+B"));
     togglePanelAction->setShortcut(QKeySequence("Ctrl+J"));
     problemsAction->setShortcut(QKeySequence("Ctrl+Shift+M"));
+    debugPanelAction->setShortcut(QKeySequence("Ctrl+Shift+D"));
+    goToDefinitionAction->setShortcut(QKeySequence("F12"));
+    findReferencesAction->setShortcut(QKeySequence("Shift+F12"));
 
     aboutAction = new QAction("عن المحرر", parent);
 
@@ -65,8 +71,10 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     editMenu->addAction(findAction);
     editMenu->addAction(findInFilesAction);
+    editMenu->addAction(findReferencesAction);
     editMenu->addSeparator();
     editMenu->addAction(goToLineAction);
+    editMenu->addAction(goToDefinitionAction);
 
     viewMenu->addAction(commandPaletteAction);
     viewMenu->addAction(quickOpenAction);
@@ -74,6 +82,7 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     viewMenu->addAction(toggleSidebarAction);
     viewMenu->addAction(togglePanelAction);
     viewMenu->addAction(problemsAction);
+    viewMenu->addAction(debugPanelAction);
 
     runMenu->addAction(runAction);
 
@@ -99,6 +108,9 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     connect(toggleSidebarAction, &QAction::triggered, this, &TMenuBar::onToggleSidebarAction);
     connect(togglePanelAction, &QAction::triggered, this, &TMenuBar::onTogglePanelAction);
     connect(problemsAction, &QAction::triggered, this, &TMenuBar::onProblemsAction);
+    connect(debugPanelAction, &QAction::triggered, this, &TMenuBar::onDebugPanelAction);
+    connect(goToDefinitionAction, &QAction::triggered, this, &TMenuBar::onGoToDefinitionAction);
+    connect(findReferencesAction, &QAction::triggered, this, &TMenuBar::onFindReferencesAction);
 
     connect(aboutAction, &QAction::triggered, this, &TMenuBar::onAboutAction);
 }
@@ -122,3 +134,7 @@ void TMenuBar::onGoToLineAction() { emit goToLineRequested(); }
 void TMenuBar::onToggleSidebarAction() { emit toggleSidebarRequested(); }
 void TMenuBar::onTogglePanelAction() { emit togglePanelRequested(); }
 void TMenuBar::onProblemsAction() { emit problemsRequested(); }
+
+void TMenuBar::onDebugPanelAction() { emit debugPanelRequested(); }
+void TMenuBar::onGoToDefinitionAction() { emit goToDefinitionRequested(); }
+void TMenuBar::onFindReferencesAction() { emit findReferencesRequested(); }

@@ -28,7 +28,8 @@ public:
     enum class Tab {
         Problems,
         Output,
-        Terminal
+        Terminal,
+        Debug
     };
     Q_ENUM(Tab)
 
@@ -78,6 +79,7 @@ private:
     void setupProblemsView();
     void setupOutputView();
     void setupTerminal();
+    void setupDebugView();
     void applyStyles();
     QWidget* createHeaderBar();
 
@@ -89,6 +91,7 @@ private:
     QWidget* m_problemsView{nullptr};
     QWidget* m_outputView{nullptr};
     TConsole* m_terminal{nullptr};
+    QWidget* m_debugView{nullptr};
     
     // Problems list
     QVBoxLayout* m_problemsLayout{nullptr};

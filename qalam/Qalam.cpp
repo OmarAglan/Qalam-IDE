@@ -35,6 +35,7 @@
 #include <QLabel>
 #include <QSet>
 #include <QVector>
+#include <QTextBlock>
 #include "TSearchView.h"
 
 Qalam::Qalam(const QString& filePath, QWidget *parent)
@@ -196,6 +197,9 @@ void Qalam::connectSignals()
     connect(menuBar, &TMenuBar::toggleSidebarRequested, this, &Qalam::toggleSidebar);
     connect(menuBar, &TMenuBar::togglePanelRequested, this, &Qalam::toggleConsole);
     connect(menuBar, &TMenuBar::problemsRequested, this, &Qalam::openProblemsPanel);
+    connect(menuBar, &TMenuBar::debugPanelRequested, this, &Qalam::openDebugPanel);
+    connect(menuBar, &TMenuBar::goToDefinitionRequested, this, &Qalam::goToDefinition);
+    connect(menuBar, &TMenuBar::findReferencesRequested, this, &Qalam::findReferences);
     connect(this, &QalamWindow::commandCenterClicked, this, &Qalam::showCommandPalette);
 
     connect(m_buildManager, &BuildManager::outputChunk, this, &Qalam::handleBuildOutput);
@@ -208,6 +212,11 @@ void Qalam::connectSignals()
             }
             m_layoutManager->panelArea()->addProblem("فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.",
                                                       filePath, 1, 1, "error");
+            if (!filePath.isEmpty()) {
+                m_diagnostics.push_back({filePath, 1, 1, "error",
+                                         "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل."});
+                applyDiagnosticsToEditors();
+            }
         }
         updateProblemsStatusBar();
     });
@@ -434,6 +443,7 @@ void Qalam::onCurrentTabChanged()
         if (m_layoutManager->breadcrumb()) {
             m_layoutManager->breadcrumb()->setVisible(!editor->currentFilePath().isEmpty());
         }
+        applyDiagnosticsToEditors();
     } else {
         searchBar->setEditor(nullptr);
         if (m_layoutManager->breadcrumb()) {
@@ -482,7 +492,9 @@ void Qalam::runBaa() {
     auto *panelArea = m_layoutManager->panelArea();
     if (!panelArea) return;
     m_seenDiagnostics.clear();
+    m_diagnostics.clear();
     panelArea->clearProblems();
+    applyDiagnosticsToEditors();
     updateProblemsStatusBar();
     panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
@@ -808,6 +820,17 @@ void Qalam::openProblemsPanel()
     panel->setCollapsed(false);
 }
 
+
+void Qalam::openDebugPanel()
+{
+    auto *panel = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
+    if (!panel) return;
+
+    panel->setCurrentTab(TPanelArea::Tab::Debug);
+    panel->show();
+    panel->setCollapsed(false);
+}
+
 QStringList Qalam::collectProjectFiles() const
 {
     QStringList files;
@@ -849,6 +872,9 @@ bool Qalam::runCommandById(const QString &commandId)
     if (commandId == "view.sidebar") { toggleSidebar(); return true; }
     if (commandId == "view.panel") { toggleConsole(); return true; }
     if (commandId == "view.problems") { openProblemsPanel(); return true; }
+    if (commandId == "view.debug") { openDebugPanel(); return true; }
+    if (commandId == "code.definition") { goToDefinition(); return true; }
+    if (commandId == "code.references") { findReferences(); return true; }
     if (commandId == "run.baa") { runBaa(); return true; }
     if (commandId == "quick.open") { showQuickOpen(); return true; }
     if (commandId == "go.line") { goToLine(); return true; }
@@ -877,6 +903,9 @@ void Qalam::showCommandPalette()
         {"view.sidebar", "عرض: إظهار/إخفاء الشريط الجانبي", "Ctrl+B"},
         {"view.panel", "عرض: إظهار/إخفاء اللوحة السفلية", "Ctrl+J"},
         {"view.problems", "عرض: المشاكل", "Ctrl+Shift+M"},
+        {"view.debug", "عرض: لوحة التصحيح", "Ctrl+Shift+D"},
+        {"code.definition", "الشفرة: الانتقال إلى التعريف", "F12"},
+        {"code.references", "الشفرة: البحث عن المراجع", "Shift+F12"},
         {"run.baa", "تشغيل: تشغيل ملف باء", "F5"},
         {"settings.open", "إعدادات: فتح الإعدادات", ""},
         {"help.about", "مساعدة: عن قلم", ""},
@@ -1110,10 +1139,129 @@ void Qalam::handleBuildOutput(const QString &text)
         if (m_seenDiagnostics.contains(key)) continue;
         m_seenDiagnostics.insert(key);
 
-        panel->addProblem(message, file, qMax(1, line), qMax(1, column), severity);
+        const int normalizedLine = qMax(1, line);
+        const int normalizedColumn = qMax(1, column);
+        panel->addProblem(message, file, normalizedLine, normalizedColumn, severity);
+        m_diagnostics.push_back({file, normalizedLine, normalizedColumn, severity, message});
     }
 
+    applyDiagnosticsToEditors();
     updateProblemsStatusBar();
+}
+
+
+void Qalam::applyDiagnosticsToEditors()
+{
+    for (int index = 0; index < tabWidget->count(); ++index) {
+        auto *editor = qobject_cast<TEditor*>(tabWidget->widget(index));
+        if (!editor) continue;
+
+        QVector<TEditor::Diagnostic> editorDiagnostics;
+        const QString editorPath = QDir::cleanPath(editor->currentFilePath());
+        for (const WorkbenchDiagnostic &diagnostic : m_diagnostics) {
+            if (diagnostic.file.isEmpty()) continue;
+            if (QDir::cleanPath(diagnostic.file) != editorPath) continue;
+            editorDiagnostics.push_back({diagnostic.file, diagnostic.line, diagnostic.column,
+                                         diagnostic.severity, diagnostic.message});
+        }
+        editor->setDiagnostics(editorDiagnostics);
+    }
+}
+
+QString Qalam::symbolUnderCursor() const
+{
+    const TEditor *editor = const_cast<Qalam*>(this)->currentEditor();
+    if (!editor) return QString();
+
+    QTextCursor cursor = editor->textCursor();
+    const QString blockText = cursor.block().text();
+    int end = qBound(0, cursor.positionInBlock(), static_cast<int>(blockText.length()));
+    int start = end;
+    while (start > 0) {
+        const QChar ch = blockText.at(start - 1);
+        if (!(ch.isLetterOrNumber() || ch == '_' || ch == '#')) break;
+        --start;
+    }
+    while (end < blockText.length()) {
+        const QChar ch = blockText.at(end);
+        if (!(ch.isLetterOrNumber() || ch == '_' || ch == '#')) break;
+        ++end;
+    }
+    return blockText.mid(start, end - start).trimmed();
+}
+
+bool Qalam::findDefinitionLocation(const QString &symbol, QString *filePath, int *line, int *column) const
+{
+    if (symbol.trimmed().isEmpty()) return false;
+
+    QStringList files = collectProjectFiles();
+    if (files.isEmpty()) {
+        const TEditor *editor = const_cast<Qalam*>(this)->currentEditor();
+        if (editor && !editor->currentFilePath().isEmpty()) {
+            files << editor->currentFilePath();
+        }
+    }
+
+    const QString escaped = QRegularExpression::escape(symbol);
+    const QRegularExpression definitionPattern(
+        QStringLiteral(R"((?:^|\s)(?:دالة|صنف|ثابت|صحيح|عدد|نص|منطقي|حرف)\s+%1(?:\s|\(|=|\.|$))").arg(escaped),
+        QRegularExpression::UseUnicodePropertiesOption);
+
+    for (const QString &candidate : files) {
+        QFile file(candidate);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) continue;
+        QTextStream stream(&file);
+        stream.setEncoding(QStringConverter::Utf8);
+        int currentLine = 0;
+        while (!stream.atEnd()) {
+            const QString text = stream.readLine();
+            ++currentLine;
+            const QRegularExpressionMatch match = definitionPattern.match(text);
+            if (!match.hasMatch()) continue;
+            if (filePath) *filePath = candidate;
+            if (line) *line = currentLine;
+            if (column) *column = qMax(1, text.indexOf(symbol) + 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+void Qalam::goToDefinition()
+{
+    const QString symbol = symbolUnderCursor();
+    if (symbol.isEmpty()) {
+        if (m_layoutManager && m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage("لا يوجد رمز تحت المؤشر");
+        }
+        return;
+    }
+
+    QString file;
+    int line = 1;
+    int column = 1;
+    if (findDefinitionLocation(symbol, &file, &line, &column)) {
+        goToLocation(file, line, column);
+    } else if (m_layoutManager && m_layoutManager->statusBar()) {
+        m_layoutManager->statusBar()->showMessage("لم يتم العثور على تعريف: " + symbol);
+    }
+}
+
+void Qalam::findReferences()
+{
+    const QString symbol = symbolUnderCursor();
+    if (symbol.isEmpty()) {
+        if (m_layoutManager && m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage("لا يوجد رمز تحت المؤشر");
+        }
+        return;
+    }
+
+    focusSearchInFiles();
+    performProjectSearch(symbol, false, true, false);
+    if (m_layoutManager && m_layoutManager->statusBar()) {
+        m_layoutManager->statusBar()->showMessage("تم البحث عن المراجع: " + symbol);
+    }
 }
 
 /* ----------------------------------- Help Menu Button ----------------------------------- */
