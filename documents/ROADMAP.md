@@ -36,7 +36,7 @@ One deferred item from Phase 2:
 - **Smart pointer usage** -- `std::unique_ptr` for strategies/states, `std::shared_ptr` for themes, `QPointer` for cross-thread refs
 - **Thread safety** -- `QMutex` in `ProcessWorker` and `TConsole`, proper thread lifecycle in `BuildManager`
 - **Structured Baa diagnostics** -- `diagnostics-json-v1` parser, span/code/hint model, and save-time `baa --check` path
-- **Takween discovery** -- nearest `مشروع.تكوين` is discovered and run/build requests route through Takween when installed
+- **Takween project workflow** -- the nearest `مشروع.تكوين` is discovered; explicit build/clean actions and F5 run route through a validated Takween command when installed
 - **Qt Test foundation** -- focused tests cover diagnostics, workspace indexing, commands, and build-tool argument/project discovery
 
 ### Remaining Issues by Severity
@@ -76,7 +76,7 @@ One deferred item from Phase 2:
 |------|-------|
 | Editor Search | `TSearchPanel` has find but **no replace** functionality; `isWholeWord()` hardcoded to `false` |
 | Sidebar Search | `TSearchView` UI exists but search is **not wired** -- `searchRequested` signal emitted but nothing connects to scan files; `addResult()` never called; replace buttons nonfunctional |
-| Ecosystem Build UX | Structured Baa checks and Takween project discovery exist; full Takween build-event JSON, target selection, cancellation, and end-to-end fixtures remain |
+| Ecosystem Build UX | Structured Baa checks plus Takween build/run/clean actions exist; full Takween build-event JSON, target selection, cancellation, and end-to-end UI fixtures remain |
 | ANSI Colors | `TConsole::appendOutput()` has ANSI parsing but is dead code; active path `flushPending()` does NOT render colors |
 | Auto-save Error | `TAutoSave.cpp:35` -- `file.open()` failure is silently ignored |
 | Settings | Only editor appearance (font size/family/theme); no compiler path UI, no keybinding config, no auto-save interval config; "Advanced" category commented out |
@@ -178,11 +178,11 @@ One deferred item from Phase 2:
 
 ### 5.3 Build Error Integration
 
-- [ ] 5.3.1 Parse Baa compiler error output (line number, column, message, severity)
-- [ ] 5.3.2 Feed parsed errors to `TPanelArea::addProblem()`
-- [ ] 5.3.3 Add inline error indicators in editor (squiggly underlines or margin marks)
-- [ ] 5.3.4 Click-to-navigate from Problems panel to error location in editor
-- [ ] 5.3.5 Clear problems on successful build
+- [x] 5.3.1 Parse `diagnostics-json-v1` plus compatibility text (span/code/message/severity/hint)
+- [x] 5.3.2 Feed parsed errors to `TPanelArea::addProblem()`
+- [x] 5.3.3 Add inline error indicators in editor (squiggly underlines and tooltips)
+- [x] 5.3.4 Click-to-navigate from Problems panel to error location in editor
+- [x] 5.3.5 Replace or clear problems on a successful editor check/run start
 
 ### 5.4 Console ANSI Colors
 
@@ -252,7 +252,7 @@ One deferred item from Phase 2:
 
 - [ ] 6.3.1 `FileManager` tests: new/open/save/save-as workflows, size limits, duplicate detection
 - [ ] 6.3.2 `SessionManager` tests: save/restore round-trip, missing files, empty session
-- [x] 6.3.3a `BuildManager` tests: stable Baa check arguments and Takween root discovery (local Debug build verified)
+- [x] 6.3.3a `BuildManager` tests: stable Baa check arguments, validated Takween argv, and project-root discovery (local Debug build verified)
 - [ ] 6.3.3b `BuildManager` tests: process lifecycle, cancellation, and tool resolution fixtures
 - [ ] 6.3.4 `LayoutManager` tests: sidebar toggle, panel toggle, state persistence
 
@@ -279,7 +279,7 @@ One deferred item from Phase 2:
 
 ### 7.2 Quality Gates
 
-- [ ] 7.2.1 Configure CI with `QALAM_BUILD_TESTS=ON` and run `ctest --output-on-failure`
+- [x] 7.2.1 Configure Linux CI with `QALAM_BUILD_TESTS=ON` and run `ctest --output-on-failure`
 - [ ] 7.2.2 Add `clang-format --dry-run --Werror` check step
 - [ ] 7.2.3 Add `clang-tidy` static analysis step
 - [ ] 7.2.4 Add build warnings as errors (`-Werror`) for CI builds

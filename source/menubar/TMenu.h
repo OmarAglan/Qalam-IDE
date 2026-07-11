@@ -21,7 +21,9 @@ public:
     QAction* saveAsAction;
     QAction* SettingsAction;
     QAction* exitAction;
+    QAction* buildAction;
     QAction* runAction;
+    QAction* cleanAction;
     QAction* aboutAction;
     QAction* commandPaletteAction;
     QAction* quickOpenAction;
@@ -43,7 +45,9 @@ signals:
     void saveAsRequested();
     void settingsRequest();
     void exitRequested();
+    void buildRequested();
     void runRequested();
+    void cleanRequested();
     void aboutRequested();
     void commandPaletteRequested();
     void quickOpenRequested();
@@ -66,7 +70,9 @@ private slots:
     void onSaveAsAction();
     void onSettingsAction();
     void onExitApp();
+    void onBuildAction();
     void onRunAction();
+    void onCleanAction();
     void onAboutAction();
     void onCommandPaletteAction();
     void onQuickOpenAction();

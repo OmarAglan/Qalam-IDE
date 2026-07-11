@@ -12,6 +12,7 @@ class TestBuildManager : public QObject
 
 private slots:
     void buildsStableBaaCheckArguments();
+    void buildsValidatedTakweenArguments();
     void findsNearestTakweenProjectRoot();
     void returnsEmptyRootOutsideTakweenProject();
 };
@@ -25,6 +26,15 @@ void TestBuildManager::buildsStableBaaCheckArguments()
     QCOMPARE(arguments[0], QString("--check"));
     QCOMPARE(arguments[1], QString("--diagnostics=json"));
     QCOMPARE(arguments[2], QFileInfo(path).absoluteFilePath());
+}
+
+void TestBuildManager::buildsValidatedTakweenArguments()
+{
+    QCOMPARE(BuildManager::takweenCommandArguments("build"), QStringList{"build"});
+    QCOMPARE(BuildManager::takweenCommandArguments(" RUN "), QStringList{"run"});
+    QCOMPARE(BuildManager::takweenCommandArguments("clean"), QStringList{"clean"});
+    QVERIFY(BuildManager::takweenCommandArguments("publish").isEmpty());
+    QVERIFY(BuildManager::takweenCommandArguments("build & whoami").isEmpty());
 }
 
 void TestBuildManager::findsNearestTakweenProjectRoot()

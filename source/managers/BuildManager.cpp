@@ -99,6 +99,15 @@ QStringList BuildManager::baaCheckArguments(const QString &filePath)
     return {"--check", "--diagnostics=json", QFileInfo(filePath).absoluteFilePath()};
 }
 
+QStringList BuildManager::takweenCommandArguments(const QString &command)
+{
+    const QString normalized = command.trimmed().toLower();
+    if (normalized == "build" or normalized == "run" or normalized == "clean") {
+        return {normalized};
+    }
+    return {};
+}
+
 QString BuildManager::findTakweenProjectRoot(const QString &filePath)
 {
     QDir directory = QFileInfo(filePath).isDir()
@@ -214,11 +223,50 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
         const QString takween = resolveTakweenPath();
         if (!takween.isEmpty()) {
             program = takween;
-            args = { "run" };
+            args = takweenCommandArguments("run");
             workingDir = projectRoot;
             usingTakween = true;
         }
     }
+
+    startProcess(program,
+                 args,
+                 workingDir,
+                 filePath,
+                 usingTakween ? "🚀 تشغيل مشروع تكوين...\n" : "🚀 بدء تشغيل ملف باء...\n",
+                 console);
+}
+
+bool BuildManager::runTakweenCommand(const QString &filePath,
+                                     const QString &command,
+                                     TConsole *console)
+{
+    if (!console) return false;
+
+    const QStringList arguments = takweenCommandArguments(command);
+    const QString projectRoot = findTakweenProjectRoot(filePath);
+    const QString takween = resolveTakweenPath();
+    if (arguments.isEmpty() or projectRoot.isEmpty() or takween.isEmpty()) return false;
+
+    const QString normalized = arguments.first();
+    QString heading = "🚀 تنفيذ أمر مشروع تكوين...\n";
+    if (normalized == "build") heading = "🛠️ بناء مشروع تكوين...\n";
+    else if (normalized == "run") heading = "🚀 تشغيل مشروع تكوين...\n";
+    else if (normalized == "clean") heading = "🧹 تنظيف مشروع تكوين...\n";
+
+    startProcess(takween, arguments, projectRoot, filePath, heading, console);
+    return true;
+}
+
+void BuildManager::startProcess(const QString &requestedProgram,
+                                const QStringList &arguments,
+                                const QString &workingDirectory,
+                                const QString &contextPath,
+                                const QString &heading,
+                                TConsole *console)
+{
+    if (!console) return;
+    QString program = requestedProgram;
 
     if (!QFileInfo(program).isExecutable()) {
         const QString pathProgram = QStandardPaths::findExecutable(program);
@@ -245,12 +293,10 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
     console->stopCmd();
 
     console->clear();
-    console->appendPlainTextThreadSafe(usingTakween
-        ? "🚀 تشغيل مشروع تكوين...\n"
-        : "🚀 بدء تشغيل ملف باء...\n");
-    console->appendPlainTextThreadSafe("📄 الملف: " + QFileInfo(filePath).fileName() + "\n");
+    console->appendPlainTextThreadSafe(heading);
+    console->appendPlainTextThreadSafe("📄 السياق: " + QFileInfo(contextPath).fileName() + "\n");
 
-    m_worker = new ProcessWorker(program, args, workingDir);
+    m_worker = new ProcessWorker(program, arguments, workingDirectory);
     m_buildThread = new QThread(this);
 
     m_worker->moveToThread(m_buildThread);
@@ -273,7 +319,7 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
     connect(m_worker, &ProcessWorker::finished, this, [this, safeConsole, thread](int code) {
         if (safeConsole) {
             safeConsole->appendPlainTextThreadSafe(
-                "\n──────────────────────────────\n✅ انتهى التنفيذ (Exit code = "
+                "\n──────────────────────────────\n✅ انتهى الأمر (Exit code = "
                 + QString::number(code) + ")\n"
                 );
             safeConsole->startCmd();

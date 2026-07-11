@@ -49,8 +49,9 @@
 ### IDE features
 - **Embedded interactive console** with command history and fast flush buffering
 - **Ecosystem tooling integration**: saved files are checked through Baa's
-  `diagnostics-json-v1`; projects containing `مشروع.تكوين` run through Takween
-  when available, while standalone files retain the direct Baa fallback.
+  `diagnostics-json-v1`; projects containing `مشروع.تكوين` can be built, run,
+  and cleaned through Takween from the Run menu or command palette, while
+  standalone files retain the direct Baa fallback.
 - **File explorer sidebar** (QTreeView + QFileSystemModel)
 - **Welcome screen**
   - Recent files list

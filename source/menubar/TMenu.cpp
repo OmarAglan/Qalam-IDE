@@ -25,7 +25,9 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     SettingsAction = new QAction("الإعدادات", parent);
     exitAction = new QAction("خروج", parent);
 
+    buildAction = new QAction("بناء مشروع تكوين", parent);
     runAction = new QAction("تشغيل", parent);
+    cleanAction = new QAction("تنظيف مشروع تكوين", parent);
 
     commandPaletteAction = new QAction("لوحة الأوامر", parent);
     quickOpenAction = new QAction("فتح سريع", parent);
@@ -43,6 +45,7 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     openFileAction->setShortcut(QKeySequence("Ctrl+O"));
     saveAction->setShortcut(QKeySequence("Ctrl+S"));
     saveAsAction->setShortcut(QKeySequence("Ctrl+Shift+S"));
+    buildAction->setShortcut(QKeySequence("Ctrl+Shift+B"));
     runAction->setShortcut(QKeySequence("F5"));
     commandPaletteAction->setShortcut(QKeySequence("Ctrl+Shift+P"));
     quickOpenAction->setShortcut(QKeySequence("Ctrl+P"));
@@ -84,7 +87,10 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     viewMenu->addAction(problemsAction);
     viewMenu->addAction(debugPanelAction);
 
+    runMenu->addAction(buildAction);
     runMenu->addAction(runAction);
+    runMenu->addSeparator();
+    runMenu->addAction(cleanAction);
 
     terminalMenu->addAction(togglePanelAction);
 
@@ -99,7 +105,9 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
     connect(SettingsAction, &QAction::triggered, this, &TMenuBar::onSettingsAction);
     connect(exitAction, &QAction::triggered, this, &TMenuBar::onExitApp);
 
+    connect(buildAction, &QAction::triggered, this, &TMenuBar::onBuildAction);
     connect(runAction, &QAction::triggered, this, &TMenuBar::onRunAction);
+    connect(cleanAction, &QAction::triggered, this, &TMenuBar::onCleanAction);
     connect(commandPaletteAction, &QAction::triggered, this, &TMenuBar::onCommandPaletteAction);
     connect(quickOpenAction, &QAction::triggered, this, &TMenuBar::onQuickOpenAction);
     connect(findAction, &QAction::triggered, this, &TMenuBar::onFindAction);
@@ -122,7 +130,9 @@ void TMenuBar::onSaveAction() { emit saveRequested(); }
 void TMenuBar::onSaveAsAction() { emit saveAsRequested(); }
 void TMenuBar::onSettingsAction() { emit settingsRequest(); }
 void TMenuBar::onExitApp() { emit exitRequested(); }
+void TMenuBar::onBuildAction() { emit buildRequested(); }
 void TMenuBar::onRunAction() { emit runRequested(); }
+void TMenuBar::onCleanAction() { emit cleanRequested(); }
 void TMenuBar::onAboutAction() { emit aboutRequested(); }
 
 

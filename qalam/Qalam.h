@@ -41,6 +41,8 @@ private slots:
     void openFileFromUi(const QString &filePathOrEmpty = QString());
 
     void runBaa();
+    void buildTakweenProject();
+    void cleanTakweenProject();
     void aboutQalam();
 
     void updateWindowTitle();
@@ -89,6 +91,7 @@ private:
     void applyDiagnosticsToEditors();
     QString symbolUnderCursor() const;
     bool findDefinitionLocation(const QString &symbol, QString *filePath, int *line, int *column) const;
+    void runTakweenProjectCommand(const QString &command);
 
 private:
     QTabWidget *tabWidget{};

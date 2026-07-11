@@ -195,7 +195,9 @@ void Qalam::connectSignals()
     connect(menuBar, &TMenuBar::saveAsRequested, m_fileManager, &FileManager::saveFileAs);
     connect(menuBar, &TMenuBar::settingsRequest, this, &Qalam::openSettings);
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
+    connect(menuBar, &TMenuBar::buildRequested, this, &Qalam::buildTakweenProject);
     connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
+    connect(menuBar, &TMenuBar::cleanRequested, this, &Qalam::cleanTakweenProject);
     connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
     connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
     connect(menuBar, &TMenuBar::commandPaletteRequested, this, &Qalam::showCommandPalette);
@@ -538,6 +540,44 @@ void Qalam::runBaa() {
     m_buildManager->runBaa(filePath, console);
 }
 
+void Qalam::buildTakweenProject()
+{
+    runTakweenProjectCommand("build");
+}
+
+void Qalam::cleanTakweenProject()
+{
+    runTakweenProjectCommand("clean");
+}
+
+void Qalam::runTakweenProjectCommand(const QString &command)
+{
+    TEditor *editor = currentEditor();
+    if (!editor or editor->currentFilePath().isEmpty()) {
+        QMessageBox::information(this, "مشروع تكوين", "افتح ملفًا محفوظًا داخل مشروع تكوين أولًا.");
+        return;
+    }
+
+    if (editor->document()->isModified()) {
+        m_fileManager->saveFile();
+        if (editor->document()->isModified()) return;
+    }
+
+    auto *panelArea = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
+    if (!panelArea) return;
+    panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
+    panelArea->show();
+    panelArea->setCollapsed(false);
+
+    if (!m_buildManager->runTakweenCommand(
+            editor->currentFilePath(), command, panelArea->terminal())) {
+        QMessageBox::warning(
+            this,
+            "مشروع تكوين",
+            "لم يُعثر على مشروع.تكوين أو على برنامج تكوين القابل للتنفيذ.");
+    }
+}
+
 //----------------
 
 TEditor* Qalam::currentEditor() {
@@ -868,7 +908,9 @@ bool Qalam::runCommandById(const QString &commandId)
     if (commandId == "view.debug") { openDebugPanel(); return true; }
     if (commandId == "code.definition") { goToDefinition(); return true; }
     if (commandId == "code.references") { findReferences(); return true; }
+    if (commandId == "project.build") { buildTakweenProject(); return true; }
     if (commandId == "run.baa") { runBaa(); return true; }
+    if (commandId == "project.clean") { cleanTakweenProject(); return true; }
     if (commandId == "quick.open") { showQuickOpen(); return true; }
     if (commandId == "go.line") { goToLine(); return true; }
     if (commandId == "settings.open") { openSettings(); return true; }

@@ -18,11 +18,17 @@ public:
     /// Run a Baa source file. Outputs go to the given console.
     void runBaa(const QString &filePath, TConsole *console);
 
+    /// Run a supported Takween project command for the project owning filePath.
+    bool runTakweenCommand(const QString &filePath, const QString &command, TConsole *console);
+
     /// Run Baa's non-codegen structured diagnostic check for a saved source file.
     void checkBaa(const QString &filePath);
 
     /// Build the stable compiler arguments used by the editor check path.
     static QStringList baaCheckArguments(const QString &filePath);
+
+    /// Build argv for the supported Takween project commands, or an empty list.
+    static QStringList takweenCommandArguments(const QString &command);
 
     /// Find the nearest Takween v0/v1 project root containing مشروع.تكوين.
     static QString findTakweenProjectRoot(const QString &filePath);
@@ -50,6 +56,12 @@ private:
 
     /// Clean up existing thread/worker safely
     void cleanupBuild();
+    void startProcess(const QString &program,
+                      const QStringList &arguments,
+                      const QString &workingDirectory,
+                      const QString &contextPath,
+                      const QString &heading,
+                      TConsole *console);
 
     QPointer<ProcessWorker> m_worker;
     QPointer<QThread> m_buildThread;
