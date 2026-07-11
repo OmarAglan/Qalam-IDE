@@ -9,6 +9,8 @@ class TestDiagnosticParser : public QObject
 private slots:
     void parsesColonError();
     void parsesArabicLineError();
+    void parsesBaaJsonDiagnostics();
+    void ignoresUnknownJsonSchema();
     void deduplicatesRepeatedDiagnostics();
 };
 
@@ -34,6 +36,50 @@ void TestDiagnosticParser::parsesArabicLineError()
     QCOMPARE(diagnostics[0].line, 9);
     QCOMPARE(diagnostics[0].column, 2);
     QCOMPARE(diagnostics[0].severity, QString("error"));
+}
+
+void TestDiagnosticParser::parsesBaaJsonDiagnostics()
+{
+    const auto diagnostics = DiagnosticParser::parseCompilerOutput(R"json(
+        {
+          "schema_version": "diagnostics-json-v1",
+          "diagnostics": [
+            {
+              "code": "B1000",
+              "severity": "error",
+              "category": "semantic",
+              "message": "متغير غير معرف",
+              "file": "source/main.baa",
+              "line": 4,
+              "column": 7,
+              "span": {
+                "start": {"line": 4, "column": 7, "byte": 20},
+                "end": {"line": 4, "column": 10, "byte": 23}
+              },
+              "hint": "عرّف المتغير قبل استخدامه",
+              "hints": ["عرّف المتغير قبل استخدامه"]
+            }
+          ]
+        }
+    )json", QString(), "/tmp/project");
+
+    QCOMPARE(diagnostics.size(), 1);
+    QCOMPARE(diagnostics[0].file, QString("/tmp/project/source/main.baa"));
+    QCOMPARE(diagnostics[0].line, 4);
+    QCOMPARE(diagnostics[0].column, 7);
+    QCOMPARE(diagnostics[0].endColumn, 10);
+    QCOMPARE(diagnostics[0].code, QString("B1000"));
+    QCOMPARE(diagnostics[0].category, QString("semantic"));
+    QCOMPARE(diagnostics[0].source, QString("baa-json"));
+    QVERIFY(diagnostics[0].displayMessage().contains("B1000"));
+    QVERIFY(diagnostics[0].displayMessage().contains("عرّف"));
+}
+
+void TestDiagnosticParser::ignoresUnknownJsonSchema()
+{
+    const auto diagnostics = DiagnosticParser::parseCompilerOutput(
+        R"json({"schema_version":"diagnostics-json-v2","diagnostics":[{"message":"bad"}]})json");
+    QVERIFY(diagnostics.isEmpty());
 }
 
 void TestDiagnosticParser::deduplicatesRepeatedDiagnostics()

@@ -1,6 +1,6 @@
 # Qalam IDE - Improvement Roadmap
 
-**Date:** February 2026
+**Date:** 2026-07-11
 **Version:** 3.3.0
 **Codebase:** ~9,750 lines C++ across 67 files (Qt 6 + C++23)
 
@@ -35,6 +35,9 @@ One deferred item from Phase 2:
 - **Modern signal/slot connections** -- 100% pointer-to-member syntax, zero string-based connections
 - **Smart pointer usage** -- `std::unique_ptr` for strategies/states, `std::shared_ptr` for themes, `QPointer` for cross-thread refs
 - **Thread safety** -- `QMutex` in `ProcessWorker` and `TConsole`, proper thread lifecycle in `BuildManager`
+- **Structured Baa diagnostics** -- `diagnostics-json-v1` parser, span/code/hint model, and save-time `baa --check` path
+- **Takween discovery** -- nearest `مشروع.تكوين` is discovered and run/build requests route through Takween when installed
+- **Qt Test foundation** -- focused tests cover diagnostics, workspace indexing, commands, and build-tool argument/project discovery
 
 ### Remaining Issues by Severity
 
@@ -73,7 +76,7 @@ One deferred item from Phase 2:
 |------|-------|
 | Editor Search | `TSearchPanel` has find but **no replace** functionality; `isWholeWord()` hardcoded to `false` |
 | Sidebar Search | `TSearchView` UI exists but search is **not wired** -- `searchRequested` signal emitted but nothing connects to scan files; `addResult()` never called; replace buttons nonfunctional |
-| Build Error Parsing | Output goes to console raw; `TPanelArea::addProblem()` exists but `BuildManager` never parses compiler errors into it -- Problems panel is empty |
+| Ecosystem Build UX | Structured Baa checks and Takween project discovery exist; full Takween build-event JSON, target selection, cancellation, and end-to-end fixtures remain |
 | ANSI Colors | `TConsole::appendOutput()` has ANSI parsing but is dead code; active path `flushPending()` does NOT render colors |
 | Auto-save Error | `TAutoSave.cpp:35` -- `file.open()` failure is silently ignored |
 | Settings | Only editor appearance (font size/family/theme); no compiler path UI, no keybinding config, no auto-save interval config; "Advanced" category commented out |
@@ -231,9 +234,9 @@ One deferred item from Phase 2:
 
 ### 6.1 Framework Setup
 
-- [ ] 6.1.1 Add Qt Test framework to CMake (or Catch2 if preferred for non-Qt classes)
-- [ ] 6.1.2 Create `tests/` directory structure mirroring `source/`
-- [ ] 6.1.3 Add test CMake target (`ctest` integration)
+- [x] 6.1.1 Add Qt Test framework to CMake
+- [x] 6.1.2 Create focused `tests/` sources for extracted services
+- [x] 6.1.3 Add test CMake targets (`ctest` integration, opt-in with `QALAM_BUILD_TESTS`)
 - [ ] 6.1.4 Create test utilities/helpers for common patterns
 
 ### 6.2 Core Unit Tests
@@ -249,7 +252,8 @@ One deferred item from Phase 2:
 
 - [ ] 6.3.1 `FileManager` tests: new/open/save/save-as workflows, size limits, duplicate detection
 - [ ] 6.3.2 `SessionManager` tests: save/restore round-trip, missing files, empty session
-- [ ] 6.3.3 `BuildManager` tests: compiler resolution, build lifecycle
+- [x] 6.3.3a `BuildManager` tests: stable Baa check arguments and Takween root discovery (local Debug build verified)
+- [ ] 6.3.3b `BuildManager` tests: process lifecycle, cancellation, and tool resolution fixtures
 - [ ] 6.3.4 `LayoutManager` tests: sidebar toggle, panel toggle, state persistence
 
 ### 6.4 Integration Tests
@@ -268,14 +272,14 @@ One deferred item from Phase 2:
 
 ### 7.1 Build Automation
 
-- [ ] 7.1.1 Add GitHub Actions workflow for Windows build (MinGW 13.1+ + Qt 6.10.2)
-- [ ] 7.1.2 Add CMakePresets for Linux (GCC 13+)
+- [x] 7.1.1 Add GitHub Actions workflow for Windows build/package and Linux build
+- [x] 7.1.2 Add CMakePresets for Linux (GCC 13+)
 - [ ] 7.1.3 Add CMakePresets for macOS (Clang 16+)
 - [ ] 7.1.4 Cache Qt installation in CI for faster builds
 
 ### 7.2 Quality Gates
 
-- [ ] 7.2.1 Add test execution step (`ctest --output-on-failure`)
+- [ ] 7.2.1 Configure CI with `QALAM_BUILD_TESTS=ON` and run `ctest --output-on-failure`
 - [ ] 7.2.2 Add `clang-format --dry-run --Werror` check step
 - [ ] 7.2.3 Add `clang-tidy` static analysis step
 - [ ] 7.2.4 Add build warnings as errors (`-Werror`) for CI builds

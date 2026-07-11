@@ -6,7 +6,8 @@ Guidelines for AI agents working on this codebase.
 
 Qalam IDE is a Qt 6 / C++23 IDE for the Baa Arabic-syntax programming language (لغة باء).
 RTL-first design, syntax highlighting, auto-completion, embedded console, frameless window.
-~9,500 lines of C++ across ~61 files. No tests, no CI/CD.
+The repository includes focused Qt Test coverage and Windows/Linux GitHub Actions
+builds. Tests are opt-in through `QALAM_BUILD_TESTS`.
 
 ## Build Commands
 
@@ -29,7 +30,15 @@ Output: `build/qalam/Qalam.exe`. The Vulkan DLL warning during linking is harmle
 
 Legacy qmake (not maintained): `cd qalam && qmake Qalam.pro && mingw32-make -j`
 
-**No test framework exists.** No lint or format checks configured.
+Tests:
+
+```sh
+cmake -S . -B build-tests -DQALAM_BUILD_TESTS=ON -DCMAKE_PREFIX_PATH=<qt-root>
+cmake --build build-tests
+ctest --test-dir build-tests --output-on-failure
+```
+
+No lint or format checks are configured yet.
 
 ## Project Structure
 

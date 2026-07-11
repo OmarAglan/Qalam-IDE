@@ -212,6 +212,13 @@ void Qalam::connectSignals()
     connect(this, &QalamWindow::commandCenterClicked, this, &Qalam::showCommandPalette);
 
     connect(m_buildManager, &BuildManager::outputChunk, this, &Qalam::handleBuildOutput);
+    connect(m_buildManager, &BuildManager::diagnosticsReady, this, [this](const QString &json) {
+        if (!m_diagnosticsModel) return;
+        QString fallbackFile;
+        if (TEditor *editor = currentEditor()) fallbackFile = editor->currentFilePath();
+        m_diagnosticsModel->setDiagnostics(
+            DiagnosticParser::parseCompilerOutput(json, fallbackFile, folderPath));
+    });
     connect(m_buildManager, &BuildManager::buildFinished, this, [this](int exitCode) {
         if (exitCode != 0 and m_diagnosticsModel and m_diagnosticsModel->count() == 0) {
             QString filePath;
@@ -219,9 +226,12 @@ void Qalam::connectSignals()
                 filePath = editor->currentFilePath();
             }
             QVector<Diagnostic> runnerDiagnostics;
-            runnerDiagnostics.push_back({filePath, 1, 1, "error",
-                                         "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.",
-                                         "runner"});
+            Diagnostic diagnostic;
+            diagnostic.file = filePath;
+            diagnostic.severity = "error";
+            diagnostic.message = "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.";
+            diagnostic.source = "runner";
+            runnerDiagnostics.push_back(diagnostic);
             m_diagnosticsModel->addDiagnostics(runnerDiagnostics);
         }
         updateProblemsStatusBar();
@@ -258,6 +268,12 @@ void Qalam::connectSignals()
             } else if (not modified and tabText.endsWith("[*]")) {
                 tabWidget->setTabText(index, tabText.left(tabText.length() - 3));
             }
+        }
+
+        TEditor *editor = currentEditor();
+        if (editor and not editor->document()->isModified() and
+            !editor->currentFilePath().isEmpty()) {
+            m_buildManager->checkBaa(editor->currentFilePath());
         }
     });
     connect(m_fileManager, &FileManager::openEditorsChanged, this, &Qalam::syncOpenEditors);
@@ -929,7 +945,7 @@ void Qalam::rebuildProblemsPanel()
 
     panel->clearProblems();
     for (const Diagnostic &diagnostic : m_diagnosticsModel->diagnostics()) {
-        panel->addProblem(diagnostic.message, diagnostic.file,
+        panel->addProblem(diagnostic.displayMessage(), diagnostic.file,
                           diagnostic.line, diagnostic.column,
                           diagnostic.severity);
     }
