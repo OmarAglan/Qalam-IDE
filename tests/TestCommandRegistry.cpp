@@ -30,6 +30,9 @@ void TestCommandRegistry::exposesDefaultCommands()
     QVERIFY(std::any_of(commands.begin(), commands.end(), [](const auto &command) {
         return command.id == "quick.open";
     }));
+    QVERIFY(std::any_of(commands.begin(), commands.end(), [](const auto &command) {
+        return command.id == "project.test";
+    }));
 }
 
 QTEST_MAIN(TestCommandRegistry)

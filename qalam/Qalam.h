@@ -42,6 +42,7 @@ private slots:
 
     void runBaa();
     void buildTakweenProject();
+    void testTakweenProject();
     void cleanTakweenProject();
     void aboutQalam();
 

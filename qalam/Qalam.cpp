@@ -197,6 +197,7 @@ void Qalam::connectSignals()
     connect(menuBar, &TMenuBar::exitRequested, this, &Qalam::exitApp);
     connect(menuBar, &TMenuBar::buildRequested, this, &Qalam::buildTakweenProject);
     connect(menuBar, &TMenuBar::runRequested, this, &Qalam::runBaa);
+    connect(menuBar, &TMenuBar::testRequested, this, &Qalam::testTakweenProject);
     connect(menuBar, &TMenuBar::cleanRequested, this, &Qalam::cleanTakweenProject);
     connect(menuBar, &TMenuBar::aboutRequested, this, &Qalam::aboutQalam);
     connect(menuBar, &TMenuBar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
@@ -543,6 +544,11 @@ void Qalam::runBaa() {
 void Qalam::buildTakweenProject()
 {
     runTakweenProjectCommand("build");
+}
+
+void Qalam::testTakweenProject()
+{
+    runTakweenProjectCommand("test");
 }
 
 void Qalam::cleanTakweenProject()
@@ -909,6 +915,7 @@ bool Qalam::runCommandById(const QString &commandId)
     if (commandId == "code.definition") { goToDefinition(); return true; }
     if (commandId == "code.references") { findReferences(); return true; }
     if (commandId == "project.build") { buildTakweenProject(); return true; }
+    if (commandId == "project.test") { testTakweenProject(); return true; }
     if (commandId == "run.baa") { runBaa(); return true; }
     if (commandId == "project.clean") { cleanTakweenProject(); return true; }
     if (commandId == "quick.open") { showQuickOpen(); return true; }

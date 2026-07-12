@@ -23,6 +23,7 @@ public:
     QAction* exitAction;
     QAction* buildAction;
     QAction* runAction;
+    QAction* testAction;
     QAction* cleanAction;
     QAction* aboutAction;
     QAction* commandPaletteAction;
@@ -47,6 +48,7 @@ signals:
     void exitRequested();
     void buildRequested();
     void runRequested();
+    void testRequested();
     void cleanRequested();
     void aboutRequested();
     void commandPaletteRequested();
@@ -72,6 +74,7 @@ private slots:
     void onExitApp();
     void onBuildAction();
     void onRunAction();
+    void onTestAction();
     void onCleanAction();
     void onAboutAction();
     void onCommandPaletteAction();

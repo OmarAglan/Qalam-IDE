@@ -55,7 +55,7 @@ The heart of Qalam is `TEditor`, a custom `QPlainTextEdit` subclass.
 - **`SessionManager`:** Saves and restores open files, active tab, folder path, and window geometry.
 - **`BuildManager`:** Integrates with both tooling layers. Saved `.baa`/`.baahd`
   files use `baa --check --diagnostics=json` for non-codegen diagnostics. Build,
-  run, and clean requests search parent directories for `مشروع.تكوين` and invoke
+  run, test, and clean requests search parent directories for `مشروع.تكوين` and invoke
   a validated one-argument Takween command in that root. F5 retains direct Baa
   invocation as the explicit single-file fallback.
 - **`DiagnosticParser`:** Treats `diagnostics-json-v1` as the primary compiler

@@ -36,7 +36,8 @@ One deferred item from Phase 2:
 - **Smart pointer usage** -- `std::unique_ptr` for strategies/states, `std::shared_ptr` for themes, `QPointer` for cross-thread refs
 - **Thread safety** -- `QMutex` in `ProcessWorker` and `TConsole`, proper thread lifecycle in `BuildManager`
 - **Structured Baa diagnostics** -- `diagnostics-json-v1` parser, span/code/hint model, and save-time `baa --check` path
-- **Takween project workflow** -- the nearest `مشروع.تكوين` is discovered; explicit build/clean actions and F5 run route through a validated Takween command when installed
+- **Takween project workflow** -- the nearest `مشروع.تكوين` is discovered; explicit
+  build/test/clean actions and F5 run route through validated Takween commands when installed
 - **Qt Test foundation** -- focused tests cover diagnostics, workspace indexing, commands, and build-tool argument/project discovery
 
 ### Remaining Issues by Severity
@@ -76,7 +77,7 @@ One deferred item from Phase 2:
 |------|-------|
 | Editor Search | `TSearchPanel` has find but **no replace** functionality; `isWholeWord()` hardcoded to `false` |
 | Sidebar Search | `TSearchView` UI exists but search is **not wired** -- `searchRequested` signal emitted but nothing connects to scan files; `addResult()` never called; replace buttons nonfunctional |
-| Ecosystem Build UX | Structured Baa checks plus Takween build/run/clean actions exist; full Takween build-event JSON, target selection, cancellation, and end-to-end UI fixtures remain |
+| Ecosystem Build UX | Structured Baa checks plus Takween build/run/test/clean actions exist; full Takween build-event JSON, target selection UI, cancellation, and end-to-end UI fixtures remain |
 | ANSI Colors | `TConsole::appendOutput()` has ANSI parsing but is dead code; active path `flushPending()` does NOT render colors |
 | Auto-save Error | `TAutoSave.cpp:35` -- `file.open()` failure is silently ignored |
 | Settings | Only editor appearance (font size/family/theme); no compiler path UI, no keybinding config, no auto-save interval config; "Advanced" category commented out |

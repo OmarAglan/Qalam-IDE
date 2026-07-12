@@ -32,6 +32,7 @@ void TestBuildManager::buildsValidatedTakweenArguments()
 {
     QCOMPARE(BuildManager::takweenCommandArguments("build"), QStringList{"build"});
     QCOMPARE(BuildManager::takweenCommandArguments(" RUN "), QStringList{"run"});
+    QCOMPARE(BuildManager::takweenCommandArguments("test"), QStringList{"test"});
     QCOMPARE(BuildManager::takweenCommandArguments("clean"), QStringList{"clean"});
     QVERIFY(BuildManager::takweenCommandArguments("publish").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("build & whoami").isEmpty());

@@ -27,6 +27,7 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     buildAction = new QAction("بناء مشروع تكوين", parent);
     runAction = new QAction("تشغيل", parent);
+    testAction = new QAction("اختبار مشروع تكوين", parent);
     cleanAction = new QAction("تنظيف مشروع تكوين", parent);
 
     commandPaletteAction = new QAction("لوحة الأوامر", parent);
@@ -89,6 +90,7 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     runMenu->addAction(buildAction);
     runMenu->addAction(runAction);
+    runMenu->addAction(testAction);
     runMenu->addSeparator();
     runMenu->addAction(cleanAction);
 
@@ -107,6 +109,7 @@ TMenuBar::TMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     connect(buildAction, &QAction::triggered, this, &TMenuBar::onBuildAction);
     connect(runAction, &QAction::triggered, this, &TMenuBar::onRunAction);
+    connect(testAction, &QAction::triggered, this, &TMenuBar::onTestAction);
     connect(cleanAction, &QAction::triggered, this, &TMenuBar::onCleanAction);
     connect(commandPaletteAction, &QAction::triggered, this, &TMenuBar::onCommandPaletteAction);
     connect(quickOpenAction, &QAction::triggered, this, &TMenuBar::onQuickOpenAction);
@@ -132,6 +135,7 @@ void TMenuBar::onSettingsAction() { emit settingsRequest(); }
 void TMenuBar::onExitApp() { emit exitRequested(); }
 void TMenuBar::onBuildAction() { emit buildRequested(); }
 void TMenuBar::onRunAction() { emit runRequested(); }
+void TMenuBar::onTestAction() { emit testRequested(); }
 void TMenuBar::onCleanAction() { emit cleanRequested(); }
 void TMenuBar::onAboutAction() { emit aboutRequested(); }
 

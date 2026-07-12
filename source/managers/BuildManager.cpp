@@ -102,7 +102,8 @@ QStringList BuildManager::baaCheckArguments(const QString &filePath)
 QStringList BuildManager::takweenCommandArguments(const QString &command)
 {
     const QString normalized = command.trimmed().toLower();
-    if (normalized == "build" or normalized == "run" or normalized == "clean") {
+    if (normalized == "build" or normalized == "run" or normalized == "test" or
+        normalized == "clean") {
         return {normalized};
     }
     return {};
@@ -252,6 +253,7 @@ bool BuildManager::runTakweenCommand(const QString &filePath,
     QString heading = "🚀 تنفيذ أمر مشروع تكوين...\n";
     if (normalized == "build") heading = "🛠️ بناء مشروع تكوين...\n";
     else if (normalized == "run") heading = "🚀 تشغيل مشروع تكوين...\n";
+    else if (normalized == "test") heading = "🧪 اختبار مشروع تكوين...\n";
     else if (normalized == "clean") heading = "🧹 تنظيف مشروع تكوين...\n";
 
     startProcess(takween, arguments, projectRoot, filePath, heading, console);
