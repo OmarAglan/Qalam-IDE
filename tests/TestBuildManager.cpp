@@ -13,6 +13,8 @@ class TestBuildManager : public QObject
 private slots:
     void buildsStableBaaCheckArguments();
     void buildsValidatedTakweenArguments();
+    void classifiesCompilerCliExitCodes();
+    void buildsOperationAwareExitDiagnostics();
     void findsNearestTakweenProjectRoot();
     void returnsEmptyRootOutsideTakweenProject();
 };
@@ -36,6 +38,32 @@ void TestBuildManager::buildsValidatedTakweenArguments()
     QCOMPARE(BuildManager::takweenCommandArguments("clean"), QStringList{"clean"});
     QVERIFY(BuildManager::takweenCommandArguments("publish").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("build & whoami").isEmpty());
+}
+
+void TestBuildManager::classifiesCompilerCliExitCodes()
+{
+    using ExitClass = BuildManager::CompilerExitClass;
+    QCOMPARE(BuildManager::classifyCompilerExitCode(0), ExitClass::Success);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(1), ExitClass::SourceError);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(2), ExitClass::InvalidInvocation);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(3), ExitClass::Unsupported);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(4), ExitClass::ToolchainError);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(5), ExitClass::InternalError);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(-1), ExitClass::ProcessFailure);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(42), ExitClass::Unknown);
+}
+
+void TestBuildManager::buildsOperationAwareExitDiagnostics()
+{
+    QCOMPARE(BuildManager::compilerExitCodeId(4), QString("CLI_EXIT_4"));
+    QCOMPARE(BuildManager::compilerExitCodeId(-1), QString("PROCESS_FAILURE"));
+    QVERIFY(BuildManager::compilerExitSummary(1, "check").contains("1"));
+    QVERIFY(BuildManager::compilerExitSummary(4, "build").contains("4"));
+    QVERIFY(BuildManager::compilerExitSummary(5, "build").contains("5"));
+
+    const QString runSummary = BuildManager::compilerExitSummary(1, "run");
+    QVERIFY(runSummary.contains("run"));
+    QVERIFY(runSummary.contains("1"));
 }
 
 void TestBuildManager::findsNearestTakweenProjectRoot()

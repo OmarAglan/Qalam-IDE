@@ -61,6 +61,11 @@ The heart of Qalam is `TEditor`, a custom `QPlainTextEdit` subclass.
 - **`DiagnosticParser`:** Treats `diagnostics-json-v1` as the primary compiler
   contract and retains human-text patterns only as a compatibility fallback.
   The model preserves codes, categories, primary/end spans, and hints.
+- **Tool completion contract:** `BuildManager` emits the operation with the raw
+  process exit code and classifies `compiler-cli-v1` codes `0` through `5`.
+  Qalam uses structured diagnostics first and creates a code-based fallback only
+  when the structured model is empty. `run` and `test` remain operation-aware
+  because a successfully built program may return its own nonzero code.
 - **`LayoutManager`:** Manages sidebar and panel visibility states.
 
 ## Development Workflow

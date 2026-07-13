@@ -51,7 +51,9 @@
 - **Ecosystem tooling integration**: saved files are checked through Baa's
   `diagnostics-json-v1`; projects containing `مشروع.تكوين` can be built, run,
   and cleaned through Takween from the Run menu or command palette, while
-  standalone files retain the direct Baa fallback.
+  standalone files retain the direct Baa fallback. Structured diagnostics stay
+  authoritative; when none are present, Qalam classifies `compiler-cli-v1`
+  exit codes without parsing human-readable messages.
 - **File explorer sidebar** (QTreeView + QFileSystemModel)
 - **Welcome screen**
   - Recent files list

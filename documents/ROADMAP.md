@@ -36,6 +36,9 @@ One deferred item from Phase 2:
 - **Smart pointer usage** -- `std::unique_ptr` for strategies/states, `std::shared_ptr` for themes, `QPointer` for cross-thread refs
 - **Thread safety** -- `QMutex` in `ProcessWorker` and `TConsole`, proper thread lifecycle in `BuildManager`
 - **Structured Baa diagnostics** -- `diagnostics-json-v1` parser, span/code/hint model, and save-time `baa --check` path
+- **Structured tooling failures** -- `compiler-cli-v1` exit codes are classified
+  with explicit operation context when JSON diagnostics are empty; human messages
+  are not parsed to determine the failure class
 - **Takween project workflow** -- the nearest `مشروع.تكوين` is discovered; explicit
   build/test/clean actions and F5 run route through validated Takween commands when installed
 - **Qt Test foundation** -- focused tests cover diagnostics, workspace indexing, commands, and build-tool argument/project discovery
@@ -253,7 +256,8 @@ One deferred item from Phase 2:
 
 - [ ] 6.3.1 `FileManager` tests: new/open/save/save-as workflows, size limits, duplicate detection
 - [ ] 6.3.2 `SessionManager` tests: save/restore round-trip, missing files, empty session
-- [x] 6.3.3a `BuildManager` tests: stable Baa check arguments, validated Takween argv, and project-root discovery (local Debug build verified)
+- [x] 6.3.3a `BuildManager` tests: stable Baa check arguments, validated Takween argv,
+  project-root discovery, and `compiler-cli-v1` classification (local Debug build verified)
 - [ ] 6.3.3b `BuildManager` tests: process lifecycle, cancellation, and tool resolution fixtures
 - [ ] 6.3.4 `LayoutManager` tests: sidebar toggle, panel toggle, state persistence
 

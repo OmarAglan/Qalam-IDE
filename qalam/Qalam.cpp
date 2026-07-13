@@ -222,7 +222,8 @@ void Qalam::connectSignals()
         m_diagnosticsModel->setDiagnostics(
             DiagnosticParser::parseCompilerOutput(json, fallbackFile, folderPath));
     });
-    connect(m_buildManager, &BuildManager::buildFinished, this, [this](int exitCode) {
+    connect(m_buildManager, &BuildManager::toolingFinished, this,
+            [this](const QString &operation, int exitCode) {
         if (exitCode != 0 and m_diagnosticsModel and m_diagnosticsModel->count() == 0) {
             QString filePath;
             if (TEditor *editor = currentEditor()) {
@@ -232,8 +233,10 @@ void Qalam::connectSignals()
             Diagnostic diagnostic;
             diagnostic.file = filePath;
             diagnostic.severity = "error";
-            diagnostic.message = "فشل التشغيل أو البناء. راجع الطرفية للمزيد من التفاصيل.";
-            diagnostic.source = "runner";
+            diagnostic.code = BuildManager::compilerExitCodeId(exitCode);
+            diagnostic.category = "tooling";
+            diagnostic.message = BuildManager::compilerExitSummary(exitCode, operation);
+            diagnostic.source = operation == "check" ? "compiler-cli-v1" : "tooling-exit";
             runnerDiagnostics.push_back(diagnostic);
             m_diagnosticsModel->addDiagnostics(runnerDiagnostics);
         }
@@ -571,6 +574,8 @@ void Qalam::runTakweenProjectCommand(const QString &command)
 
     auto *panelArea = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
     if (!panelArea) return;
+    panelArea->clearProblems();
+    if (m_diagnosticsModel) m_diagnosticsModel->clear();
     panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
     panelArea->setCollapsed(false);

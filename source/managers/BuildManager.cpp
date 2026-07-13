@@ -109,6 +109,59 @@ QStringList BuildManager::takweenCommandArguments(const QString &command)
     return {};
 }
 
+BuildManager::CompilerExitClass BuildManager::classifyCompilerExitCode(int exitCode)
+{
+    switch (exitCode) {
+    case 0: return CompilerExitClass::Success;
+    case 1: return CompilerExitClass::SourceError;
+    case 2: return CompilerExitClass::InvalidInvocation;
+    case 3: return CompilerExitClass::Unsupported;
+    case 4: return CompilerExitClass::ToolchainError;
+    case 5: return CompilerExitClass::InternalError;
+    default:
+        return exitCode < 0 ? CompilerExitClass::ProcessFailure : CompilerExitClass::Unknown;
+    }
+}
+
+QString BuildManager::compilerExitCodeId(int exitCode)
+{
+    if (exitCode >= 0 and exitCode <= 5) {
+        return QString("CLI_EXIT_%1").arg(exitCode);
+    }
+    if (exitCode < 0) return "PROCESS_FAILURE";
+    return QString("UNKNOWN_EXIT_%1").arg(exitCode);
+}
+
+QString BuildManager::compilerExitSummary(int exitCode, const QString &operation)
+{
+    const QString normalized = operation.trimmed().toLower();
+    const bool mayBeProgramExit = normalized == "run" or normalized == "test";
+    if (mayBeProgramExit) {
+        return QString("انتهى أمر %1 بكود خروج %2. بعد نجاح البناء قد يكون هذا كود البرنامج الناتج.")
+            .arg(normalized, QString::number(exitCode));
+    }
+
+    switch (classifyCompilerExitCode(exitCode)) {
+    case CompilerExitClass::Success:
+        return QString();
+    case CompilerExitClass::SourceError:
+        return "رفضت الأداة المصدر أو المشروع (كود الخروج 1).";
+    case CompilerExitClass::InvalidInvocation:
+        return "استدعاء أداة البناء غير صالح (كود الخروج 2).";
+    case CompilerExitClass::Unsupported:
+        return "الهدف أو الميزة المطلوبة غير مدعومة (كود الخروج 3).";
+    case CompilerExitClass::ToolchainError:
+        return "فشلت أداة البناء أو backend أو إنشاء المخرجات (كود الخروج 4).";
+    case CompilerExitClass::InternalError:
+        return "حدث خطأ داخلي في المصرّف أو نظام البناء (كود الخروج 5).";
+    case CompilerExitClass::ProcessFailure:
+        return "تعذر بدء أداة البناء أو انقطعت العملية قبل اكتمالها.";
+    case CompilerExitClass::Unknown:
+        return QString("انتهت أداة البناء بكود خروج غير معروف: %1.").arg(exitCode);
+    }
+    return QString();
+}
+
 QString BuildManager::findTakweenProjectRoot(const QString &filePath)
 {
     QDir directory = QFileInfo(filePath).isDir()
@@ -161,7 +214,7 @@ void BuildManager::checkBaa(const QString &filePath)
         }
     });
     connect(checkProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this, checkProcess](int, QProcess::ExitStatus) {
+            this, [this, checkProcess](int exitCode, QProcess::ExitStatus exitStatus) {
                 if (m_checkProcess != checkProcess) return;
                 m_checkStdout += QString::fromUtf8(checkProcess->readAllStandardOutput());
                 const QString payload = m_checkStdout;
@@ -169,6 +222,7 @@ void BuildManager::checkBaa(const QString &filePath)
                 checkProcess->deleteLater();
                 m_checkProcess = nullptr;
                 if (!payload.trimmed().isEmpty()) emit diagnosticsReady(payload);
+                emit toolingFinished("check", exitStatus == QProcess::NormalExit ? exitCode : -1);
             });
     connect(checkProcess, &QProcess::errorOccurred, this,
             [this, checkProcess](QProcess::ProcessError error) {
@@ -176,6 +230,7 @@ void BuildManager::checkBaa(const QString &filePath)
                 m_checkStdout.clear();
                 checkProcess->deleteLater();
                 m_checkProcess = nullptr;
+                emit toolingFinished("check", -1);
             });
     checkProcess->start();
 }
@@ -234,6 +289,7 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
                  args,
                  workingDir,
                  filePath,
+                 usingTakween ? "run" : "baa",
                  usingTakween ? "🚀 تشغيل مشروع تكوين...\n" : "🚀 بدء تشغيل ملف باء...\n",
                  console);
 }
@@ -256,7 +312,7 @@ bool BuildManager::runTakweenCommand(const QString &filePath,
     else if (normalized == "test") heading = "🧪 اختبار مشروع تكوين...\n";
     else if (normalized == "clean") heading = "🧹 تنظيف مشروع تكوين...\n";
 
-    startProcess(takween, arguments, projectRoot, filePath, heading, console);
+    startProcess(takween, arguments, projectRoot, filePath, normalized, heading, console);
     return true;
 }
 
@@ -264,6 +320,7 @@ void BuildManager::startProcess(const QString &requestedProgram,
                                 const QStringList &arguments,
                                 const QString &workingDirectory,
                                 const QString &contextPath,
+                                const QString &operation,
                                 const QString &heading,
                                 TConsole *console)
 {
@@ -286,6 +343,7 @@ void BuildManager::startProcess(const QString &requestedProgram,
 #if defined(Q_OS_LINUX) || defined(Q_OS_MACOS)
         console->appendPlainTextThreadSafe("تأكد من أن ملف baa لديه صلاحية التنفيذ (chmod +x).\n");
 #endif
+        emit toolingFinished(operation, -1);
         return;
     }
 
@@ -318,7 +376,7 @@ void BuildManager::startProcess(const QString &requestedProgram,
     ProcessWorker *worker = m_worker.data();
     QPointer<TConsole> safeConsole(console);
 
-    connect(m_worker, &ProcessWorker::finished, this, [this, safeConsole, thread](int code) {
+    connect(m_worker, &ProcessWorker::finished, this, [this, safeConsole, thread, operation](int code) {
         if (safeConsole) {
             safeConsole->appendPlainTextThreadSafe(
                 "\n──────────────────────────────\n✅ انتهى الأمر (Exit code = "
@@ -330,6 +388,7 @@ void BuildManager::startProcess(const QString &requestedProgram,
             thread->quit();
         }
         emit buildFinished(code);
+        emit toolingFinished(operation, code);
     });
 
     // Cleanup logic: ensure pointers are cleared after the worker thread finishes.
