@@ -102,7 +102,15 @@ Invoke-Native -FilePath 'cmake' -Arguments @(
 Invoke-Native -FilePath 'cmake' -Arguments @('--build', $BuildDir, '--target', 'Qalam', '--parallel')
 
 if ($BuildTests) {
-    Invoke-Native -FilePath 'cmake' -Arguments @('--build', $BuildDir, '--target', 'test_diagnostic_parser', 'test_workspace_indexer', 'test_command_registry', '--parallel')
+    Invoke-Native -FilePath 'cmake' -Arguments @(
+        '--build', $BuildDir,
+        '--target',
+        'test_diagnostic_parser',
+        'test_workspace_indexer',
+        'test_command_registry',
+        'test_build_manager',
+        '--parallel'
+    )
     Invoke-Native -FilePath 'ctest' -Arguments @('--test-dir', $BuildDir, '--output-on-failure')
 }
 

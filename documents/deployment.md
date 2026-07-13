@@ -50,8 +50,10 @@ The bootstrap script does the full local setup:
 2. Uses `winget` to install missing base tools when possible.
 3. Installs `aqtinstall` with Python.
 4. Downloads Qt 6 + MinGW into `C:\Qt` by default.
-5. Builds Qalam.
-6. Runs the packaging script to create a portable ZIP.
+5. Selects the MinGW toolchain installed for that Qt kit; an unrelated `g++.exe`
+   already present on `PATH` is not accepted as the kit compiler.
+6. Builds Qalam.
+7. Runs the packaging script to create a portable ZIP.
 
 Outputs:
 

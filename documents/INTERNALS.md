@@ -102,9 +102,14 @@ Keywords are now data-driven from `qalam/resources/baa-language.json`:
 
 ### Prerequisites
 
-- Qt 6.10.2+
+- Qt 6.x (the Windows artifact uses 6.10.2; Linux CI also checks the Ubuntu package)
 - MinGW 13.1+ (Windows) or GCC 13+ (Linux) or Clang 16+ (macOS)
 - CMake 3.21+
+
+GitHub Actions keeps the Windows portable artifact on Qt 6.10.2 with its matching
+MinGW kit. The Linux compatibility job intentionally builds against Ubuntu's Qt 6
+development packages and runs the same test suite offscreen, exercising the stated
+Qt 6.x source-compatibility floor without depending on Qt download mirror metadata.
 
 ### Build Commands
 

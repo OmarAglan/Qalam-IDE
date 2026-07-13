@@ -10,6 +10,8 @@ param(
 
     [switch]$NoPackage,
 
+    [switch]$BuildTests,
+
     [switch]$SkipWinget,
 
     [switch]$SkipQtInstall,
@@ -284,9 +286,6 @@ function Find-MingwBin {
         }
     }
 
-    $pathGxx = Get-CommandOrNull 'g++.exe'
-    if ($pathGxx) { return (Split-Path -Parent $pathGxx.Source) }
-
     return $null
 }
 
@@ -350,7 +349,10 @@ $env:QALAM_QT_DIR = $resolvedQtRoot
 $env:PATH = "$mingwBin;$resolvedQtRoot\bin;$env:PATH"
 
 Write-Step 'Building Qalam IDE'
-& (Join-Path $PSScriptRoot 'build-windows.ps1') -Configuration $Configuration -QtRoot $resolvedQtRoot
+& (Join-Path $PSScriptRoot 'build-windows.ps1') `
+    -Configuration $Configuration `
+    -QtRoot $resolvedQtRoot `
+    -BuildTests:$BuildTests
 
 if (!$NoPackage) {
     Write-Step 'Packaging portable Windows ZIP'
