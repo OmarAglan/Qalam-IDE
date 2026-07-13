@@ -13,6 +13,26 @@ static QPair<int, QString> checkStringStart(QStringView text, int pos) {
     return {-1, ""};
 }
 
+static QRegularExpressionMatch matchAt(
+    const QRegularExpression &pattern,
+    QStringView text,
+    int offset)
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    return pattern.matchView(
+        text,
+        offset,
+        QRegularExpression::NormalMatch,
+        QRegularExpression::AnchorAtOffsetMatchOption);
+#else
+    return pattern.match(
+        text,
+        offset,
+        QRegularExpression::NormalMatch,
+        QRegularExpression::AnchorAtOffsetMatchOption);
+#endif
+}
+
 // ==================== Normal State ====================
 
 TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefinition& langDef) {
@@ -92,12 +112,10 @@ TToken NormalState::readToken(QStringView text, int& pos, const LanguageDefiniti
     if (ch.isDigit() || ch == u'٠' || ch == u'١' || ch == u'٢' || ch == u'٣' || ch == u'٤' || ch == u'٥' || ch == u'٦' || ch == u'٧' || ch == u'٨' || ch == u'٩') {
         int start = pos;
         if (ch == '0' && pos + 1 < text.length() && text.mid(pos, 2).compare(u"0x", Qt::CaseInsensitive) == 0) {
-            // Use matchView to avoid QString copy (Qt 6.1+)
-            auto m = langDef.hexPattern.matchView(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+            auto m = matchAt(langDef.hexPattern, text, start);
             if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         }
-        // Use matchView to avoid QString copy (Qt 6.1+)
-        auto m = langDef.numberPattern.matchView(text, start, QRegularExpression::NormalMatch, QRegularExpression::AnchorAtOffsetMatchOption);
+        auto m = matchAt(langDef.numberPattern, text, start);
         if (m.hasMatch()) { pos += m.capturedLength(); return TToken(TokenType::Number, start, m.capturedLength()); }
         pos++; return TToken(TokenType::Number, start, 1);
     }
