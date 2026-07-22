@@ -1,6 +1,6 @@
 # Qalam IDE - Improvement Roadmap
 
-**Date:** 2026-07-11
+**Date:** 2026-07-22
 **Version:** 3.3.0
 **Codebase:** ~9,750 lines C++ across 67 files (Qt 6 + C++23)
 
@@ -80,7 +80,7 @@ One deferred item from Phase 2:
 |------|-------|
 | Editor Search | `TSearchPanel` has find but **no replace** functionality; `isWholeWord()` hardcoded to `false` |
 | Sidebar Search | `TSearchView` UI exists but search is **not wired** -- `searchRequested` signal emitted but nothing connects to scan files; `addResult()` never called; replace buttons nonfunctional |
-| Ecosystem Build UX | Structured Baa checks plus Takween build/run/test/clean actions exist; full Takween build-event JSON, target selection UI, cancellation, and end-to-end UI fixtures remain |
+| Ecosystem Build UX | Structured Baa checks, authoritative Takween target selection, JSONL progress, and explicit cancellation exist; full descendant-process ownership and end-to-end GUI fixtures remain |
 | ANSI Colors | `TConsole::appendOutput()` has ANSI parsing but is dead code; active path `flushPending()` does NOT render colors |
 | Auto-save Error | `TAutoSave.cpp:35` -- `file.open()` failure is silently ignored |
 | Settings | Only editor appearance (font size/family/theme); no compiler path UI, no keybinding config, no auto-save interval config; "Advanced" category commented out |
@@ -258,7 +258,9 @@ One deferred item from Phase 2:
 - [ ] 6.3.2 `SessionManager` tests: save/restore round-trip, missing files, empty session
 - [x] 6.3.3a `BuildManager` tests: stable Baa check arguments, validated Takween argv,
   project-root discovery, and `compiler-cli-v1` classification (local Debug build verified)
-- [ ] 6.3.3b `BuildManager` tests: process lifecycle, cancellation, and tool resolution fixtures
+- [x] 6.3.3b `TakweenProtocol`/`ProcessWorker` tests: target/event schema rejection,
+  partial JSONL lines, terminal delivery, and requested cancellation
+- [ ] 6.3.3c `BuildManager` tests: executable resolution and descendant-process ownership fixtures
 - [ ] 6.3.4 `LayoutManager` tests: sidebar toggle, panel toggle, state persistence
 
 ### 6.4 Integration Tests

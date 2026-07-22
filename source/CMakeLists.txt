@@ -8,6 +8,8 @@ add_library(qalam_core STATIC
     language/DiagnosticParser.h
     language/DiagnosticsModel.cpp
     language/DiagnosticsModel.h
+    language/TakweenProtocol.cpp
+    language/TakweenProtocol.h
     # Workspace services
     workspace/WorkspaceIndexer.cpp
     workspace/WorkspaceIndexer.h

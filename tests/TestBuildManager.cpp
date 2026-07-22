@@ -13,6 +13,7 @@ class TestBuildManager : public QObject
 private slots:
     void buildsStableBaaCheckArguments();
     void buildsValidatedTakweenArguments();
+    void filtersTakweenTargetsByCapability();
     void classifiesCompilerCliExitCodes();
     void buildsOperationAwareExitDiagnostics();
     void findsNearestTakweenProjectRoot();
@@ -32,12 +33,28 @@ void TestBuildManager::buildsStableBaaCheckArguments()
 
 void TestBuildManager::buildsValidatedTakweenArguments()
 {
-    QCOMPARE(BuildManager::takweenCommandArguments("build"), QStringList{"build"});
-    QCOMPARE(BuildManager::takweenCommandArguments(" RUN "), QStringList{"run"});
-    QCOMPARE(BuildManager::takweenCommandArguments("test"), QStringList{"test"});
-    QCOMPARE(BuildManager::takweenCommandArguments("clean"), QStringList{"clean"});
+    QCOMPARE(BuildManager::takweenCommandArguments("build"), QStringList{"بناء"});
+    QCOMPARE(BuildManager::takweenCommandArguments(" RUN "), QStringList{"تشغيل"});
+    QCOMPARE(BuildManager::takweenCommandArguments("test", "اختبار_أ"),
+             (QStringList{"اختبار", "اختبار_أ"}));
+    QCOMPARE(BuildManager::takweenCommandArguments("clean"), QStringList{"تنظيف"});
+    QVERIFY(BuildManager::takweenCommandArguments("clean", "تطبيق").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("publish").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("build & whoami").isEmpty());
+}
+
+void TestBuildManager::filtersTakweenTargetsByCapability()
+{
+    const QVector<TakweenTarget> targets = {
+        {"تطبيق", "executable", "ready", true, true, false},
+        {"اختبار_أ", "test", "ready", true, true, true},
+        {"مكتبة", "library", "unsupported", false, false, false}
+    };
+    QCOMPARE(BuildManager::selectableTakweenTargets(targets, "build").size(), 2);
+    QCOMPARE(BuildManager::selectableTakweenTargets(targets, "run").size(), 2);
+    const auto tests = BuildManager::selectableTakweenTargets(targets, "test");
+    QCOMPARE(tests.size(), 1);
+    QCOMPARE(tests.first().name, QString("اختبار_أ"));
 }
 
 void TestBuildManager::classifiesCompilerCliExitCodes()
@@ -49,6 +66,7 @@ void TestBuildManager::classifiesCompilerCliExitCodes()
     QCOMPARE(BuildManager::classifyCompilerExitCode(3), ExitClass::Unsupported);
     QCOMPARE(BuildManager::classifyCompilerExitCode(4), ExitClass::ToolchainError);
     QCOMPARE(BuildManager::classifyCompilerExitCode(5), ExitClass::InternalError);
+    QCOMPARE(BuildManager::classifyCompilerExitCode(-2), ExitClass::Cancelled);
     QCOMPARE(BuildManager::classifyCompilerExitCode(-1), ExitClass::ProcessFailure);
     QCOMPARE(BuildManager::classifyCompilerExitCode(42), ExitClass::Unknown);
 }
@@ -57,6 +75,7 @@ void TestBuildManager::buildsOperationAwareExitDiagnostics()
 {
     QCOMPARE(BuildManager::compilerExitCodeId(4), QString("CLI_EXIT_4"));
     QCOMPARE(BuildManager::compilerExitCodeId(-1), QString("PROCESS_FAILURE"));
+    QCOMPARE(BuildManager::compilerExitCodeId(-2), QString("TOOLING_CANCELLED"));
     QVERIFY(BuildManager::compilerExitSummary(1, "check").contains("1"));
     QVERIFY(BuildManager::compilerExitSummary(4, "build").contains("4"));
     QVERIFY(BuildManager::compilerExitSummary(5, "build").contains("5"));
@@ -64,6 +83,7 @@ void TestBuildManager::buildsOperationAwareExitDiagnostics()
     const QString runSummary = BuildManager::compilerExitSummary(1, "run");
     QVERIFY(runSummary.contains("run"));
     QVERIFY(runSummary.contains("1"));
+    QVERIFY(BuildManager::compilerExitSummary(-2, "run").contains("أُلغيت"));
 }
 
 void TestBuildManager::findsNearestTakweenProjectRoot()

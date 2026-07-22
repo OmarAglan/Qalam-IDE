@@ -188,6 +188,11 @@ void Qalam::connectSignals()
         if (TEditor* editor = currentEditor()) editor->moveLineDown();
     });
 
+    auto *stopToolingShortcut = new QShortcut(QKeySequence("Shift+F5"), this);
+    connect(stopToolingShortcut, &QShortcut::activated, this, [this]() {
+        if (m_buildManager and m_buildManager->isRunning()) m_buildManager->stop();
+    });
+
     // --- Menu bar signals ---
     connect(menuBar, &TMenuBar::newRequested, this, &Qalam::newFileFromUi);
     connect(menuBar, &TMenuBar::openFileRequested, this, [this]() { openFileFromUi(QString()); });
@@ -224,7 +229,8 @@ void Qalam::connectSignals()
     });
     connect(m_buildManager, &BuildManager::toolingFinished, this,
             [this](const QString &operation, int exitCode) {
-        if (exitCode != 0 and m_diagnosticsModel and m_diagnosticsModel->count() == 0) {
+        if (exitCode != 0 and exitCode != -2 and
+            m_diagnosticsModel and m_diagnosticsModel->count() == 0) {
             QString filePath;
             if (TEditor *editor = currentEditor()) {
                 filePath = editor->currentFilePath();
@@ -241,6 +247,11 @@ void Qalam::connectSignals()
             m_diagnosticsModel->addDiagnostics(runnerDiagnostics);
         }
         updateProblemsStatusBar();
+    });
+    connect(m_buildManager, &BuildManager::toolingProgress, this, [this](const QString &text) {
+        if (m_layoutManager and m_layoutManager->statusBar()) {
+            m_layoutManager->statusBar()->showMessage(text, 2500);
+        }
     });
 
     connect(m_diagnosticsModel, &DiagnosticsModel::diagnosticsChanged, this, [this]() {
@@ -525,6 +536,11 @@ void Qalam::runBaa() {
         if (filePath.isEmpty() or editor->document()->isModified()) return;
     }
 
+    if (not BuildManager::findTakweenProjectRoot(filePath).isEmpty()) {
+        runTakweenProjectCommand("run");
+        return;
+    }
+
     // Show the terminal tab because Baa programs may ask for input.
     auto *panelArea = m_layoutManager->panelArea();
     if (!panelArea) return;
@@ -562,7 +578,7 @@ void Qalam::cleanTakweenProject()
 void Qalam::runTakweenProjectCommand(const QString &command)
 {
     TEditor *editor = currentEditor();
-    if (!editor or editor->currentFilePath().isEmpty()) {
+    if (not editor or editor->currentFilePath().isEmpty()) {
         QMessageBox::information(this, "مشروع تكوين", "افتح ملفًا محفوظًا داخل مشروع تكوين أولًا.");
         return;
     }
@@ -572,16 +588,48 @@ void Qalam::runTakweenProjectCommand(const QString &command)
         if (editor->document()->isModified()) return;
     }
 
+    QString targetName;
+    const QString normalized = command.trimmed().toLower();
+    if (normalized != "clean") {
+        QString discoveryError;
+        const QVector<TakweenTarget> targets = BuildManager::selectableTakweenTargets(
+            m_buildManager->discoverTakweenTargets(editor->currentFilePath(), &discoveryError),
+            normalized);
+        if (not discoveryError.isEmpty()) {
+            QMessageBox::warning(this, "أهداف تكوين", discoveryError);
+            return;
+        }
+        if (targets.isEmpty()) {
+            QMessageBox::warning(this, "أهداف تكوين", "لا يوجد هدف يدعم العملية المطلوبة.");
+            return;
+        }
+
+        if (targets.size() == 1) {
+            targetName = targets.first().name;
+        } else {
+            QStringList names;
+            if (normalized == "test") names << "كل أهداف الاختبار";
+            for (const TakweenTarget &target : targets) names << target.name;
+            bool accepted = false;
+            const QString selected = QInputDialog::getItem(
+                this, "أهداف تكوين", "اختر الهدف:", names, 0, false, &accepted);
+            if (not accepted) return;
+            if (normalized != "test" or selected != "كل أهداف الاختبار") {
+                targetName = selected;
+            }
+        }
+    }
+
     auto *panelArea = m_layoutManager ? m_layoutManager->panelArea() : nullptr;
-    if (!panelArea) return;
+    if (not panelArea) return;
     panelArea->clearProblems();
     if (m_diagnosticsModel) m_diagnosticsModel->clear();
     panelArea->setCurrentTab(TPanelArea::Tab::Terminal);
     panelArea->show();
     panelArea->setCollapsed(false);
 
-    if (!m_buildManager->runTakweenCommand(
-            editor->currentFilePath(), command, panelArea->terminal())) {
+    if (not m_buildManager->runTakweenCommand(
+            editor->currentFilePath(), command, panelArea->terminal(), targetName)) {
         QMessageBox::warning(
             this,
             "مشروع تكوين",
@@ -922,6 +970,10 @@ bool Qalam::runCommandById(const QString &commandId)
     if (commandId == "project.build") { buildTakweenProject(); return true; }
     if (commandId == "project.test") { testTakweenProject(); return true; }
     if (commandId == "run.baa") { runBaa(); return true; }
+    if (commandId == "project.stop") {
+        if (m_buildManager and m_buildManager->isRunning()) m_buildManager->stop();
+        return true;
+    }
     if (commandId == "project.clean") { cleanTakweenProject(); return true; }
     if (commandId == "quick.open") { showQuickOpen(); return true; }
     if (commandId == "go.line") { goToLine(); return true; }

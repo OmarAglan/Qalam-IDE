@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ProcessWorker.h"
+#include "TakweenProtocol.h"
 #include <QObject>
 #include <QPointer>
 #include <QProcess>
@@ -19,6 +20,7 @@ public:
         Unsupported,
         ToolchainError,
         InternalError,
+        Cancelled,
         ProcessFailure,
         Unknown
     };
@@ -31,7 +33,10 @@ public:
     void runBaa(const QString &filePath, TConsole *console);
 
     /// Run a supported Takween project command for the project owning filePath.
-    bool runTakweenCommand(const QString &filePath, const QString &command, TConsole *console);
+    bool runTakweenCommand(const QString &filePath,
+                           const QString &command,
+                           TConsole *console,
+                           const QString &targetName = QString());
 
     /// Run Baa's non-codegen structured diagnostic check for a saved source file.
     void checkBaa(const QString &filePath);
@@ -40,7 +45,17 @@ public:
     static QStringList baaCheckArguments(const QString &filePath);
 
     /// Build argv for the supported Takween project commands, or an empty list.
-    static QStringList takweenCommandArguments(const QString &command);
+    static QStringList takweenCommandArguments(const QString &command,
+                                               const QString &targetName = QString());
+
+    /// Ask Takween for the authoritative target index; Qalam never parses the manifest.
+    QVector<TakweenTarget> discoverTakweenTargets(const QString &filePath,
+                                                  QString *error = nullptr) const;
+
+    /// Filter target capabilities for a build/run/test operation.
+    static QVector<TakweenTarget> selectableTakweenTargets(
+        const QVector<TakweenTarget> &targets,
+        const QString &command);
 
     /// Classify compiler-cli-v1 codes without inspecting human-readable output.
     static CompilerExitClass classifyCompilerExitCode(int exitCode);
@@ -71,6 +86,12 @@ signals:
     void diagnosticsReady(const QString &json);
     /// Completion event with an explicit operation and unmodified process exit code.
     void toolingFinished(const QString &operation, int exitCode);
+    /// Validated takween-build-events-v1 record.
+    void takweenEventReady(const TakweenBuildEvent &event);
+    /// Arabic progress text derived only from the structured event contract.
+    void toolingProgress(const QString &text);
+    /// A malformed, out-of-order, or incomplete event stream was observed.
+    void toolingProtocolError(const QString &message);
 
 private:
     /// Resolve the compiler path from settings or default locations
@@ -91,4 +112,9 @@ private:
     QPointer<QThread> m_buildThread;
     QPointer<QProcess> m_checkProcess;
     QString m_checkStdout;
+    qint64 m_lastEventSequence{};
+    bool m_terminalEventSeen{};
+    bool m_eventProtocolFailed{};
+    bool m_cancelRequested{};
+    int m_terminalEventExitCode{};
 };

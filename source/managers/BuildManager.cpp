@@ -10,10 +10,13 @@
 #include <QStandardPaths>
 #include <QMetaObject>
 #include <QPointer>
+#include <QUuid>
 
 BuildManager::BuildManager(QObject *parent)
     : QObject(parent)
 {
+    qRegisterMetaType<TakweenBuildEvent>();
+    qRegisterMetaType<QVector<TakweenTarget>>();
 }
 
 BuildManager::~BuildManager()
@@ -99,14 +102,23 @@ QStringList BuildManager::baaCheckArguments(const QString &filePath)
     return {"--check", "--diagnostics=json", QFileInfo(filePath).absoluteFilePath()};
 }
 
-QStringList BuildManager::takweenCommandArguments(const QString &command)
+QStringList BuildManager::takweenCommandArguments(const QString &command,
+                                                   const QString &targetName)
 {
     const QString normalized = command.trimmed().toLower();
-    if (normalized == "build" or normalized == "run" or normalized == "test" or
-        normalized == "clean") {
-        return {normalized};
+    QString canonical;
+    if (normalized == "build") canonical = "بناء";
+    else if (normalized == "run") canonical = "تشغيل";
+    else if (normalized == "test") canonical = "اختبار";
+    else if (normalized == "clean") canonical = "تنظيف";
+    else return {};
+
+    QStringList arguments = {canonical};
+    if (not targetName.trimmed().isEmpty()) {
+        if (normalized == "clean") return {};
+        arguments.push_back(targetName.trimmed());
     }
-    return {};
+    return arguments;
 }
 
 BuildManager::CompilerExitClass BuildManager::classifyCompilerExitCode(int exitCode)
@@ -118,6 +130,7 @@ BuildManager::CompilerExitClass BuildManager::classifyCompilerExitCode(int exitC
     case 3: return CompilerExitClass::Unsupported;
     case 4: return CompilerExitClass::ToolchainError;
     case 5: return CompilerExitClass::InternalError;
+    case -2: return CompilerExitClass::Cancelled;
     default:
         return exitCode < 0 ? CompilerExitClass::ProcessFailure : CompilerExitClass::Unknown;
     }
@@ -128,12 +141,14 @@ QString BuildManager::compilerExitCodeId(int exitCode)
     if (exitCode >= 0 and exitCode <= 5) {
         return QString("CLI_EXIT_%1").arg(exitCode);
     }
+    if (exitCode == -2) return "TOOLING_CANCELLED";
     if (exitCode < 0) return "PROCESS_FAILURE";
     return QString("UNKNOWN_EXIT_%1").arg(exitCode);
 }
 
 QString BuildManager::compilerExitSummary(int exitCode, const QString &operation)
 {
+    if (exitCode == -2) return "أُلغيت عملية البناء بطلب المستخدم.";
     const QString normalized = operation.trimmed().toLower();
     const bool mayBeProgramExit = normalized == "run" or normalized == "test";
     if (mayBeProgramExit) {
@@ -154,6 +169,8 @@ QString BuildManager::compilerExitSummary(int exitCode, const QString &operation
         return "فشلت أداة البناء أو backend أو إنشاء المخرجات (كود الخروج 4).";
     case CompilerExitClass::InternalError:
         return "حدث خطأ داخلي في المصرّف أو نظام البناء (كود الخروج 5).";
+    case CompilerExitClass::Cancelled:
+        return "أُلغيت عملية البناء بطلب المستخدم.";
     case CompilerExitClass::ProcessFailure:
         return "تعذر بدء أداة البناء أو انقطعت العملية قبل اكتمالها.";
     case CompilerExitClass::Unknown:
@@ -175,6 +192,71 @@ QString BuildManager::findTakweenProjectRoot(const QString &filePath)
         if (!directory.cdUp()) break;
     }
     return QString();
+}
+
+QVector<TakweenTarget> BuildManager::discoverTakweenTargets(const QString &filePath,
+                                                            QString *error) const
+{
+    const QString projectRoot = findTakweenProjectRoot(filePath);
+    const QString takween = resolveTakweenPath();
+    if (projectRoot.isEmpty()) {
+        if (error) *error = "لم يُعثر على مشروع.تكوين.";
+        return {};
+    }
+    if (takween.isEmpty()) {
+        if (error) *error = "لم يُعثر على برنامج تكوين القابل للتنفيذ.";
+        return {};
+    }
+
+    QProcess process;
+    process.setProgram(takween);
+    process.setArguments({"أهداف", "--جسون"});
+    process.setWorkingDirectory(projectRoot);
+    process.setProcessChannelMode(QProcess::SeparateChannels);
+    process.start();
+    if (not process.waitForStarted(3000)) {
+        if (error) *error = "تعذر بدء تكوين لاكتشاف الأهداف: " + process.errorString();
+        return {};
+    }
+    if (not process.waitForFinished(5000)) {
+        process.kill();
+        process.waitForFinished(500);
+        if (error) *error = "انتهت مهلة اكتشاف أهداف تكوين.";
+        return {};
+    }
+    if (process.exitStatus() != QProcess::NormalExit or process.exitCode() != 0) {
+        if (error) {
+            const QString detail = QString::fromUtf8(process.readAllStandardError()).trimmed();
+            *error = detail.isEmpty()
+                ? QString("فشل اكتشاف أهداف تكوين بكود %1.").arg(process.exitCode())
+                : detail;
+        }
+        return {};
+    }
+
+    QVector<TakweenTarget> targets;
+    QString parseError;
+    if (not TakweenProtocol::parseTargets(process.readAllStandardOutput(), &targets, &parseError)) {
+        if (error) *error = parseError;
+        return {};
+    }
+    return targets;
+}
+
+QVector<TakweenTarget> BuildManager::selectableTakweenTargets(
+    const QVector<TakweenTarget> &targets,
+    const QString &command)
+{
+    const QString normalized = command.trimmed().toLower();
+    QVector<TakweenTarget> selected;
+    for (const TakweenTarget &target : targets) {
+        const bool selectable =
+            (normalized == "build" and target.buildable) or
+            (normalized == "run" and target.runnable) or
+            (normalized == "test" and target.test);
+        if (selectable) selected.push_back(target);
+    }
+    return selected;
 }
 
 void BuildManager::checkBaa(const QString &filePath)
@@ -262,6 +344,7 @@ void BuildManager::cleanupBuild()
 
 void BuildManager::stop()
 {
+    if (isRunning()) m_cancelRequested = true;
     cleanupBuild();
 }
 
@@ -296,16 +379,17 @@ void BuildManager::runBaa(const QString &filePath, TConsole *console)
 
 bool BuildManager::runTakweenCommand(const QString &filePath,
                                      const QString &command,
-                                     TConsole *console)
+                                     TConsole *console,
+                                     const QString &targetName)
 {
     if (!console) return false;
 
-    const QStringList arguments = takweenCommandArguments(command);
+    const QStringList arguments = takweenCommandArguments(command, targetName);
     const QString projectRoot = findTakweenProjectRoot(filePath);
     const QString takween = resolveTakweenPath();
     if (arguments.isEmpty() or projectRoot.isEmpty() or takween.isEmpty()) return false;
 
-    const QString normalized = arguments.first();
+    const QString normalized = command.trimmed().toLower();
     QString heading = "🚀 تنفيذ أمر مشروع تكوين...\n";
     if (normalized == "build") heading = "🛠️ بناء مشروع تكوين...\n";
     else if (normalized == "run") heading = "🚀 تشغيل مشروع تكوين...\n";
@@ -356,7 +440,26 @@ void BuildManager::startProcess(const QString &requestedProgram,
     console->appendPlainTextThreadSafe(heading);
     console->appendPlainTextThreadSafe("📄 السياق: " + QFileInfo(contextPath).fileName() + "\n");
 
-    m_worker = new ProcessWorker(program, arguments, workingDirectory);
+    QStringList processArguments = arguments;
+    QString eventFilePath;
+    const bool usesTakweenEvents =
+        operation == "build" or operation == "run" or operation == "test" or operation == "clean";
+    if (usesTakweenEvents) {
+        QString temporaryRoot = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+        if (temporaryRoot.isEmpty()) temporaryRoot = QDir::tempPath();
+        eventFilePath = QDir(temporaryRoot).filePath(
+            "قلم-أحداث-تكوين-" + QUuid::createUuid().toString(QUuid::WithoutBraces) + ".jsonl");
+        QFile::remove(eventFilePath);
+        processArguments << "--ملف_أحداث" << eventFilePath;
+    }
+
+    m_lastEventSequence = 0;
+    m_terminalEventSeen = false;
+    m_eventProtocolFailed = false;
+    m_terminalEventExitCode = 0;
+    m_cancelRequested = false;
+
+    m_worker = new ProcessWorker(program, processArguments, workingDirectory, eventFilePath);
     m_buildThread = new QThread(this);
 
     m_worker->moveToThread(m_buildThread);
@@ -371,30 +474,86 @@ void BuildManager::startProcess(const QString &requestedProgram,
         console->appendPlainTextThreadSafe(text);
         emit outputChunk(text);
     });
+    connect(m_worker, &ProcessWorker::eventLineReady, this,
+            [this, console, operation](const QByteArray &line) {
+                auto reject = [this, console](const QString &message) {
+                    if (m_eventProtocolFailed) return;
+                    m_eventProtocolFailed = true;
+                    const QString diagnostic = "❌ خرق عقد أحداث تكوين: " + message;
+                    console->appendPlainTextThreadSafe(diagnostic + "\n");
+                    emit toolingProtocolError(diagnostic);
+                };
+
+                TakweenBuildEvent event;
+                QString error;
+                if (not TakweenProtocol::parseBuildEvent(line, &event, &error)) {
+                    reject(error);
+                    return;
+                }
+                if (not TakweenProtocol::validateTransition(
+                        event, operation, m_lastEventSequence, m_terminalEventSeen, &error)) {
+                    reject(error);
+                    return;
+                }
+
+                m_lastEventSequence = event.sequence;
+                if (event.event == "operation_finished") {
+                    m_terminalEventSeen = true;
+                    m_terminalEventExitCode = event.exitCode;
+                }
+                emit takweenEventReady(event);
+                const QString progress = TakweenProtocol::progressText(event);
+                if (not progress.isEmpty()) emit toolingProgress(progress);
+            });
 
     QThread *thread = m_buildThread.data();
     ProcessWorker *worker = m_worker.data();
     QPointer<TConsole> safeConsole(console);
 
-    connect(m_worker, &ProcessWorker::finished, this, [this, safeConsole, thread, operation](int code) {
+    connect(m_worker, &ProcessWorker::finished, this,
+            [this, safeConsole, thread, operation, eventFilePath](int code) {
+        int effectiveCode = code;
+        if (m_cancelRequested or code == -2) {
+            effectiveCode = -2;
+        } else if (not eventFilePath.isEmpty()) {
+            QString completionError;
+            if (not TakweenProtocol::validateCompletion(
+                    code, false, m_eventProtocolFailed, m_terminalEventSeen,
+                    m_terminalEventExitCode, &completionError)) {
+                effectiveCode = -1;
+                if (not m_eventProtocolFailed) {
+                    const QString message = "❌ خرق عقد أحداث تكوين: " + completionError;
+                    if (safeConsole) safeConsole->appendPlainTextThreadSafe(message + "\n");
+                    emit toolingProtocolError(message);
+                }
+            }
+        }
         if (safeConsole) {
-            safeConsole->appendPlainTextThreadSafe(
-                "\n──────────────────────────────\n✅ انتهى الأمر (Exit code = "
-                + QString::number(code) + ")\n"
-                );
+            QString result;
+            if (effectiveCode == -2) {
+                result = "\n──────────────────────────────\n⏹ أُلغيت العملية.\n";
+            } else if (effectiveCode == 0) {
+                result = "\n──────────────────────────────\n✅ اكتمل الأمر بنجاح.\n";
+            } else {
+                result = "\n──────────────────────────────\n❌ فشل الأمر (Exit code = "
+                    + QString::number(effectiveCode) + ")\n";
+            }
+            safeConsole->appendPlainTextThreadSafe(result);
             safeConsole->startCmd();
         }
         if (thread) {
             thread->quit();
         }
-        emit buildFinished(code);
-        emit toolingFinished(operation, code);
+        m_cancelRequested = false;
+        emit buildFinished(effectiveCode);
+        emit toolingFinished(operation, effectiveCode);
     });
 
     // Cleanup logic: ensure pointers are cleared after the worker thread finishes.
     connect(thread, &QThread::finished, worker, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    connect(thread, &QThread::finished, this, [this, thread]() {
+    connect(thread, &QThread::finished, this, [this, thread, eventFilePath]() {
+        if (not eventFilePath.isEmpty()) QFile::remove(eventFilePath);
         if (m_buildThread == thread) {
             m_buildThread = nullptr;
         }

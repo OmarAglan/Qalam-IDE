@@ -1,5 +1,6 @@
 #include "ProcessWorker.h"
 #include <QDebug>
+#include <QFile>
 #include <QMutexLocker>
 
 namespace {
@@ -17,8 +18,16 @@ QString decodeProcessBytes(const QByteArray &data)
 }
 }
 
-ProcessWorker::ProcessWorker(const QString &program, const QStringList &args, const QString &workingDir)
-    : program(program), args(args), workingDir(workingDir), process(nullptr), flushTimer(nullptr)
+ProcessWorker::ProcessWorker(const QString &program,
+                             const QStringList &args,
+                             const QString &workingDir,
+                             const QString &eventFilePath)
+    : program(program),
+      args(args),
+      workingDir(workingDir),
+      eventFilePath(eventFilePath),
+      process(nullptr),
+      flushTimer(nullptr)
 {
     // Do NOT create timer here - it must be created in the worker thread
     // Timer will be created in start() which runs in the correct thread
@@ -40,6 +49,9 @@ void ProcessWorker::start() {
     }
     process = new QProcess(this);
     m_finishedEmitted = false;
+    m_cancelRequested = false;
+    m_eventOffset = 0;
+    m_eventBuffer.clear();
 
     process->setProgram(program);
     process->setArguments(args);
@@ -60,14 +72,17 @@ void ProcessWorker::start() {
 
     // Stop timer and emit finished when process ends
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int code, QProcess::ExitStatus /*status*/) {
+            this, [this](int code, QProcess::ExitStatus status) {
                 if (flushTimer && flushTimer->isActive())
                     flushTimer->stop();
 
                 // Flush any remaining buffered data
                 flushBuffers();
+                drainEventFile(true);
 
-                emitFinishedOnce(code);
+                emitFinishedOnce(m_cancelRequested
+                    ? -2
+                    : (status == QProcess::NormalExit ? code : -1));
             });
 
     connect(process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
@@ -110,6 +125,37 @@ void ProcessWorker::flushBuffers() {
     if (!errCopy.isEmpty()) {
         emit errorReady(errCopy);
     }
+    drainEventFile();
+}
+
+void ProcessWorker::drainEventFile(bool finalRead)
+{
+    if (eventFilePath.isEmpty()) return;
+
+    QFile file(eventFilePath);
+    if (file.open(QIODevice::ReadOnly)) {
+        if (file.size() < m_eventOffset) {
+            m_eventOffset = 0;
+            m_eventBuffer.clear();
+        }
+        if (file.seek(m_eventOffset)) {
+            const QByteArray bytes = file.readAll();
+            m_eventOffset += bytes.size();
+            m_eventBuffer += bytes;
+        }
+    }
+
+    qsizetype newline = -1;
+    while ((newline = m_eventBuffer.indexOf('\n')) >= 0) {
+        QByteArray line = m_eventBuffer.left(newline);
+        m_eventBuffer.remove(0, newline + 1);
+        if (line.endsWith('\r')) line.chop(1);
+        if (not line.trimmed().isEmpty()) emit eventLineReady(line);
+    }
+    if (finalRead and not m_eventBuffer.trimmed().isEmpty()) {
+        emit eventLineReady(m_eventBuffer);
+        m_eventBuffer.clear();
+    }
 }
 
 void ProcessWorker::emitFinishedOnce(int exitCode)
@@ -123,12 +169,14 @@ void ProcessWorker::emitFinishedOnce(int exitCode)
 
 void ProcessWorker::stop() {
     if (process && process->state() != QProcess::NotRunning) {
+        m_cancelRequested = true;
         process->terminate();
         if (!process->waitForFinished(3000)) {
             process->kill();
             process->waitForFinished(500);
         }
         flushBuffers();
+        drainEventFile(true);
     }
 }
 

@@ -55,9 +55,14 @@ The heart of Qalam is `TEditor`, a custom `QPlainTextEdit` subclass.
 - **`SessionManager`:** Saves and restores open files, active tab, folder path, and window geometry.
 - **`BuildManager`:** Integrates with both tooling layers. Saved `.baa`/`.baahd`
   files use `baa --check --diagnostics=json` for non-codegen diagnostics. Build,
-  run, test, and clean requests search parent directories for `مشروع.تكوين` and invoke
-  a validated one-argument Takween command in that root. F5 retains direct Baa
-  invocation as the explicit single-file fallback.
+  run, test, and clean requests search parent directories for `مشروع.تكوين`, ask
+  `takween-targets-v1` for capabilities, and invoke canonical Arabic Takween argv
+  in that root. Project F5 selects an authoritative runnable target; standalone
+  files retain direct Baa invocation.
+- **`TakweenProtocol`:** Strictly parses `takween-targets-v1` and each
+  `takween-build-events-v1` JSONL record. The process worker tails complete lines;
+  the manager checks sequence, operation, terminal state, and exit-code agreement,
+  then emits Arabic progress without parsing stdout/stderr.
 - **`DiagnosticParser`:** Treats `diagnostics-json-v1` as the primary compiler
   contract and retains human-text patterns only as a compatibility fallback.
   The model preserves codes, categories, primary/end spans, and hints.
