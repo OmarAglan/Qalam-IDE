@@ -230,12 +230,32 @@ void QalamTitleBar::setTitle(const QString &title) {
     }
 }
 
+QPushButton *QalamTitleBar::commandCenterButton() const
+{
+    return m_commandCenterBtn;
+}
+
+QPushButton *QalamTitleBar::minimizeButton() const
+{
+    return m_minimizeBtn;
+}
+
+QPushButton *QalamTitleBar::maximizeButton() const
+{
+    return m_maximizeBtn;
+}
+
+QPushButton *QalamTitleBar::closeButton() const
+{
+    return m_closeBtn;
+}
+
 void QalamTitleBar::setMaximizedState(bool maximized) {
     if (maximized) {
-        m_maximizeBtn->setToolTip("restore");
+        m_maximizeBtn->setToolTip(QStringLiteral("استعادة"));
         m_maximizeBtn->setIcon(QIcon(":/icons/resources/restore.svg"));
     } else {
-        m_maximizeBtn->setToolTip("maximize");
+        m_maximizeBtn->setToolTip(QStringLiteral("تكبير"));
         m_maximizeBtn->setIcon(QIcon(":/icons/resources/maximize.svg"));
     }
 }

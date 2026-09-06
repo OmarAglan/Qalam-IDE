@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: OmarAglan/Baa-LSP
-          ref: 9be322fdadbd68a816ef1133094955544ee55a70
+          ref: 602cdd406eed61fc75a796ca66680b8e367aad8b
           path: ecosystem/Baa-LSP
       - uses: actions/setup-python@v5
         with:
@@ -49,17 +49,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: OmarAglan/Baa-LSP
-          ref: 9be322fdadbd68a816ef1133094955544ee55a70
+          ref: 602cdd406eed61fc75a796ca66680b8e367aad8b
           path: ecosystem/Baa-LSP
       - uses: actions/checkout@v4
         with:
           repository: OmarAglan/Baa
-          ref: 4d7bb2f90d042b7bd238d7addd031cbf04424f75
+          ref: e330a81539dc23faf778859e73ae0dfc8e816102
           path: ecosystem/Baa
       - uses: actions/checkout@v4
         with:
           repository: OmarAglan/Nazm
-          ref: f7fcf8f6d2bf629daf708b3b6028e22c74683ce6
+          ref: c78c993cfa3523d46d08443599e316a2a1f827ea
           path: ecosystem/Nazm
       - name: Install system dependencies
         run: |

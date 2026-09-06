@@ -335,6 +335,16 @@ x86_64-w64-mingw32 target tree.
         [Text.UTF8Encoding]::new($false))
 }
 
+$licenseDirectory = Join-Path $PackageDir 'licenses'
+New-Item -ItemType Directory -Path $licenseDirectory -Force | Out-Null
+$windowKitLicense = Join-Path $BuildDir '_deps/qwindowkit-src/LICENSE'
+if (!(Test-Path -LiteralPath $windowKitLicense -PathType Leaf)) {
+    throw "QWindowKit license missing from the selected build: $windowKitLicense"
+}
+Copy-Item -LiteralPath $windowKitLicense -Destination (Join-Path $licenseDirectory 'QWindowKit-LICENSE.txt')
+[IO.File]::WriteAllText((Join-Path $licenseDirectory 'QWindowKit-NOTICE.txt'),
+    "QWindowKit 1.5.0, commit 35e88f3655720ed0537c7dd1dde243bf4a70c94c`nhttps://github.com/stdware/qwindowkit`nStatically linked into Qalam; upstream source is unmodified.`n")
+
 $runtimeTestArguments = @{
     Executable = (Join-Path $PackageDir 'Qalam.exe')
     StartupSeconds = 1

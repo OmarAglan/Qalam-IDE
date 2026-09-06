@@ -1,4 +1,4 @@
-; مثبت قلم المستقل لويندوز.
+﻿; مثبت قلم المستقل لويندوز.
 ; يضم واجهة قلم وQt وBaa-LSP الداخلي فقط. لا يضم أدوات سطر الأوامر ولا يعدل PATH.
 
 #define MyAppId "{{1A6F6714-2C14-4DBD-BACB-B26CBABE36EE}"
@@ -36,6 +36,13 @@ SetupIconFile=qalam\resources\QalamLogo.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+WizardSizePercent=110,110
+DisableWelcomePage=no
+WizardImageFile=installer\wizard-sidebar.png
+WizardSmallImageFile=installer\wizard-mark.png
+WizardImageStretch=yes
+LZMANumBlockThreads=1
+CompressionThreads=1
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
@@ -50,6 +57,17 @@ RestartApplications=no
 ChangesAssociations=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName} {#MyAppVersion}
+
+[LangOptions]
+DialogFontName=Segoe UI
+DialogFontSize=10
+WelcomeFontName=Segoe UI
+
+[Messages]
+arabic.WelcomeLabel1=مساحتك للكتابة والإبداع
+arabic.WelcomeLabel2=قلم 3.6 مع خادم لغة باء: تحرير عربي، إكمال سياقي ومساحات عمل مرنة.%n%nثبّت عدة تطوير باء للحصول على أدوات البناء أيضاً.
+english.WelcomeLabel1=Your space to create
+english.WelcomeLabel2=Qalam 3.6 with the Baa language server: Arabic editing, contextual completion and flexible workspaces.%n%nInstall the Baa Developer Kit for the build tools too.
 
 [Languages]
 Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"
@@ -107,6 +125,7 @@ Name: "{autodesktop}\قلم"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{a
 Filename: "{app}\{#MyAppExeName}"; Description: "تشغيل قلم"; Flags: nowait postinstall skipifsilent unchecked
 
 [Code]
+#include "installer\windows_wizard.iss"
 #include "installer\windows_scope_migration.iss"
 
 const
@@ -149,7 +168,7 @@ begin
   if CurStep = ssPostInstall then
   begin
     if not RunQalamHealthProbe then
-      RaiseException('فشل فحص قلم أو خادم Baa-LSP الداخلي بعد التثبيت.');
+      EcoInstallFailed('فشل فحص قلم أو خادم Baa-LSP الداخلي بعد التثبيت.');
     QalamRegistryRoot(Root);
     RegWriteStringValue(Root, QALAM_INSTALLER_KEY, 'InstallLocation',
       ExpandConstant('{app}'));

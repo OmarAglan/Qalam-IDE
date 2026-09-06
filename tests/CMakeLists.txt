@@ -34,7 +34,10 @@ function(add_qalam_test test_name source_file)
                 --unset=PATH
                 "Path=${qalam_test_path}"
                 "QT_QPA_PLATFORM=${qalam_test_platform}"
-                $<TARGET_FILE:${test_name}>
+                ${CMAKE_COMMAND}
+                "-DQALAM_TEST_EXECUTABLE=$<TARGET_FILE:${test_name}>"
+                "-DQALAM_TEST_LOG=${CMAKE_CURRENT_BINARY_DIR}/${test_name}.txt"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/RunQtTest.cmake"
         )
     else()
         add_test(NAME ${test_name} COMMAND ${test_name})

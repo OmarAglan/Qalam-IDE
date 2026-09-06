@@ -15,6 +15,10 @@ public:
     void setTitle(const QString &title);
     void setMaximizedState(bool maximized);
     void addMenuBar(QWidget *menu);
+    QPushButton *commandCenterButton() const;
+    QPushButton *minimizeButton() const;
+    QPushButton *maximizeButton() const;
+    QPushButton *closeButton() const;
 
 signals:
     void minimizeClicked();
