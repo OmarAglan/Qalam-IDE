@@ -17,6 +17,15 @@ QalamDocumentModel::QalamDocumentModel(QObject *parent)
     option.setTextDirection(Qt::RightToLeft);
     option.setAlignment(Qt::AlignRight);
     m_document->setDefaultTextOption(option);
+    connect(m_document, &QTextDocument::contentsChanged, this, [this]() {
+        // Qt also changes its document revision when syntax formats refresh.
+        // Completion and LSP versions must track source edits, not repainting.
+        const QString source = m_document->toPlainText();
+        if (source == m_sourceText) return;
+        m_sourceText = source;
+        ++m_sourceRevision;
+        emit sourceTextChanged();
+    });
 }
 
 void QalamDocumentModel::setFilePath(const QString &path)

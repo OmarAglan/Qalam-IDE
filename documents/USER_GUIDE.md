@@ -46,6 +46,11 @@ The editor supports:
   appear through Baa-LSP while typing Arabic letters. Inner declarations
   correctly shadow outer ones, while future and sibling-block declarations do
   not appear.
+- **Completion documentation:** Highlight a suggestion to read its Arabic
+  documentation below the list. The panel supports Markdown, plain text, and
+  scrolling through longer explanations. Web links open only when clicked.
+  Changing the selection, editing, moving the cursor, or closing the popup
+  discards pending documentation so an older reply cannot replace the current one.
 - **Live Baa diagnostics:** Saved and unsaved `.باء`/`.رأسباء` contents are
   checked after a short pause; `.baa`/`.baahd` remain compatible. Only results
   matching the current document revision are shown.

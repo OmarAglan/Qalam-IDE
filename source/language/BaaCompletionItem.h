@@ -1,10 +1,13 @@
 #pragma once
 
 #include <QMetaType>
+#include <QJsonObject>
 #include <QString>
 
 struct BaaCompletionItem
 {
+    QJsonObject protocolItem;
+    QJsonValue documentation;
     QString label;
     QString detail;
     QString filterText;

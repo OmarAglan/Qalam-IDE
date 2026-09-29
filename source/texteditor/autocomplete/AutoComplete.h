@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QJsonObject>
 
 enum CompletionType {
     Keyword,
@@ -15,6 +16,8 @@ enum CompletionType {
 };
 
 struct CompletionItem {
+    QJsonObject protocolItem;
+    QJsonValue documentation;
     QString label;
     QString completion;
     QString description;

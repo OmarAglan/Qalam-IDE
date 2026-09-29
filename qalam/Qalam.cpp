@@ -1,4 +1,5 @@
 #include "Qalam.h"
+#include "QalamDocumentModel.h"
 #include "QalamWelcomePage.h"
 #include "QalamConsole.h"
 #include "QalamSearchPanel.h"
@@ -2900,7 +2901,7 @@ void Qalam::attachAnalysisToEditor(QalamEditor *editor)
                 "qalam.lsp.documentAttached").toBool()) {
             editor->document()->setProperty(
                 "qalam.lsp.documentAttached", true);
-            connect(editor->document(), &QTextDocument::contentsChanged,
+            connect(editor->documentModel(), &QalamDocumentModel::sourceTextChanged,
                     this, [this, document = editor->document()]() {
                 QalamEditor *representative{};
                 for (QalamEditor *candidate : tabWidget->editors()) {
@@ -2923,6 +2924,19 @@ void Qalam::attachAnalysisToEditor(QalamEditor *editor)
                 not BaaLanguageClient::isBaaSourcePath(filePath)) return;
             scheduleEditorAnalysis(editor);
             m_languageClient->requestCompletion(filePath, line, character);
+        });
+        connect(editor, &QalamEditor::completionResolveRequested,
+                m_languageClient, &BaaLanguageClient::requestCompletionResolve);
+        connect(editor, &QalamEditor::completionResolveCancelled,
+                m_languageClient, &BaaLanguageClient::cancelCompletionResolve);
+        connect(m_languageClient, &BaaLanguageClient::completionDocumentationPublished,
+                editor, [editor](const QString &filePath, int version,
+                                 const QString &selectionId,
+                                 const QJsonValue &documentation) {
+            if (QDir::cleanPath(QFileInfo(editor->currentFilePath()).absoluteFilePath()) !=
+                    QDir::cleanPath(filePath) or
+                editor->property("qalam.lsp.version").toInt() != version) return;
+            editor->showCompletionDocumentation(selectionId, documentation);
         });
         connect(editor, &QalamEditor::hoverRequested, this,
                 [this, editor](const QString &filePath, int line, int character) {
@@ -2995,7 +3009,7 @@ void Qalam::scheduleEditorAnalysis(QalamEditor *editor)
     const int version = m_languageClient->synchronizeDocument(
         normalizedPath,
         editor->toPlainText(),
-        editor->document()->revision(),
+        editor->documentModel()->sourceRevision(),
         workspaceRoot);
     if (version != previousVersion) {
         editor->clearSemanticTokens();
@@ -3041,15 +3055,11 @@ void Qalam::handleLanguageCompletion(const QString &filePath,
                                      int character,
                                      const QVector<BaaCompletionItem> &items)
 {
-    for (int index = 0; index < tabWidget->count(); ++index) {
-        QalamEditor *editor = qobject_cast<QalamEditor*>(tabWidget->widget(index));
-        if (not editor) continue;
-        const QString editorPath = QDir::cleanPath(
-            QFileInfo(editor->currentFilePath()).absoluteFilePath());
-        if (editorPath == QDir::cleanPath(filePath) and
-            editor->property("qalam.lsp.version").toInt() == documentVersion) {
-            editor->showLanguageCompletions(items, line, character);
-            return;
-        }
-    }
+    QalamEditor *editor = currentEditor();
+    if (not editor or
+        editor->property("qalam.lsp.version").toInt() != documentVersion) return;
+    const QString editorPath = QDir::cleanPath(
+        QFileInfo(editor->currentFilePath()).absoluteFilePath());
+    if (editorPath != QDir::cleanPath(filePath)) return;
+    editor->showLanguageCompletions(items, line, character);
 }

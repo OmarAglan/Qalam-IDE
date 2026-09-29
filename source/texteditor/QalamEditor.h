@@ -83,6 +83,8 @@ public:
                                  int line,
                                  int character);
     bool hasVisibleCompletion() const;
+    void showCompletionDocumentation(const QString &selectionId,
+                                     const QJsonValue &documentation);
     void showLanguageHover(const BaaHover &hover,
                            int requestLine,
                            int requestCharacter);
@@ -161,6 +163,11 @@ private:
     void performCompletion(bool explicitRequest = false);
     void showCompletionPopup();
     void setupAutoComplete();
+    void invalidateCompletionDocumentation();
+    QString m_completionSelectionId;
+    QString m_completionDocumentPath;
+    int m_completionDocumentRevision{};
+    int m_completionCursorPosition{};
     int documentPosition(int zeroBasedLine, int utf16Character) const;
     void insertCompletion(const CompletionItem &item);
     void scheduleLanguageHover(const QPoint &viewportPosition,
@@ -185,6 +192,9 @@ signals:
     void quickFixRequested();
     void formatRequested();
     void completionRequested(QString filePath, int line, int character);
+    void completionResolveRequested(QString filePath, int documentVersion,
+                                    QJsonObject item, QString selectionId);
+    void completionResolveCancelled(QString filePath);
     void hoverRequested(QString filePath, int line, int character);
     void signatureHelpRequested(QString filePath, int line, int character);
     void selectionRangeRequested(QString filePath, int line, int character);

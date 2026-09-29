@@ -60,6 +60,9 @@ public:
                                 int character);
     void requestWorkspaceSymbols(const QString &query = QString());
     void requestCompletion(const QString &filePath, int line, int character);
+    void requestCompletionResolve(const QString &filePath, int documentVersion,
+                                  const QJsonObject &item, const QString &selectionId);
+    void cancelCompletionResolve(const QString &filePath);
     void requestHover(const QString &filePath, int line, int character);
     void requestSignatureHelp(const QString &filePath, int line, int character);
     void requestDefinition(const QString &filePath, int line, int character);
@@ -123,6 +126,9 @@ signals:
                              int line,
                              int character,
                              const QVector<BaaCompletionItem> &items);
+    void completionDocumentationPublished(const QString &filePath, int documentVersion,
+                                          const QString &selectionId,
+                                          const QJsonValue &documentation);
     void hoverPublished(const QString &filePath,
                         int documentVersion,
                         int line,
@@ -225,6 +231,12 @@ private:
         int documentVersion{};
         int line{};
         int character{};
+    };
+    struct PendingCompletionResolve
+    {
+        QString filePath;
+        int documentVersion{};
+        QString selectionId;
     };
     struct PendingWorkspaceSymbolRequest
     {
@@ -344,6 +356,7 @@ private:
     QHash<qint64, PendingWorkspaceSymbolRequest>
         m_pendingWorkspaceSymbolRequests;
     QHash<qint64, PendingCompletionRequest> m_pendingCompletionRequests;
+    QHash<qint64, PendingCompletionResolve> m_pendingCompletionResolves;
     QHash<qint64, PendingFormattingRequest> m_pendingFormattingRequests;
     QHash<qint64, PendingSemanticRequest> m_pendingSemanticRequests;
     QSet<QString> m_pendingChanges;
@@ -363,6 +376,7 @@ private:
     bool m_workspaceSymbolProvider{};
     bool m_workspaceFoldersSupported{};
     bool m_completionProvider{};
+    bool m_completionResolveProvider{};
     bool m_hoverProvider{};
     bool m_signatureHelpProvider{};
     bool m_definitionProvider{};

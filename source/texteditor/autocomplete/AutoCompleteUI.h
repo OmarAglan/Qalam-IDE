@@ -5,7 +5,7 @@
 #include <QAbstractListModel>
 #include <QStyledItemDelegate>
 #include <QListView>
-#include <QLabel>
+#include <QTextBrowser>
 
 #include <vector>
 
@@ -30,15 +30,23 @@ class QalamCompletionPopup : public QListView {
     Q_OBJECT
 public:
     explicit QalamCompletionPopup(QWidget *parent = nullptr);
+    void showDocumentation(const QJsonValue &documentation);
+
+signals:
+    void selectedCompletionChanged(const QModelIndex &index);
+    void dismissed();
+    void documentationLinkActivated(const QUrl &url);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
     void currentChanged(const QModelIndex &current, const QModelIndex &previous) override;
+    void hideEvent(QHideEvent *event) override;
 
 private:
     void updateFooterLayout();
 
-    QLabel *infoLabel{};
+    QTextBrowser *infoBrowser{};
+    QString m_descriptionHeader;
     int footerHeight{};
 };
 

@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
     LspMessageFramer framer;
     std::array<char, 4096> buffer{};
     QString currentUri;
+    QJsonObject deferredResolve;
     while (true) {
 #if defined(Q_OS_WIN)
         const int count = _read(_fileno(stdin), buffer.data(),
@@ -153,7 +154,8 @@ int main(int argc, char *argv[])
                                 {"triggerCharacters", QJsonArray{"(", "،", ","}}
                             }},
                             {"completionProvider", QJsonObject{
-                                {"resolveProvider", false},
+                                {"resolveProvider", qEnvironmentVariableIntValue(
+                                    "QALAM_FAKE_LSP_NO_RESOLVE") == 0},
                                 {"triggerCharacters", QJsonArray{"ا", "#"}}
                             }},
                             {"experimental", QJsonObject{
@@ -407,6 +409,28 @@ int main(int argc, char *argv[])
                         }}
                     }}
                 });
+            } else if (method == "completionItem/resolve") {
+                recordWorkspaceMessage(message);
+                QJsonObject resolved = params;
+                resolved.insert("documentation", QJsonObject{
+                    {"kind", "markdown"},
+                    {"value", QString::fromUtf8(QJsonDocument(params).toJson(
+                        QJsonDocument::Compact))}
+                });
+                const QJsonObject response{
+                    {"jsonrpc", "2.0"}, {"id", id}, {"result", resolved}};
+                if (params.value("data").toObject().value("defer").toBool()) {
+                    deferredResolve = response;
+                } else {
+                    send(output, response);
+                    // Deliberately ignore cancellation and reply out of order.
+                    if (not deferredResolve.isEmpty()) {
+                        send(output, deferredResolve);
+                        deferredResolve = {};
+                    }
+                }
+            } else if (method == "$/cancelRequest") {
+                recordWorkspaceMessage(message);
             } else if (method == "textDocument/hover") {
                 const QJsonObject position = params.value("position").toObject();
                 const int line = position.value("line").toInt();

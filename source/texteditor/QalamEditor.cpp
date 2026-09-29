@@ -12,6 +12,8 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QUrl>
+#include <QUuid>
+#include <QDesktopServices>
 #include <QHash>
 #include <QToolTip>
 #include <QTextDocument>
@@ -92,6 +94,15 @@ void QalamEditor::initializeEditor()
 
     // ضبط الإكمال التلقائي
     setupAutoComplete();
+    const auto dismissCompletion = [this]() {
+        invalidateCompletionDocumentation();
+        if (hasVisibleCompletion()) c->popup()->hide();
+    };
+    connect(m_documentModel, &QalamDocumentModel::sourceTextChanged,
+            this, dismissCompletion);
+    connect(this, &QPlainTextEdit::cursorPositionChanged, this, dismissCompletion);
+    connect(m_documentModel, &QalamDocumentModel::filePathChanged,
+            this, dismissCompletion);
 
     connect(this, &QalamEditor::blockCountChanged, this, &QalamEditor::updateLineNumberAreaWidth);
     connect(this, &QalamEditor::updateRequest, this, &QalamEditor::updateLineNumberArea);
@@ -1257,7 +1268,25 @@ void QalamEditor::setCompleter(QCompleter *completer) {
 
     // set dimensions
     popup->setMinimumWidth(320);
-    popup->setMinimumHeight(190);
+    popup->setMinimumHeight(300);
+    connect(popup, &QalamCompletionPopup::dismissed,
+            this, &QalamEditor::invalidateCompletionDocumentation);
+    connect(popup, &QalamCompletionPopup::documentationLinkActivated,
+            this, [](const QUrl &url) { QDesktopServices::openUrl(url); });
+    connect(popup, &QalamCompletionPopup::selectedCompletionChanged,
+            this, [this](const QModelIndex &index) {
+        invalidateCompletionDocumentation();
+        if (not index.isValid()) return;
+        const CompletionItem *item = model->itemAt(index.row());
+        if (not item or item->protocolItem.isEmpty()) return;
+        m_completionSelectionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        m_completionDocumentPath = currentFilePath();
+        m_completionDocumentRevision = m_documentModel->sourceRevision();
+        m_completionCursorPosition = textCursor().position();
+        emit completionResolveRequested(m_completionDocumentPath,
+            property("qalam.lsp.version").toInt(), item->protocolItem,
+            m_completionSelectionId);
+    });
 
 
     // To this lambda that captures the type:
@@ -1433,6 +1462,8 @@ void QalamEditor::showLanguageCompletions(const QVector<BaaCompletionItem> &item
         item.label = source.label;
         item.completion = source.newText;
         item.description = source.detail;
+        item.protocolItem = source.protocolItem;
+        item.documentation = source.documentation;
         item.serverSortText = source.sortText;
         item.context = source.context;
         item.stableKey = source.stableKey;
@@ -1453,6 +1484,23 @@ void QalamEditor::showLanguageCompletions(const QVector<BaaCompletionItem> &item
     }
     c->setCompletionPrefix(QString());
     showCompletionPopup();
+}
+
+void QalamEditor::invalidateCompletionDocumentation()
+{
+    if (m_completionSelectionId.isEmpty()) return;
+    m_completionSelectionId.clear();
+    emit completionResolveCancelled(m_completionDocumentPath);
+}
+
+void QalamEditor::showCompletionDocumentation(
+    const QString &selectionId, const QJsonValue &documentation)
+{
+    if (selectionId.isEmpty() or selectionId != m_completionSelectionId or
+        not hasVisibleCompletion() or currentFilePath() != m_completionDocumentPath or
+        m_documentModel->sourceRevision() != m_completionDocumentRevision or
+        textCursor().position() != m_completionCursorPosition) return;
+    static_cast<QalamCompletionPopup *>(c->popup())->showDocumentation(documentation);
 }
 
 bool QalamEditor::hasVisibleCompletion() const
@@ -1489,6 +1537,9 @@ void QalamEditor::showCompletionPopup()
     cr.setWidth(popupWidth);
 
     c->complete(cr);
+    if (not c->popup()->currentIndex().isValid()) {
+        c->popup()->setCurrentIndex(c->completionModel()->index(0, 0));
+    }
 }
 
 QString QalamEditor::textUnderCursor() const {

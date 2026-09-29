@@ -1,4 +1,5 @@
 #include "QalamEditor.h"
+#include "QalamDocumentModel.h"
 
 #include <QCoreApplication>
 #include <QImage>
@@ -6,6 +7,9 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTextBrowser>
+#include <QSettings>
+#include <QScopeGuard>
 
 class TestEditorSemanticRequests : public QObject
 {
@@ -19,7 +23,145 @@ private slots:
     void expandsAndShrinksCompilerOwnedSelections();
     void keepsLiteralBracesOutOfLocalFolding();
     void rendersInlayHintsWithoutChangingSourceText();
+    void rejectsStaleCompletionDocumentation();
+    void keepsCompletionVisibleDuringSemanticHighlighting();
 };
+
+void TestEditorSemanticRequests::keepsCompletionVisibleDuringSemanticHighlighting()
+{
+    QalamEditor editor;
+    editor.setFilePath(QStringLiteral("رئيسي.baa"));
+    editor.setPlainText(QStringLiteral("صحيح قيمة.\nاط"));
+    editor.moveCursor(QTextCursor::End);
+    editor.resize(800, 600);
+    editor.show();
+    QCoreApplication::processEvents();
+
+    BaaCompletionItem item;
+    item.label = QStringLiteral("اطبع");
+    item.newText = item.label;
+    item.startLine = 1;
+    item.endLine = 1;
+    item.endCharacter = 2;
+    item.protocolItem = QJsonObject{{"label", item.label}};
+    QSignalSpy requests(&editor, &QalamEditor::completionResolveRequested);
+    QSignalSpy cancellations(&editor, &QalamEditor::completionResolveCancelled);
+    editor.showLanguageCompletions({item}, 1, 2);
+    QVERIFY(editor.hasVisibleCompletion());
+    QVERIFY(not requests.isEmpty());
+    const QString selectionId = requests.last().at(3).toString();
+    const QString source = editor.toPlainText();
+    const int revision = editor.documentModel()->sourceRevision();
+    QSignalSpy sourceChanges(editor.documentModel(), &QalamDocumentModel::sourceTextChanged);
+    editor.setSemanticTokens({BaaSemanticToken{0, 5, 4, QStringLiteral("variable"), {}}});
+    QCoreApplication::processEvents();
+    QCOMPARE(editor.toPlainText(), source);
+    QCOMPARE(editor.documentModel()->sourceRevision(), revision);
+    QCOMPARE(sourceChanges.size(), 0);
+    QVERIFY(editor.hasVisibleCompletion());
+    QCOMPARE(cancellations.size(), 0);
+    editor.showCompletionDocumentation(selectionId, QStringLiteral("توثيق الدالة"));
+    auto *completer = editor.findChild<QCompleter *>();
+    auto *footer = completer->popup()->findChild<QTextBrowser *>(
+        QStringLiteral("completionDocumentation"));
+    QVERIFY(footer->toPlainText().contains(QStringLiteral("توثيق الدالة")));
+    editor.clearSemanticTokens();
+    QCoreApplication::processEvents();
+    QVERIFY(editor.hasVisibleCompletion());
+    QCOMPARE(editor.documentModel()->sourceRevision(), revision);
+    QCOMPARE(sourceChanges.size(), 0);
+
+    // Both editor groups share one source revision, including undo/redo.
+    QalamEditor otherView(editor.documentModel());
+    otherView.moveCursor(QTextCursor::End);
+    otherView.insertPlainText(QStringLiteral("ب"));
+    QCOMPARE(sourceChanges.size(), 1);
+    QCOMPARE(editor.documentModel()->sourceRevision(), revision + 1);
+    QVERIFY(not editor.hasVisibleCompletion());
+    editor.showCompletionDocumentation(selectionId, QStringLiteral("رد قديم"));
+    QVERIFY(not footer->toPlainText().contains(QStringLiteral("رد قديم")));
+    otherView.undo();
+    QCOMPARE(sourceChanges.size(), 2);
+    QCOMPARE(editor.toPlainText(), source);
+    QCOMPARE(editor.documentModel()->sourceRevision(), revision + 2);
+    otherView.redo();
+    QCOMPARE(sourceChanges.size(), 3);
+    QCOMPARE(editor.documentModel()->sourceRevision(), revision + 3);
+}
+
+void TestEditorSemanticRequests::rejectsStaleCompletionDocumentation()
+{
+    QTemporaryDir settingsDirectory;
+    const QSettings::Format previousFormat = QSettings::defaultFormat();
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+    QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, settingsDirectory.path());
+    const auto restoreSettings = qScopeGuard([previousFormat] {
+        QSettings::setDefaultFormat(previousFormat);
+    });
+    QalamEditor editor;
+    editor.setFilePath(QStringLiteral("رئيسي.baa"));
+    editor.setPlainText(QStringLiteral("اط"));
+    editor.moveCursor(QTextCursor::End);
+    editor.resize(800, 600);
+    editor.show();
+    BaaCompletionItem first;
+    first.label = QStringLiteral("اطبع");
+    first.newText = first.label;
+    first.protocolItem = QJsonObject{{"label", first.label}, {"data", QJsonObject{{"id", 1}}}};
+    first.documentation = QStringLiteral("توثيق مباشر");
+    BaaCompletionItem second = first;
+    second.label = QStringLiteral("اطبع_سطر");
+    second.newText = second.label;
+    second.protocolItem = QJsonObject{{"label", second.label}, {"data", QJsonObject{{"id", 2}}}};
+    QSignalSpy requests(&editor, &QalamEditor::completionResolveRequested);
+    QSignalSpy cancellations(&editor, &QalamEditor::completionResolveCancelled);
+    editor.showLanguageCompletions({first, second}, 0, 2);
+    QCoreApplication::processEvents();
+    QVERIFY(editor.hasVisibleCompletion());
+    QVERIFY(not requests.isEmpty());
+    auto *completer = editor.findChild<QCompleter *>();
+    QVERIFY(completer);
+    auto *popup = static_cast<QalamCompletionPopup *>(completer->popup());
+    auto *footer = popup->findChild<QTextBrowser *>(QStringLiteral("completionDocumentation"));
+    QVERIFY(footer);
+    QVERIFY(footer->toPlainText().contains(QStringLiteral("توثيق مباشر")));
+    const QString previousId = requests.last().at(3).toString();
+    popup->setCurrentIndex(completer->completionModel()->index(1, 0));
+    const QString selectedId = requests.last().at(3).toString();
+    QVERIFY(previousId != selectedId);
+    QVERIFY(not cancellations.isEmpty());
+    editor.showCompletionDocumentation(selectedId, QStringLiteral("توثيق الاختيار الحالي"));
+    editor.showCompletionDocumentation(previousId, QStringLiteral("توثيق قديم"));
+    QVERIFY(footer->toPlainText().contains(QStringLiteral("توثيق الاختيار الحالي")));
+    QVERIFY(not footer->toPlainText().contains(QStringLiteral("توثيق قديم")));
+    QCOMPARE(editor.toPlainText(), QStringLiteral("اط"));
+    popup->hide();
+    editor.showCompletionDocumentation(selectedId, QStringLiteral("بعد الإغلاق"));
+    QVERIFY(not footer->toPlainText().contains(QStringLiteral("بعد الإغلاق")));
+    editor.showLanguageCompletions({first, second}, 0, 2);
+    const QString editId = requests.last().at(3).toString();
+    editor.insertPlainText(QStringLiteral("ب"));
+    editor.showCompletionDocumentation(editId, QStringLiteral("بعد التعديل"));
+    QVERIFY(not editor.hasVisibleCompletion());
+    QVERIFY(not footer->toPlainText().contains(QStringLiteral("بعد التعديل")));
+    first.endCharacter = 3;
+    second.endCharacter = 3;
+    editor.showLanguageCompletions({first, second}, 0, 3);
+    const QString cursorId = requests.last().at(3).toString();
+    editor.moveCursor(QTextCursor::Start);
+    editor.moveCursor(QTextCursor::End);
+    editor.showCompletionDocumentation(cursorId, QStringLiteral("بعد تحريك المؤشر"));
+    QVERIFY(not editor.hasVisibleCompletion());
+
+    editor.showLanguageCompletions({first, second}, 0, 3);
+    QTest::keyClick(popup, Qt::Key_Down);
+    const QString acceptId = requests.last().at(3).toString();
+    editor.showCompletionDocumentation(acceptId, QStringLiteral("توثيق للقراءة فقط"));
+    const QString selectedText = popup->currentIndex().data(Qt::EditRole).toString();
+    QTest::keyClick(popup, Qt::Key_Return);
+    QCOMPARE(editor.toPlainText(), selectedText);
+    QVERIFY(not editor.hasVisibleCompletion());
+}
 
 void TestEditorSemanticRequests::requestsCompletionInsideIncludePaths()
 {

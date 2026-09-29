@@ -4,6 +4,23 @@
 #include <QScrollBar>
 #include <QPainter>
 #include <QResizeEvent>
+#include <QTextBlock>
+#include <QTextCursor>
+#include <QHideEvent>
+#include <cmath>
+
+namespace {
+class QalamCompletionDocumentation : public QTextBrowser {
+public:
+    explicit QalamCompletionDocumentation(QWidget *parent) : QTextBrowser(parent) {}
+protected:
+    QVariant loadResource(int, const QUrl &) override {
+        // Documentation must not read local files or fetch remote images.
+        return QByteArray();
+    }
+};
+}
+
 
 
 // --- CompletionModel ---
@@ -36,6 +53,7 @@ QVariant CompletionModel::data(const QModelIndex &index, int role) const {
     // Custom roles for the delegate
     if (role == Qt::UserRole + 1) return item.description;
     if (role == Qt::UserRole + 2) return static_cast<int>(item.type);
+    if (role == Qt::UserRole + 3) return QVariant::fromValue(item.documentation);
 
     return QVariant();
 }
@@ -80,24 +98,32 @@ QalamCompletionPopup::QalamCompletionPopup(QWidget *parent) : QListView(parent),
               Constants::Colors::ScrollbarThumb,
               Constants::Colors::ScrollbarThumbHover));
 
-    // 2. The Info Panel (Label)
-    infoLabel = new QLabel(this);
-    infoLabel->setObjectName(QStringLiteral("completionInfoLabel"));
-    infoLabel->setStyleSheet(QString(
-        "QLabel { "
-        "   background-color: %1; "
-        "   border-top: 1px solid %2; "
-        "   color: %3; "
-        "   padding: 8px 10px; "
-        "   font-family: 'Tajawal'; "
-        "}"
-        ).arg(Constants::Colors::PanelBackground,
-              Constants::Colors::Accent,
-              Constants::Colors::TextSecondary));
-    infoLabel->setAlignment(Qt::AlignTop | Qt::AlignRight);
-    infoLabel->setWordWrap(true);
-    infoLabel->setTextFormat(Qt::RichText);
-    infoLabel->setLayoutDirection(Qt::RightToLeft);
+    infoBrowser = new QalamCompletionDocumentation(this);
+    infoBrowser->setObjectName(QStringLiteral("completionDocumentation"));
+    infoBrowser->setAccessibleName(QStringLiteral("توثيق الاقتراح المحدد"));
+    infoBrowser->setOpenLinks(false);
+    infoBrowser->setOpenExternalLinks(false);
+    infoBrowser->setFocusPolicy(Qt::NoFocus);
+    infoBrowser->setLayoutDirection(Qt::RightToLeft);
+    infoBrowser->setFrameShape(QFrame::NoFrame);
+    infoBrowser->setStyleSheet(QString(
+        "QTextBrowser { background: %1; border-top: 1px solid %2; "
+        "color: %3; padding: 8px; font-family: 'Tajawal'; font-size: 13px; }")
+        .arg(Constants::Colors::PanelBackground, Constants::Colors::Accent,
+             Constants::Colors::TextPrimary));
+    infoBrowser->document()->setDefaultStyleSheet(
+        QStringLiteral("a { color: #61afef; } pre, code { font-family: Consolas; }"));
+    QTextOption option = infoBrowser->document()->defaultTextOption();
+    option.setTextDirection(Qt::RightToLeft);
+    option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    infoBrowser->document()->setDefaultTextOption(option);
+    connect(infoBrowser, &QTextBrowser::anchorClicked, this, [this](const QUrl &url) {
+        if (url.isValid() and not url.host().isEmpty() and
+            (url.scheme() == QStringLiteral("https") or
+             url.scheme() == QStringLiteral("http"))) {
+            emit documentationLinkActivated(url);
+        }
+    });
 
     // Reserve space at bottom so list items don't overlap the footer
     setViewportMargins(0, 0, 0, footerHeight);
@@ -112,27 +138,29 @@ void QalamCompletionPopup::updateFooterLayout() {
     QRect cr = contentsRect();
     if (cr.width() <= 0) return;
 
-    // Rich text and Arabic fonts need more room than the old fixed 52-pixel
-    // footer. Measure the current description at the popup width so both its
-    // heading and body remain visible, while keeping enough space for results.
-    infoLabel->setFixedWidth(cr.width());
-    const int measuredHeight = infoLabel->heightForWidth(cr.width());
-    const int requiredHeight = qBound(72, measuredHeight, 120);
+    infoBrowser->setFixedWidth(cr.width());
+    infoBrowser->document()->setTextWidth(qMax(1, cr.width() - 32));
+    const int measuredHeight = static_cast<int>(std::ceil(
+        infoBrowser->document()->size().height())) + 24;
+    const int maxFooter = qMin(200, qMax(72, cr.height() - 96));
+    const int requiredHeight = qBound(72, measuredHeight, maxFooter);
     if (requiredHeight != footerHeight) {
         footerHeight = requiredHeight;
         setViewportMargins(0, 0, 0, footerHeight);
         cr = contentsRect();
     }
 
-    infoLabel->setGeometry(cr.left(), cr.bottom() - footerHeight + 1, cr.width(), footerHeight);
+    infoBrowser->setGeometry(cr.left(), cr.bottom() - footerHeight + 1, cr.width(), footerHeight);
     setProperty("qalam.completionFooterHeight", footerHeight);
 }
 
 void QalamCompletionPopup::currentChanged(const QModelIndex &current, const QModelIndex &previous) {
     QListView::currentChanged(current, previous);
     if (!current.isValid()) {
-        infoLabel->clear();
+        m_descriptionHeader.clear();
+        infoBrowser->clear();
         updateFooterLayout();
+        emit selectedCompletionChanged(current);
         return;
     }
 
@@ -160,8 +188,30 @@ void QalamCompletionPopup::currentChanged(const QModelIndex &current, const QMod
                        .arg(colorStr, typeStr,
                             Constants::Colors::TextPrimary,
                             desc.toHtmlEscaped().replace("\n", "<br>"));
-    infoLabel->setText(html);
+    m_descriptionHeader = html;
+    showDocumentation(current.data(Qt::UserRole + 3).value<QJsonValue>());
+    emit selectedCompletionChanged(current);
+}
+
+void QalamCompletionPopup::showDocumentation(const QJsonValue &documentation) {
+    const QJsonObject markup = documentation.toObject();
+    const QString contents = documentation.isString() ? documentation.toString()
+        : markup.value(QStringLiteral("value")).toString();
+    if (markup.value(QStringLiteral("kind")).toString() == QStringLiteral("markdown")) {
+        infoBrowser->document()->setMarkdown(contents, QTextDocument::MarkdownNoHTML);
+    } else {
+        infoBrowser->setPlainText(contents);
+    }
+    QTextCursor cursor(infoBrowser->document());
+    cursor.movePosition(QTextCursor::Start);
+    cursor.insertHtml(m_descriptionHeader + QStringLiteral("<br>"));
+    infoBrowser->verticalScrollBar()->setValue(0);
     updateFooterLayout();
+}
+
+void QalamCompletionPopup::hideEvent(QHideEvent *event) {
+    QListView::hideEvent(event);
+    emit dismissed();
 }
 
 // --- Modern Delegate Implementation ---

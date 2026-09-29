@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QScopeGuard>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
@@ -81,7 +82,86 @@ private slots:
     void publishesWorkspaceFolderAndManifestChanges();
     void publishesConfiguredWorkspaceRootsBeforeDocumentsOpen();
     void rejectsNonBaaDocuments();
+    void resolvesOnlyCurrentCompletionDocumentation();
+    void respectsCompletionResolveCapability();
 };
+
+void TestBaaLanguageClient::resolvesOnlyCurrentCompletionDocumentation()
+{
+    QTemporaryDir workspace;
+    const QString path = workspace.filePath(QStringLiteral("رئيسي.baa"));
+    BaaLanguageClient client;
+    client.setServerProgram(QString::fromUtf8(QALAM_FAKE_BAA_LSP_PATH));
+    QSignalSpy completions(&client, &BaaLanguageClient::completionPublished);
+    QSignalSpy docs(&client, &BaaLanguageClient::completionDocumentationPublished);
+    QCOMPARE(client.synchronizeDocument(path, QStringLiteral("صحيح قيمة"), 1), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Ready, 5000);
+    client.requestCompletion(path, 0, 9);
+    QTRY_COMPARE_WITH_TIMEOUT(completions.size(), 1, 5000);
+    const auto items = qvariant_cast<QVector<BaaCompletionItem>>(completions.first().at(4));
+    QVERIFY(not items.isEmpty());
+    QJsonObject item = items.first().protocolItem;
+    QCOMPARE(item.value("data").toObject().value("baaStableKey").toString(),
+             items.first().stableKey);
+    QJsonObject data = item.value("data").toObject();
+    data.insert("opaque", QJsonArray{42, QJsonObject{{"nested", "unchanged"}}});
+    item.insert("data", data);
+    client.requestCompletionResolve(path, 1, item, QStringLiteral("first"));
+    QTRY_COMPARE_WITH_TIMEOUT(docs.size(), 1, 5000);
+    const QJsonObject markup = docs.last().at(3).value<QJsonValue>().toObject();
+    QCOMPARE(markup.value("kind").toString(), QStringLiteral("markdown"));
+    QCOMPARE(QJsonDocument::fromJson(markup.value("value").toString().toUtf8()).object(), item);
+
+    QJsonObject delayed = item;
+    data.insert("defer", true);
+    delayed.insert("data", data);
+    client.requestCompletionResolve(path, 1, delayed, QStringLiteral("old-selection"));
+    client.requestCompletionResolve(path, 1, item, QStringLiteral("new-selection"));
+    QTRY_COMPARE_WITH_TIMEOUT(docs.size(), 2, 5000);
+    QCOMPARE(docs.last().at(2).toString(), QStringLiteral("new-selection"));
+
+    client.requestCompletionResolve(path, 1, delayed, QStringLiteral("old-document"));
+    QCOMPARE(client.synchronizeDocument(path, QStringLiteral("صحيح قيمة = ١."), 2), 2);
+    client.requestCompletionResolve(path, 2, item, QStringLiteral("new-document"));
+    QTRY_COMPARE_WITH_TIMEOUT(docs.size(), 3, 5000);
+    QCOMPARE(docs.last().at(1).toInt(), 2);
+    QCOMPARE(docs.last().at(2).toString(), QStringLiteral("new-document"));
+
+    client.requestCompletionResolve(path, 2, delayed, QStringLiteral("closed"));
+    client.closeDocument(path);
+    QCOMPARE(client.synchronizeDocument(path, QStringLiteral("صحيح قيمة"), 3), 1);
+    client.requestCompletionResolve(path, 1, item, QStringLiteral("reopened"));
+    QTRY_COMPARE_WITH_TIMEOUT(docs.size(), 4, 5000);
+    QCOMPARE(docs.last().at(2).toString(), QStringLiteral("reopened"));
+
+    client.requestCompletionResolve(path, 1, delayed, QStringLiteral("dismissed"));
+    client.cancelCompletionResolve(path);
+    client.requestCompletionResolve(path, 1, item, QStringLiteral("final"));
+    QTRY_COMPARE_WITH_TIMEOUT(docs.size(), 5, 5000);
+    QTest::qWait(100);
+    QCOMPARE(docs.size(), 5);
+    QCOMPARE(docs.last().at(2).toString(), QStringLiteral("final"));
+    client.stop();
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Stopped, 5000);
+}
+
+void TestBaaLanguageClient::respectsCompletionResolveCapability()
+{
+    qputenv("QALAM_FAKE_LSP_NO_RESOLVE", "1");
+    const auto cleanup = qScopeGuard([] { qunsetenv("QALAM_FAKE_LSP_NO_RESOLVE"); });
+    QTemporaryDir workspace;
+    const QString path = workspace.filePath(QStringLiteral("رئيسي.baa"));
+    BaaLanguageClient client;
+    client.setServerProgram(QString::fromUtf8(QALAM_FAKE_BAA_LSP_PATH));
+    QSignalSpy docs(&client, &BaaLanguageClient::completionDocumentationPublished);
+    client.synchronizeDocument(path, QStringLiteral("صحيح قيمة"), 1);
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Ready, 5000);
+    client.requestCompletionResolve(path, 1, QJsonObject{{"label", "قيمة"}}, QStringLiteral("ignored"));
+    QTest::qWait(100);
+    QCOMPARE(docs.size(), 0);
+    client.stop();
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Stopped, 5000);
+}
 
 void TestBaaLanguageClient::synchronizesDocumentsAndRejectsStaleDiagnostics()
 {

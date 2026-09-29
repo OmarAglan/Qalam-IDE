@@ -405,6 +405,37 @@ void BaaLanguageClient::requestCompletion(const QString &filePath,
         requestId, {path, document->version, line, character});
 }
 
+void BaaLanguageClient::requestCompletionResolve(
+    const QString &filePath, int documentVersion, const QJsonObject &item,
+    const QString &selectionId)
+{
+    const QString path = normalizedFilePath(filePath);
+    cancelCompletionResolve(path);
+    const auto document = m_documents.constFind(path);
+    if (m_state != State::Ready or not m_completionResolveProvider or
+        document == m_documents.cend() or not document->opened or
+        document->version != documentVersion or item.isEmpty() or
+        selectionId.isEmpty()) return;
+
+    const qint64 id = sendRequest(QStringLiteral("completionItem/resolve"), item);
+    m_pendingCompletionResolves.insert(id, {path, documentVersion, selectionId});
+}
+
+void BaaLanguageClient::cancelCompletionResolve(const QString &filePath)
+{
+    const QString path = normalizedFilePath(filePath);
+    for (auto it = m_pendingCompletionResolves.begin();
+         it != m_pendingCompletionResolves.end();) {
+        if (it->filePath != path) {
+            ++it;
+            continue;
+        }
+        sendNotification(QStringLiteral("$/cancelRequest"),
+                         QJsonObject{{QStringLiteral("id"), it.key()}});
+        it = m_pendingCompletionResolves.erase(it);
+    }
+}
+
 void BaaLanguageClient::requestHover(const QString &filePath,
                                      int line,
                                      int character)
@@ -1164,7 +1195,12 @@ void BaaLanguageClient::sendInitialize()
                 }},
                 {QStringLiteral("completion"), QJsonObject{
                     {QStringLiteral("completionItem"), QJsonObject{
-                        {QStringLiteral("snippetSupport"), true}
+                        {QStringLiteral("snippetSupport"), true},
+                        {QStringLiteral("documentationFormat"), QJsonArray{
+                            QStringLiteral("markdown"), QStringLiteral("plaintext")}},
+                        {QStringLiteral("resolveSupport"), QJsonObject{
+                            {QStringLiteral("properties"), QJsonArray{
+                                QStringLiteral("documentation")}}}}
                     }}
                 }},
                 {QStringLiteral("hover"), QJsonObject{
@@ -1306,6 +1342,7 @@ void BaaLanguageClient::cancelPendingInlayHintRequests(
 
 void BaaLanguageClient::cancelPendingCompletionRequests(const QString &filePath)
 {
+    cancelCompletionResolve(filePath);
     QList<qint64> requestIds;
     for (auto it = m_pendingCompletionRequests.cbegin();
          it != m_pendingCompletionRequests.cend(); ++it) {
@@ -1485,6 +1522,8 @@ void BaaLanguageClient::handleResponse(const QJsonObject &message)
             capabilities.value(QStringLiteral("completionProvider"));
         m_completionProvider = completionProvider.isObject() or
             completionProvider.toBool(false);
+        m_completionResolveProvider = completionProvider.toObject()
+            .value(QStringLiteral("resolveProvider")).toBool(false);
         const QJsonValue hoverProvider =
             capabilities.value(QStringLiteral("hoverProvider"));
         m_hoverProvider = hoverProvider.isObject() or hoverProvider.toBool(false);
@@ -1718,6 +1757,22 @@ void BaaLanguageClient::handleResponse(const QJsonObject &message)
         const QVector<BaaWorkspaceSymbol> symbols =
             parseWorkspaceSymbols(message.value(QStringLiteral("result")));
         emit workspaceSymbolsPublished(pending.query, symbols);
+        return;
+    }
+    auto resolveRequest = m_pendingCompletionResolves.find(id);
+    if (resolveRequest != m_pendingCompletionResolves.end()) {
+        const PendingCompletionResolve pending = resolveRequest.value();
+        m_pendingCompletionResolves.erase(resolveRequest);
+        const auto document = m_documents.constFind(pending.filePath);
+        if (document == m_documents.cend() or
+            document->version != pending.documentVersion or
+            message.contains(QStringLiteral("error"))) return;
+        const QJsonValue documentation = message.value(QStringLiteral("result"))
+            .toObject().value(QStringLiteral("documentation"));
+        if (not documentation.isUndefined() and not documentation.isNull()) {
+            emit completionDocumentationPublished(pending.filePath,
+                pending.documentVersion, pending.selectionId, documentation);
+        }
         return;
     }
     auto completionRequest = m_pendingCompletionRequests.find(id);
@@ -2297,6 +2352,8 @@ QVector<BaaCompletionItem> BaaLanguageClient::parseCompletionItems(
         if (not value.isObject()) continue;
         const QJsonObject source = value.toObject();
         BaaCompletionItem item;
+        item.protocolItem = source;
+        item.documentation = source.value(QStringLiteral("documentation"));
         item.label = source.value(QStringLiteral("label")).toString().trimmed();
         item.detail = source.value(QStringLiteral("detail")).toString().trimmed();
         item.filterText = source.value(QStringLiteral("filterText")).toString(item.label);
@@ -2587,6 +2644,7 @@ void BaaLanguageClient::clearServerSession()
     m_workspaceWatchTimer.stop();
     m_pendingWatchedFileChanges.clear();
     m_completionProvider = false;
+    m_completionResolveProvider = false;
     m_hoverProvider = false;
     m_signatureHelpProvider = false;
     m_definitionProvider = false;
@@ -2604,6 +2662,7 @@ void BaaLanguageClient::clearServerSession()
     m_pendingInlayHintRequests.clear();
     m_pendingWorkspaceSymbolRequests.clear();
     m_pendingCompletionRequests.clear();
+    m_pendingCompletionResolves.clear();
     m_pendingFormattingRequests.clear();
     m_pendingSemanticRequests.clear();
     m_symbolRequestedVersions.clear();
