@@ -116,3 +116,20 @@ add_qalam_test(test_baa_language_client TestBaaLanguageClient.cpp)
 add_dependencies(test_baa_language_client qalam_fake_baa_lsp)
 target_compile_definitions(test_baa_language_client PRIVATE
     QALAM_FAKE_BAA_LSP_PATH="$<TARGET_FILE:qalam_fake_baa_lsp>")
+
+# Opt-in release gate using the actual workbench, server, and compiler.
+set(QALAM_TEST_BAA_LSP "" CACHE FILEPATH "Baa-LSP executable for the completion integration gate")
+set(QALAM_TEST_BAA_COMPILER "" CACHE FILEPATH "Baa compiler for the completion integration gate")
+if(QALAM_TEST_BAA_LSP AND QALAM_TEST_BAA_COMPILER)
+    if(WIN32)
+        add_qalam_test(test_workbench_completion TestWorkbenchCompletion.cpp windows)
+    else()
+        add_qalam_test(test_workbench_completion TestWorkbenchCompletion.cpp)
+    endif()
+    set_tests_properties(test_workbench_completion PROPERTIES TIMEOUT 90)
+    target_sources(test_workbench_completion PRIVATE
+        ../qalam/Qalam.cpp ../qalam/Qalam.h ../qalam/resources.qrc)
+    target_compile_definitions(test_workbench_completion PRIVATE
+        QALAM_TEST_BAA_LSP="${QALAM_TEST_BAA_LSP}"
+        QALAM_TEST_BAA_COMPILER="${QALAM_TEST_BAA_COMPILER}")
+endif()

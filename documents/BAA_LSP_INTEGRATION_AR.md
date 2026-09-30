@@ -185,6 +185,29 @@ Baa
 
 ## معايير القبول
 
+### اختبار الإكمال داخل واجهة قلم الفعلية
+
+لتفعيل اختبار إضافي بمصرف باء وخادم Baa-LSP الحقيقيين، مرّر مساريهما عند
+إعداد CMake:
+
+```powershell
+cmake -S . -B build/semantic-completion `
+  -DQALAM_BUILD_TESTS=ON `
+  -DQALAM_TEST_BAA_COMPILER="C:/Program Files/Baa/baa.exe" `
+  -DQALAM_TEST_BAA_LSP="C:/Program Files/Qalam/baa-lsp/baa-lsp.exe"
+cmake --build build/semantic-completion --target test_workbench_completion --parallel 1
+ctest --test-dir build/semantic-completion -R '^test_workbench_completion$' --output-on-failure -j 1
+```
+
+يكتب الاختبار `صحيح` و`اطبع` و`إرجع` حرفاً حرفاً في ملف `.باء` مؤقت داخل
+نافذة قلم كاملة، ويتحقق من بقاء الكلمة ضمن الاقتراحات بعد اكتمال التلوين
+الدلالي. يستخدم إعدادات وجلسة مؤقتتين ولا يعدّل ملفات المستخدم. على Windows
+يستخدم نافذة Qt الأصلية؛ ويمكن تحديد مجلد موجود في `QALAM_TEST_SCREENSHOTS`
+لحفظ صور النافذة وقائمة الاقتراحات، كل منهما في ملف مستقل. على Linux يُشغّل
+ضمن جلسة عرض متاحة أو Xvfb. هذا الاختبار لا يغني عن قبول المستخدم المرئي.
+
+### بقية معايير القبول
+
 - لا يحتوي `QalamEditor` أسماء طرق LSP أو منطق JSON-RPC.
 - لا يشغل قلم مصرف باء للتحليل بعد اكتمال الهجرة.
 - لا يكتب أي طرف ملف مصدر ظل.
