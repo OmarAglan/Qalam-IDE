@@ -28,6 +28,44 @@
         <file>resources/match-word-active.svg</file>
         <file>resources/regex.svg</file>
         <file>resources/regex-active.svg</file>
+        <file>resources/match-diacritics.svg</file>
+        <file>resources/match-diacritics-active.svg</file>
+        <file>resources/status-branch.svg</file>
+        <file>resources/status-error.svg</file>
+        <file>resources/status-warning.svg</file>
+        <file>resources/build.svg</file>
+        <file>resources/clean.svg</file>
+        <file>resources/command-palette.svg</file>
+        <file>resources/comment.svg</file>
+        <file>resources/debug.svg</file>
+        <file>resources/duplicate.svg</file>
+        <file>resources/error.svg</file>
+        <file>resources/exit.svg</file>
+        <file>resources/file-baa-header.svg</file>
+        <file>resources/file-baa.svg</file>
+        <file>resources/file-nazm.svg</file>
+        <file>resources/file-open.svg</file>
+        <file>resources/file.svg</file>
+        <file>resources/folder-new.svg</file>
+        <file>resources/format.svg</file>
+        <file>resources/go-to-definition.svg</file>
+        <file>resources/go-to-line.svg</file>
+        <file>resources/info.svg</file>
+        <file>resources/move-editor.svg</file>
+        <file>resources/quick-fix.svg</file>
+        <file>resources/references.svg</file>
+        <file>resources/rename.svg</file>
+        <file>resources/restart.svg</file>
+        <file>resources/save.svg</file>
+        <file>resources/search-files.svg</file>
+        <file>resources/split-down.svg</file>
+        <file>resources/split-right.svg</file>
+        <file>resources/success.svg</file>
+        <file>resources/terminal.svg</file>
+        <file>resources/test.svg</file>
+        <file>resources/toggle-panel.svg</file>
+        <file>resources/toggle-sidebar.svg</file>
+        <file>resources/warning.svg</file>
         <file>resources/file-new.svg</file>
         <file>resources/folder.svg</file>
         <file>resources/folder-open.svg</file>

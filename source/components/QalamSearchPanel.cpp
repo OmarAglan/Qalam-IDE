@@ -1,4 +1,5 @@
 #include "QalamSearchPanel.h"
+#include "QalamArabicSearch.h"
 
 #include "Constants.h"
 #include "QalamEditor.h"
@@ -83,6 +84,11 @@ QalamSearchPanel::QalamSearchPanel(QWidget *parent)
     m_regexCheck->setObjectName(QStringLiteral("searchRegex"));
     m_regexCheck->setToolTip(QStringLiteral("استخدام تعبير نمطي"));
 
+    m_diacriticsCheck = new QCheckBox(QStringLiteral("ـَ"), this);
+    m_diacriticsCheck->setObjectName(QStringLiteral("searchIgnoreDiacritics"));
+    m_diacriticsCheck->setToolTip(QStringLiteral("تجاهل التشكيل والتطويل دون تعديل النص"));
+    m_diacriticsCheck->setAccessibleName(QStringLiteral("تجاهل التشكيل"));
+
     searchRow->addWidget(m_closeButton);
     searchRow->addWidget(m_searchInput, 1);
     searchRow->addWidget(m_countLabel);
@@ -91,6 +97,7 @@ QalamSearchPanel::QalamSearchPanel(QWidget *parent)
     searchRow->addWidget(m_caseCheck);
     searchRow->addWidget(m_wordCheck);
     searchRow->addWidget(m_regexCheck);
+    searchRow->addWidget(m_diacriticsCheck);
 
     auto *replaceRow = new QHBoxLayout();
     replaceRow->setContentsMargins(33, 0, 0, 0);
@@ -174,6 +181,11 @@ QalamSearchPanel::QalamSearchPanel(QWidget *parent)
     connect(m_wordCheck, &QCheckBox::toggled,
             this, &QalamSearchPanel::performFind);
     connect(m_regexCheck, &QCheckBox::toggled,
+            this, &QalamSearchPanel::performFind);
+    // A regular expression is taken literally, so mark folding does not apply.
+    connect(m_regexCheck, &QCheckBox::toggled,
+            m_diacriticsCheck, &QCheckBox::setDisabled);
+    connect(m_diacriticsCheck, &QCheckBox::toggled,
             this, &QalamSearchPanel::performFind);
 
     auto *previousShortcut = new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return), this);
@@ -290,7 +302,9 @@ QRegularExpression QalamSearchPanel::buildPattern() const
 {
     QString pattern = isRegex()
         ? searchText()
-        : QRegularExpression::escape(searchText());
+        : (m_diacriticsCheck->isChecked()
+               ? QalamArabicSearch::diacriticInsensitivePattern(searchText())
+               : QRegularExpression::escape(searchText()));
 
     if (isWholeWord() and not pattern.isEmpty()) {
         pattern = QStringLiteral(

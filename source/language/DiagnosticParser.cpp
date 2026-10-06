@@ -1,7 +1,10 @@
 #include "DiagnosticParser.h"
+#include "QalamTextPosition.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -22,6 +25,38 @@ int normalizedInt(const QString &text, int fallback = 1)
     const int value = text.toInt(&ok);
     return ok ? qMax(1, value) : fallback;
 }
+
+// Baa's display columns are approximate; its UTF-8 byte offsets are exact.
+// Convert both span ends from bytes when the source still matches them, so a
+// range after a supplementary-plane character lands on the right UTF-16 unit.
+bool applyExactByteSpan(Diagnostic *diagnostic,
+                        const QJsonObject &start,
+                        const QJsonObject &end,
+                        QHash<QString, QByteArray> *sources)
+{
+    if (not start.contains("byte") or diagnostic->file.isEmpty()) return false;
+    if (not sources->contains(diagnostic->file)) {
+        QFile file(diagnostic->file);
+        sources->insert(diagnostic->file,
+                        file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray());
+    }
+    const QByteArray &bytes = sources->value(diagnostic->file);
+    if (bytes.isEmpty()) return false;
+
+    const qint64 startByte = start.value("byte").toInteger(-1);
+    const qint64 endByte = end.value("byte").toInteger(startByte);
+    const auto first = QalamTextPosition::lineCharacterForUtf8Byte(bytes, startByte);
+    const auto last = QalamTextPosition::lineCharacterForUtf8Byte(bytes, endByte);
+    // A line disagreement means the file changed after the compiler read it.
+    if (not first.isValid() or not last.isValid() or
+        first.line + 1 != diagnostic->line) {
+        return false;
+    }
+    diagnostic->column = first.character + 1;
+    diagnostic->endLine = last.line + 1;
+    diagnostic->endColumn = last.character + 1;
+    return true;
+}
 }
 
 QVector<Diagnostic> DiagnosticParser::parseCompilerOutput(const QString &text,
@@ -30,6 +65,7 @@ QVector<Diagnostic> DiagnosticParser::parseCompilerOutput(const QString &text,
 {
     QVector<Diagnostic> diagnostics;
     QSet<QString> seen;
+    QHash<QString, QByteArray> sources;
 
     QJsonParseError jsonError;
     const QJsonDocument document = QJsonDocument::fromJson(text.trimmed().toUtf8(), &jsonError);
@@ -59,6 +95,7 @@ QVector<Diagnostic> DiagnosticParser::parseCompilerOutput(const QString &text,
                 diagnostic.column = qMax(1, start.value("column").toInt(item.value("column").toInt(1)));
                 diagnostic.endLine = qMax(diagnostic.line, end.value("line").toInt(diagnostic.line));
                 diagnostic.endColumn = qMax(1, end.value("column").toInt(diagnostic.column));
+                applyExactByteSpan(&diagnostic, start, end, &sources);
 
                 if (diagnostic.message.isEmpty()) continue;
                 const QString key = diagnostic.key();

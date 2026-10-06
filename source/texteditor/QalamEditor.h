@@ -34,12 +34,16 @@ class QalamEditor : public QPlainTextEdit {
     Q_OBJECT
 
 public:
+    // Lines and columns are one-based; columns count UTF-16 code units.
+    // An end before or equal to the start marks a single-character range.
     struct Diagnostic {
         QString file;
         int line = 1;
         int column = 1;
         QString severity;
         QString message;
+        int endLine = 0;
+        int endColumn = 0;
     };
 
     explicit QalamEditor(QWidget *parent = nullptr);
@@ -47,6 +51,8 @@ public:
                          QWidget *parent = nullptr);
 
     void setDiagnostics(const QVector<Diagnostic> &diagnostics);
+    // Exact document range covered by a diagnostic, as [start, end).
+    QPair<int, int> diagnosticRange(const Diagnostic &diagnostic) const;
     void clearDiagnostics();
     void setSemanticTokens(const QVector<BaaSemanticToken> &tokens);
     void clearSemanticTokens();

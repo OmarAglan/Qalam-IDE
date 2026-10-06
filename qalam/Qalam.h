@@ -51,6 +51,7 @@ private slots:
     void handleAddFolderMenu();
     void reopenLastProject();
     void openSettings();
+    void connectSettings();
     void exitApp();
 
     void newFileFromUi();
@@ -179,7 +180,8 @@ private:
     QalamSearchPanel *searchBar{};
     QalamWelcomePage *m_welcomePage{};
     QPointer<QalamCommandPalette> m_workspaceSymbolPalette;
-    QalamEditor *m_lastConnectedEditor{}; // Track editor for cursor position disconnect
+    // Clears itself when the editor is destroyed, so no stale disconnect.
+    QPointer<QalamEditor> m_lastConnectedEditor; // Track editor for cursor position disconnect
     QTimer *m_sessionSaveTimer{};
     bool m_sessionSavedCleanly{};
 };

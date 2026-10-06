@@ -75,6 +75,40 @@ QalamMenuBar::QalamMenuBar(QWidget* parent) : QMenuBar(parent) {
 
     aboutAction = new QAction("عن المحرر", parent);
 
+    // Frequently used commands are recognizable by shape in every menu,
+    // the command palette, and context menus that reuse these actions.
+    const auto setIcon = [](QAction *action, const char *name) {
+        action->setIcon(QIcon(QStringLiteral(":/icons/resources/%1.svg")
+                                  .arg(QLatin1String(name))));
+    };
+    setIcon(newAction, "file-new");
+    setIcon(openFileAction, "file-open");
+    setIcon(openFolderAction, "folder-open");
+    setIcon(addFolderAction, "folder-new");
+    setIcon(saveAction, "save");
+    setIcon(SettingsAction, "settings");
+    setIcon(exitAction, "exit");
+    setIcon(buildAction, "build");
+    setIcon(runAction, "run");
+    setIcon(testAction, "test");
+    setIcon(cleanAction, "clean");
+    setIcon(commandPaletteAction, "command-palette");
+    setIcon(quickOpenAction, "file");
+    setIcon(findAction, "search");
+    setIcon(findInFilesAction, "search-files");
+    setIcon(goToLineAction, "go-to-line");
+    setIcon(toggleSidebarAction, "toggle-sidebar");
+    setIcon(togglePanelAction, "toggle-panel");
+    setIcon(problemsAction, "warning");
+    setIcon(debugPanelAction, "debug");
+    setIcon(goToDefinitionAction, "go-to-definition");
+    setIcon(findReferencesAction, "references");
+    setIcon(splitRightAction, "split-right");
+    setIcon(splitDownAction, "split-down");
+    setIcon(moveEditorAction, "move-editor");
+    setIcon(closeEditorGroupAction, "close");
+    setIcon(aboutAction, "info");
+
 
     fileMenu->addAction(newAction);
     fileMenu->addAction(openFileAction);

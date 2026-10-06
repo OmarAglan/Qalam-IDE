@@ -1,4 +1,5 @@
 #include "ProjectSearchService.h"
+#include "QalamArabicSearch.h"
 
 #include <QCryptographicHash>
 #include <QDateTime>
@@ -50,7 +51,9 @@ bool createExpression(const ProjectSearchRequest &request,
 
     QString pattern = request.regularExpression
         ? request.query
-        : QRegularExpression::escape(request.query);
+        : (request.ignoreDiacritics
+               ? QalamArabicSearch::diacriticInsensitivePattern(request.query)
+               : QRegularExpression::escape(request.query));
     if (request.wholeWord) {
         pattern = QStringLiteral(
             "(?<![\\p{L}\\p{M}\\p{N}_])(?:%1)(?![\\p{L}\\p{M}\\p{N}_])")
@@ -230,6 +233,7 @@ ProjectReplacementPlan executeReplacement(
     plan.caseSensitive = request.caseSensitive;
     plan.wholeWord = request.wholeWord;
     plan.regularExpression = request.regularExpression;
+    plan.ignoreDiacritics = request.ignoreDiacritics;
 
     QRegularExpression expression;
     if (not createExpression(request, &expression, &plan.error)) return plan;
@@ -438,6 +442,7 @@ QString ProjectSearchService::cacheKey(
     add(QByteArray::number(request.caseSensitive));
     add(QByteArray::number(request.wholeWord));
     add(QByteArray::number(request.regularExpression));
+    add(QByteArray::number(request.ignoreDiacritics));
     add(QByteArray::number(request.maximumMatches));
     for (const QString &filePath : request.filePaths) {
         const QString key = normalizedPath(filePath);

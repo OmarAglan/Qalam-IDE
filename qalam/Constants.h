@@ -109,6 +109,8 @@ namespace Constants {
         constexpr const char* Selection = "#24577c";
         constexpr const char* SelectionHighlight = "#38bdf840";
         constexpr const char* CurrentLineHighlight = "#173653";
+        constexpr const char* BracketMatchBackground = "#38bdf855";
+        constexpr const char* BracketMatchBorder = "#67d3fb";
 
         // Inputs
         constexpr const char* InputBackground = "#173653";

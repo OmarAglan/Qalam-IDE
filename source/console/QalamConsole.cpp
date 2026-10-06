@@ -138,7 +138,7 @@ QalamConsole::QalamConsole(QWidget *parent)
                         QStringLiteral(":/icons/resources/trash.svg"),
                         QStringLiteral("مسح الطرفية (Ctrl+L)"));
     configureToolButton(m_restartButton,
-                        QStringLiteral(":/icons/resources/run.svg"),
+                        QStringLiteral(":/icons/resources/restart.svg"),
                         QStringLiteral("إعادة تشغيل طرفية النظام"));
     configureToolButton(m_stopButton,
                         QStringLiteral(":/icons/resources/stop.svg"),

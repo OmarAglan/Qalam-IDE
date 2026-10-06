@@ -1,4 +1,6 @@
 #include "QalamEditor.h"
+#include "QalamTextPosition.h"
+#include "QalamBracketMatcher.h"
 #include "QalamDocumentModel.h"
 
 #include <QPainter>
@@ -513,32 +515,37 @@ void QalamEditor::contextMenuEvent(QContextMenuEvent *event)
 
     menu->addSeparator();
 
-    QAction *commentAction = new QAction("تعليق/إلغاء تعليق", this);
+    QAction *commentAction = new QAction("تعليق/إلغاء تعليق", menu);
     commentAction->setShortcut(QKeySequence("Ctrl+/"));
     connect(commentAction, &QAction::triggered, this, &QalamEditor::toggleComment);
+    commentAction->setIcon(QIcon(QStringLiteral(":/icons/resources/comment.svg")));
     menu->addAction(commentAction);
 
-    QAction *duplicateAction = new QAction("تكرار السطر", this);
+    QAction *duplicateAction = new QAction("تكرار السطر", menu);
     duplicateAction->setShortcut(QKeySequence("Ctrl+D"));
     connect(duplicateAction, &QAction::triggered, this, &QalamEditor::duplicateLine);
+    duplicateAction->setIcon(QIcon(QStringLiteral(":/icons/resources/duplicate.svg")));
     menu->addAction(duplicateAction);
 
-    QAction *quickFixAction = new QAction("إصلاح سريع من باء", this);
+    QAction *quickFixAction = new QAction("إصلاح سريع من باء", menu);
     quickFixAction->setShortcut(QKeySequence("Ctrl+."));
     connect(quickFixAction, &QAction::triggered,
             this, &QalamEditor::quickFixRequested);
+    quickFixAction->setIcon(QIcon(QStringLiteral(":/icons/resources/quick-fix.svg")));
     menu->addAction(quickFixAction);
 
-    QAction *formatAction = new QAction("تنسيق مستند باء", this);
+    QAction *formatAction = new QAction("تنسيق مستند باء", menu);
     formatAction->setShortcut(QKeySequence("Shift+Alt+F"));
     connect(formatAction, &QAction::triggered,
             this, &QalamEditor::formatRequested);
+    formatAction->setIcon(QIcon(QStringLiteral(":/icons/resources/format.svg")));
     menu->addAction(formatAction);
 
 
     menu->setStyleSheet(QString(
         "QMenu { background-color: %1; color: %2; border: 1px solid %3; }"
-        "QMenu::item { padding: 5px 20px; background-color: transparent; }"
+        "QMenu::item { padding: 5px 38px 5px 20px; background-color: transparent; }"
+        "QMenu::icon { padding: 0px 10px; }"
         "QMenu::item:selected { background-color: %4; color: %5; }"
         "QMenu::separator { height: 1px; background: %3; margin: 5px 0; }")
         .arg(Constants::Colors::MenuBackground)
@@ -552,17 +559,20 @@ void QalamEditor::contextMenuEvent(QContextMenuEvent *event)
     delete menu;
 }
 
+namespace {
+// The gutter mirrors a left-to-right editor: code, then the fold column,
+// then line numbers aligned toward the code, then outer padding.
+constexpr int GutterFoldWidth = 16;
+constexpr int GutterOuterPadding = 10;
+}
+
 int QalamEditor::lineNumberAreaWidth() const {
-    int digits = 1;
-    int max = qMax(1, blockCount());
-    while (max >= 10) {
-        max /= 10;
-        ++digits;
-    }
-
-    int space = 30 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
-
-    return space;
+    // Measure the widest digit of the displayed numbering system so
+    // Arabic-Indic and Latin digits both fit without clipping.
+    const QString widest = locale().toString(qMax(1, blockCount()))
+                               .replace(QRegularExpression(QStringLiteral("\\d")),
+                                        locale().toString(8));
+    return GutterFoldWidth + fontMetrics().horizontalAdvance(widest) + GutterOuterPadding;
 }
 
 
@@ -658,42 +668,50 @@ void QalamEditor::resizeEvent(QResizeEvent* event) {
 void QalamEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
 
     QPainter painter(lineNumberArea);
+    painter.setRenderHint(QPainter::Antialiasing, true);
     painter.fillRect(event->rect(), Qt::transparent);
 
-        QTextBlock block = firstVisibleBlock();
-        int blockNumber = block.blockNumber();
-        int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
-        int bottom = top + qRound(blockBoundingRect(block).height());
+    QTextBlock block = firstVisibleBlock();
+    int blockNumber = block.blockNumber();
+    int top = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
+    int bottom = top + qRound(blockBoundingRect(block).height());
+    const int currentBlock = textCursor().blockNumber();
+    const int numberWidth = lineNumberArea->width() - GutterFoldWidth - GutterOuterPadding;
+    const int lineHeight = fontMetrics().height();
 
     while (block.isValid() && top <= event->rect().bottom()) {
         if (block.isVisible() && bottom >= event->rect().top()) {
-            QString number = QString::number(blockNumber + 1);
-
-            painter.setPen(QColor(Constants::Colors::TextMuted));
-
-            painter.drawText(12, top, lineNumberArea->width(), fontMetrics().height(),
-                                     Qt::AlignRight | Qt::AlignVCenter, number);
+            // AlignAbsolute keeps the alignment physical inside this
+            // right-to-left widget; numbers hug the fold column.
+            painter.setPen(QColor(blockNumber == currentBlock
+                                      ? Constants::Colors::TextPrimary
+                                      : Constants::Colors::TextMuted));
+            painter.drawText(QRect(GutterFoldWidth, top, numberWidth, lineHeight),
+                             Qt::AlignLeft | Qt::AlignAbsolute | Qt::AlignVCenter,
+                             locale().toString(blockNumber + 1));
 
             for (const auto& region : foldRegions) {
-                if (region.startBlockNumber == blockNumber) {
-                    bool folded = region.folded;
+                if (region.startBlockNumber != blockNumber) continue;
 
-                    QPolygon arrow;
-                    int midY = top + fontMetrics().height() / 2;
-                    if (folded) {
-                        arrow << QPoint(lineNumberArea->width() - 10, midY - 4)
-                        << QPoint(lineNumberArea->width() - 2, midY)
-                        << QPoint(lineNumberArea->width() - 10, midY + 4);
-                    } else {
-                        arrow << QPoint(lineNumberArea->width() - 10, midY - 4)
-                        << QPoint(lineNumberArea->width() - 2, midY - 4)
-                        << QPoint(lineNumberArea->width() - 6, midY + 4);
-                    }
-
-                    painter.setBrush(QColor(Constants::Colors::Accent));
-                    painter.setPen(Qt::NoPen);
-                    painter.drawPolygon(arrow);
+                // A chevron that points toward the code when folded and down
+                // when expanded, matching the right-to-left reading order.
+                const QPointF center(GutterFoldWidth / 2.0, top + lineHeight / 2.0);
+                QPolygonF chevron;
+                if (region.folded) {
+                    chevron << center + QPointF(2.5, -4) << center + QPointF(-2, 0)
+                            << center + QPointF(2.5, 4);
+                } else {
+                    chevron << center + QPointF(-4, -2) << center + QPointF(0, 2.5)
+                            << center + QPointF(4, -2);
                 }
+                QPen pen(QColor(region.folded ? Constants::Colors::Accent
+                                              : Constants::Colors::TextMuted));
+                pen.setWidthF(1.6);
+                pen.setCapStyle(Qt::RoundCap);
+                pen.setJoinStyle(Qt::RoundJoin);
+                painter.setPen(pen);
+                painter.setBrush(Qt::NoBrush);
+                painter.drawPolyline(chevron);
             }
         }
 
@@ -706,6 +724,8 @@ void QalamEditor::lineNumberAreaPaintEvent(QPaintEvent* event) {
 
 void QalamEditor::highlightCurrentLine() {
     applyEditorDecorations();
+    // The gutter emphasizes the current line number.
+    if (lineNumberArea) lineNumberArea->update();
 }
 
 void QalamEditor::applyEditorDecorations() {
@@ -719,6 +739,33 @@ void QalamEditor::applyEditorDecorations() {
         selection.cursor = textCursor();
         selection.cursor.clearSelection();
         extraSelections.append(selection);
+    }
+
+    // Matching brackets share a background; an unmatched bracket is marked
+    // as an error so a missing partner is visible before analysis runs.
+    const QalamBracketMatcher::Match match =
+        QalamBracketMatcher::find(document(), textCursor().position());
+    if (match.hasBracket()) {
+        for (const int position : {match.bracket, match.partner}) {
+            if (position < 0) continue;
+            QTextEdit::ExtraSelection bracketSelection;
+            bracketSelection.cursor = QTextCursor(document());
+            bracketSelection.cursor.setPosition(position);
+            bracketSelection.cursor.setPosition(position + 1, QTextCursor::KeepAnchor);
+            if (match.isMatched()) {
+                bracketSelection.format.setBackground(
+                    QColor(Constants::Colors::BracketMatchBackground));
+                bracketSelection.format.setUnderlineStyle(QTextCharFormat::SingleUnderline);
+                bracketSelection.format.setUnderlineColor(
+                    QColor(Constants::Colors::BracketMatchBorder));
+            } else {
+                bracketSelection.format.setForeground(
+                    QColor(Constants::Colors::ErrorForeground));
+            }
+            bracketSelection.format.setProperty(QTextFormat::UserProperty,
+                                                QStringLiteral("qalam.bracket"));
+            extraSelections.append(bracketSelection);
+        }
     }
 
     for (int index = 0; index < m_searchMatches.size(); ++index) {
@@ -742,24 +789,10 @@ void QalamEditor::applyEditorDecorations() {
     }
 
     for (const Diagnostic &diagnostic : m_diagnostics) {
-        const QTextBlock block = document()->findBlockByNumber(qMax(1, diagnostic.line) - 1);
-        if (!block.isValid()) continue;
-
-        QTextCursor cursor(block);
-        const int columnOffset = qMax(0, diagnostic.column - 1);
-        cursor.setPosition(qMin(block.position() + columnOffset, block.position() + block.length() - 1));
-
-        // Underline the closest token. If there is no token at that column,
-        // underline the rest of the line so the diagnostic remains visible.
-        QTextCursor wordCursor = cursor;
-        wordCursor.select(QTextCursor::WordUnderCursor);
-        if (!wordCursor.hasSelection() || wordCursor.selectedText().trimmed().isEmpty()) {
-            wordCursor = cursor;
-            wordCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-            if (!wordCursor.hasSelection()) {
-                wordCursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-            }
-        }
+        const QPair<int, int> range = diagnosticRange(diagnostic);
+        QTextCursor wordCursor(document());
+        wordCursor.setPosition(range.first);
+        wordCursor.setPosition(range.second, QTextCursor::KeepAnchor);
 
         QTextEdit::ExtraSelection diagnosticSelection;
         diagnosticSelection.cursor = wordCursor;
@@ -775,21 +808,42 @@ void QalamEditor::applyEditorDecorations() {
     setExtraSelections(extraSelections);
 }
 
-QalamEditor::Diagnostic QalamEditor::diagnosticAtPosition(const QPoint &position) const {
-    Diagnostic result;
-    const QTextCursor cursor = cursorForPosition(position);
-    const int line = cursor.blockNumber() + 1;
-    const int column = cursor.positionInBlock() + 1;
-
-    for (const Diagnostic &diagnostic : m_diagnostics) {
-        if (diagnostic.line != line) continue;
-        // Hover anywhere on the diagnostic line, but prefer the right-side text
-        // range around the reported column.
-        if (column >= qMax(1, diagnostic.column - 2)) {
-            return diagnostic;
-        }
+QPair<int, int> QalamEditor::diagnosticRange(const Diagnostic &diagnostic) const {
+    const int start = QalamTextPosition::documentPosition(
+        document(), diagnostic.line - 1, diagnostic.column - 1);
+    int end = start;
+    if (diagnostic.endLine > 0 and diagnostic.endColumn > 0) {
+        end = QalamTextPosition::documentPosition(
+            document(), diagnostic.endLine - 1, diagnostic.endColumn - 1);
     }
-    return result;
+    if (end > start) return {start, end};
+
+    // Empty or reversed spans still need one visible grapheme: the one after
+    // the start, or the one before it at the end of a line.
+    QTextCursor cursor(document());
+    cursor.setPosition(start);
+    if (not cursor.atBlockEnd()) {
+        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+    } else if (not cursor.atBlockStart()) {
+        cursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::KeepAnchor);
+    }
+    return {cursor.selectionStart(), cursor.selectionEnd()};
+}
+
+QalamEditor::Diagnostic QalamEditor::diagnosticAtPosition(const QPoint &position) const {
+    const int documentPosition = cursorForPosition(position).position();
+
+    // Prefer a diagnostic whose exact range contains the pointer; otherwise
+    // keep the whole line hoverable so short ranges remain discoverable.
+    const Diagnostic *lineMatch = nullptr;
+    const int line = document()->findBlock(documentPosition).blockNumber() + 1;
+    for (const Diagnostic &diagnostic : m_diagnostics) {
+        const QPair<int, int> range = diagnosticRange(diagnostic);
+        if (documentPosition >= range.first and documentPosition <= range.second)
+            return diagnostic;
+        if (not lineMatch and diagnostic.line == line) lineMatch = &diagnostic;
+    }
+    return lineMatch ? *lineMatch : Diagnostic{};
 }
 
 bool QalamEditor::hasDiagnosticAtPosition(const QPoint &position, Diagnostic *diagnostic) const {
@@ -1567,9 +1621,9 @@ bool QalamEditor::isIncludePathCompletionContext() const
 
 int QalamEditor::documentPosition(int zeroBasedLine, int utf16Character) const
 {
-    const QTextBlock block = document()->findBlockByNumber(zeroBasedLine);
-    if (not block.isValid()) return -1;
-    return block.position() + qBound(0, utf16Character, block.text().length());
+    // A line outside the document marks a stale language result.
+    if (zeroBasedLine < 0 or zeroBasedLine >= document()->blockCount()) return -1;
+    return QalamTextPosition::documentPosition(document(), zeroBasedLine, utf16Character);
 }
 
 void QalamEditor::insertCompletion(const CompletionItem &item) {

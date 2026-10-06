@@ -27,6 +27,8 @@ public:
     void focusSearchInput();
     void scheduleSearch();
     void clearResults();
+    // Literal searches only: match with or without Arabic vowel marks.
+    bool ignoresDiacritics() const { return m_ignoreDiacritics and not m_useRegex; }
 
 signals:
     void searchRequested(const QString &query, bool caseSensitive, bool wholeWord, bool regex);
@@ -70,6 +72,7 @@ private:
     QPushButton *m_caseSensitiveBtn = nullptr;
     QPushButton *m_wholeWordBtn = nullptr;
     QPushButton *m_regexBtn = nullptr;
+    QPushButton *m_diacriticsBtn = nullptr;
     
     // Results
     QLabel *m_resultSummary = nullptr;
@@ -80,6 +83,7 @@ private:
     bool m_caseSensitive = false;
     bool m_wholeWord = false;
     bool m_useRegex = false;
+    bool m_ignoreDiacritics = false;
     bool m_searching = false;
     
     QTimer *m_searchDebounce = nullptr;

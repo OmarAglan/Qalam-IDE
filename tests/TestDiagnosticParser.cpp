@@ -11,6 +11,8 @@ private slots:
     void parsesColonError();
     void parsesArabicLineError();
     void parsesBaaJsonDiagnostics();
+    void convertsExactByteSpansToUtf16Columns();
+    void keepsDisplayColumnsWhenTheSourceChanged();
     void ignoresUnknownJsonSchema();
     void deduplicatesRepeatedDiagnostics();
     void replacesOnlyOneAnalysisSource();
@@ -75,6 +77,61 @@ void TestDiagnosticParser::parsesBaaJsonDiagnostics()
     QCOMPARE(diagnostics[0].source, QString("baa-json"));
     QVERIFY(diagnostics[0].displayMessage().contains("B1000"));
     QVERIFY(diagnostics[0].displayMessage().contains("عرّف"));
+}
+
+namespace {
+QString byteSpanJson(int line, int column, qsizetype startByte, qsizetype endByte)
+{
+    return QString(R"json({"schema_version": "diagnostics-json-v1", "diagnostics": [
+        {"code": "B2001", "severity": "error", "message": "رمز غير معرف",
+         "file": "رئيسي.باء",
+         "span": {"start": {"line": %1, "column": %2, "byte": %3},
+                  "end": {"line": %1, "column": %2, "byte": %4}}}]})json")
+        .arg(line).arg(column).arg(startByte).arg(endByte);
+}
+}
+
+void TestDiagnosticParser::convertsExactByteSpansToUtf16Columns()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    // The supplementary character before the identifier is one display
+    // column but two UTF-16 units, so Baa's display column is off by one.
+    const QByteArray source = (QStringLiteral("صحيح.\r\n    ") +
+        QString::fromUcs4(U"\U0001D538") + QStringLiteral(" متغير.")).toUtf8();
+    QFile file(directory.filePath(QStringLiteral("رئيسي.باء")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(source);
+    file.close();
+
+    const QByteArray identifier = QStringLiteral("متغير").toUtf8();
+    const qsizetype start = source.indexOf(identifier);
+    const auto diagnostics = DiagnosticParser::parseCompilerOutput(
+        byteSpanJson(2, 7, start, start + identifier.size()),
+        QString(), directory.path());
+
+    QCOMPARE(diagnostics.size(), 1);
+    QCOMPARE(diagnostics[0].line, 2);
+    QCOMPARE(diagnostics[0].column, 8);
+    QCOMPARE(diagnostics[0].endLine, 2);
+    QCOMPARE(diagnostics[0].endColumn, 13);
+}
+
+void TestDiagnosticParser::keepsDisplayColumnsWhenTheSourceChanged()
+{
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    QFile file(directory.filePath(QStringLiteral("رئيسي.باء")));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(QStringLiteral("سطر واحد فقط.").toUtf8());
+    file.close();
+
+    // The byte offset now points into line 1, not the reported line 3.
+    const auto diagnostics = DiagnosticParser::parseCompilerOutput(
+        byteSpanJson(3, 5, 4, 6), QString(), directory.path());
+    QCOMPARE(diagnostics.size(), 1);
+    QCOMPARE(diagnostics[0].line, 3);
+    QCOMPARE(diagnostics[0].column, 5);
 }
 
 void TestDiagnosticParser::ignoresUnknownJsonSchema()

@@ -112,6 +112,12 @@ void QalamTitleBar::setupUi() {
     m_minimizeBtn = createCaptionButton(":/icons/resources/minimize.svg", "captionButton");
     m_maximizeBtn = createCaptionButton(":/icons/resources/maximize.svg", "maximizeButton");
     m_closeBtn = createCaptionButton(":/icons/resources/close.svg", "closeButton");
+    m_minimizeBtn->setAccessibleName(QStringLiteral("تصغير"));
+    m_minimizeBtn->setToolTip(QStringLiteral("تصغير"));
+    m_maximizeBtn->setAccessibleName(QStringLiteral("تكبير"));
+    m_maximizeBtn->setToolTip(QStringLiteral("تكبير"));
+    m_closeBtn->setAccessibleName(QStringLiteral("إغلاق النافذة"));
+    m_closeBtn->setToolTip(QStringLiteral("إغلاق"));
 
     connect(m_minimizeBtn, &QPushButton::clicked, this, &QalamTitleBar::minimizeClicked);
     connect(m_maximizeBtn, &QPushButton::clicked, this, &QalamTitleBar::maximizeRestoreClicked);
@@ -296,8 +302,23 @@ void QalamTitleBar::addMenuBar(QWidget *menu) {
         m_rightLayout->insertWidget(qMax(0, m_rightLayout->count() - 1), menu);
     }
 
-    menu->setFixedHeight(Constants::Layout::TitleBarHeight);
     updateCommandCenterWidth();
+}
+
+void QalamTitleBar::fitMenuHeight()
+{
+    // QMenuBar moves every item whose rectangle is not fully inside the bar,
+    // height included, into its overflow chevron. Tall Arabic UI fonts make
+    // items taller than the caption row, which hid the whole menu, so the
+    // bar always grows to its tallest item; the title bar clips only padding.
+    auto *menuBar = qobject_cast<QMenuBar *>(m_menuWidget);
+    if (not menuBar) return;
+    int itemHeight = 0;
+    for (QAction *action : menuBar->actions())
+        itemHeight = qMax(itemHeight, menuBar->actionGeometry(action).height());
+    const int height = qMax(Constants::Layout::TitleBarHeight, itemHeight);
+    if (menuBar->height() != height or menuBar->minimumHeight() != height)
+        menuBar->setFixedHeight(height);
 }
 
 void QalamTitleBar::updateCommandCenterWidth()
@@ -310,6 +331,7 @@ void QalamTitleBar::updateCommandCenterWidth()
             150, width() - controlsWidth - Constants::Layout::IconSize - 32);
         menuWidth = qMin(m_menuPreferredWidth, availableForMenu);
         m_menuWidget->setFixedWidth(menuWidth);
+        fitMenuHeight();
     }
     m_rightContentWidth = controlsWidth + menuWidth;
 

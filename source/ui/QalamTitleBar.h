@@ -47,5 +47,6 @@ private:
     void setupUi();
     bool isInteractiveTitleBarChild(const QObject *object) const;
     void updateCommandCenterWidth();
+    void fitMenuHeight();
     QPushButton* createCaptionButton(const QString &iconPath, const QString &objName);
 };

@@ -24,6 +24,8 @@ struct ProjectSearchRequest {
     bool caseSensitive{};
     bool wholeWord{};
     bool regularExpression{};
+    // Literal queries only: match with or without Arabic vowel marks.
+    bool ignoreDiacritics{};
     int maximumMatches{5000};
 };
 
@@ -64,6 +66,7 @@ struct ProjectReplacementPlan {
     bool caseSensitive{};
     bool wholeWord{};
     bool regularExpression{};
+    bool ignoreDiacritics{};
     int replacementCount{};
     int scannedFiles{};
     QString error;

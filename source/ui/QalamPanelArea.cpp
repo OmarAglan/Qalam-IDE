@@ -79,6 +79,7 @@ QWidget* QalamPanelArea::createHeaderBar()
     m_maximizeBtn->setIconSize(QSize(14, 14));
     m_maximizeBtn->setCursor(Qt::PointingHandCursor);
     m_maximizeBtn->setToolTip("تكبير");
+    m_maximizeBtn->setAccessibleName(QStringLiteral("تكبير اللوحة"));
     connect(m_maximizeBtn, &QPushButton::clicked, this, &QalamPanelArea::maximizeRequested);
     layout->addWidget(m_maximizeBtn);
     
@@ -89,6 +90,7 @@ QWidget* QalamPanelArea::createHeaderBar()
     m_closeBtn->setIconSize(QSize(14, 14));
     m_closeBtn->setCursor(Qt::PointingHandCursor);
     m_closeBtn->setToolTip("إغلاق");
+    m_closeBtn->setAccessibleName(QStringLiteral("إغلاق اللوحة"));
     connect(m_closeBtn, &QPushButton::clicked, this, &QalamPanelArea::closeRequested);
     layout->addWidget(m_closeBtn);
     
@@ -109,10 +111,14 @@ void QalamPanelArea::setupTabBar()
     m_tabBar->addTab("تصحيح");
     
     // Create problems badge
-    m_problemsBadge = new QLabel(this);
+    // The count rides on the Problems tab itself instead of floating over
+    // the panel's window controls.
+    m_problemsBadge = new QLabel(m_tabBar);
+    m_problemsBadge->setObjectName(QStringLiteral("problemsBadge"));
     m_problemsBadge->setFixedSize(18, 14);
     m_problemsBadge->setAlignment(Qt::AlignCenter);
     m_problemsBadge->hide();
+    m_tabBar->setTabButton(0, QTabBar::LeftSide, m_problemsBadge);
 }
 
 void QalamPanelArea::setupProblemsView()
@@ -205,8 +211,8 @@ void QalamPanelArea::setupDebugView()
     layout->addWidget(title);
 
     auto *hint = new QLabel(
-        "هذه واجهة تصحيح أولية تشبه VS Code.\n"
-        "حاليًا يمكنك تشغيل البرنامج عبر F5، وستكون نقاط التوقف والمتغيرات ومكدس الاستدعاء جاهزة للربط عندما يدعم مترجم باء مصححًا حقيقيًا.",
+        "يشغّل F5 ملف باء الحالي أو مشروع تكوين.\n"
+        "ستظهر نقاط التوقف والمتغيرات ومكدس الاستدعاء هنا عندما يوفر مترجم باء واجهة تصحيح.",
         m_debugView);
     hint->setObjectName("debugHint");
     hint->setWordWrap(true);
@@ -264,22 +270,21 @@ void QalamPanelArea::addProblem(const QString& message, const QString& file,
     
     // Severity icon
     QLabel* icon = new QLabel(item);
-    QString iconColor;
-    QString iconText;
+    QString iconName = QStringLiteral("info");
+    QString severityName = QStringLiteral("معلومة");
     if (severity == "error") {
-        iconColor = Constants::Colors::ErrorForeground;
-        iconText = "✕";
+        iconName = QStringLiteral("error");
+        severityName = QStringLiteral("خطأ");
         m_errorCount++;
     } else if (severity == "warning") {
-        iconColor = Constants::Colors::WarningForeground;
-        iconText = "⚠";
+        iconName = QStringLiteral("warning");
+        severityName = QStringLiteral("تحذير");
         m_warningCount++;
-    } else {
-        iconColor = Constants::Colors::InfoForeground;
-        iconText = "ℹ";
     }
-    icon->setText(iconText);
-    icon->setStyleSheet(QString("color: %1;").arg(iconColor));
+    icon->setPixmap(QIcon(QStringLiteral(":/icons/resources/%1.svg").arg(iconName))
+                        .pixmap(16, 16));
+    icon->setFixedSize(16, 16);
+    icon->setAccessibleName(severityName);
     layout->addWidget(icon);
     
     // Message

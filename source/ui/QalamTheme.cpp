@@ -128,8 +128,11 @@ QString QalamTheme::menuStyles() {
             padding: 4px 0px;
         }
         QMenu::item {
-            padding: 6px 30px 6px 20px;
+            padding: 6px 38px 6px 20px;
             background-color: transparent;
+        }
+        QMenu::icon {
+            padding: 0px 10px;
         }
         QMenu::item:selected {
             background-color: %3;
@@ -150,12 +153,13 @@ QString QalamTheme::menuStyles() {
         }
         QMenuBar::item {
             background-color: transparent;
-            padding: 4px 10px;
+            padding: 2px 10px;
+            margin: 0;
             border-radius: 4px;
         }
         QMenuBar::item:selected, QMenuBar::item:pressed {
-            background-color: #505050;
-            color: #ffffff;
+            background-color: %6;
+            color: %4;
         }
     )")
     .arg(Colors::MenuBackground)
@@ -242,7 +246,7 @@ QString QalamTheme::listStyles() {
         }
         QTreeView::branch:closed:has-children {
             border-image: none;
-            image: url(:/icons/resources/right-arrow.svg);
+            image: url(:/icons/resources/left-arrow.svg);
         }
         QTreeView::branch:open:has-children {
             border-image: none;

@@ -73,6 +73,7 @@ private:
     QCheckBox *m_caseCheck{};
     QCheckBox *m_wordCheck{};
     QCheckBox *m_regexCheck{};
+    QCheckBox *m_diacriticsCheck{};
     QLabel *m_countLabel{};
 
     QPointer<QalamEditor> m_editor;

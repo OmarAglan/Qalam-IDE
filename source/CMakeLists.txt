@@ -27,6 +27,8 @@ add_library(qalam_core STATIC
     language/DiagnosticsModel.h
     language/LspMessageFramer.cpp
     language/LspMessageFramer.h
+    language/QalamTextPosition.cpp
+    language/QalamTextPosition.h
     language/TakweenProtocol.cpp
     language/TakweenProtocol.h
     tooling/ToolchainDiscovery.cpp
@@ -36,6 +38,8 @@ add_library(qalam_core STATIC
     workspace/WorkspaceIndexer.h
     workspace/ProjectSearchService.cpp
     workspace/ProjectSearchService.h
+    workspace/QalamArabicSearch.cpp
+    workspace/QalamArabicSearch.h
     workspace/WorkspaceFileService.cpp
     workspace/WorkspaceFileService.h
     # Debug services
@@ -46,6 +50,8 @@ add_library(qalam_core STATIC
     texteditor/QalamDocumentModel.h
     texteditor/QalamEditor.cpp
     texteditor/QalamBracketHandler.cpp
+    texteditor/QalamBracketMatcher.cpp
+    texteditor/QalamBracketMatcher.h
     texteditor/QalamAutoSave.cpp
     texteditor/QalamSnippetManager.cpp
     texteditor/highlighter/QalamLexer.cpp

@@ -67,6 +67,7 @@ private:
     
     // Primary/workspace items (appear on the right in RTL)
     QPushButton* m_problemsBtn{nullptr};
+    QPushButton* m_warningsBtn{nullptr};
     QPushButton* m_branchBtn{nullptr};
     
     // Context editor items (appear on the left in RTL)

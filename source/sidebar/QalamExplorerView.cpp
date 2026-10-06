@@ -12,6 +12,29 @@
 
 namespace {
 
+// Section chevrons point down when open and toward the content (left, in
+// this right-to-left sidebar) when collapsed.
+void setSectionArrow(QLabel *arrow, bool expanded)
+{
+    const QString name = expanded ? QStringLiteral("down-arrow") : QStringLiteral("left-arrow");
+    arrow->setPixmap(QIcon(QStringLiteral(":/icons/resources/%1.svg").arg(name))
+                         .pixmap(12, 12));
+}
+
+QIcon explorerFileIcon(const QFileInfo &info)
+{
+    // Workbench icons rather than platform icons keep the tree in one
+    // visual language; Baa sources, headers, and Nazm files stand out.
+    const QString suffix = info.suffix().toLower();
+    if (suffix == QStringLiteral("باء") or suffix == QStringLiteral("baa"))
+        return QIcon(QStringLiteral(":/icons/resources/file-baa.svg"));
+    if (suffix == QStringLiteral("رأسباء") or suffix == QStringLiteral("baahd"))
+        return QIcon(QStringLiteral(":/icons/resources/file-baa-header.svg"));
+    if (suffix == QStringLiteral("نظم"))
+        return QIcon(QStringLiteral(":/icons/resources/file-nazm.svg"));
+    return QIcon(QStringLiteral(":/icons/resources/file.svg"));
+}
+
 class QalamFileIconProvider final : public QFileIconProvider {
 public:
     QIcon icon(const QFileInfo &info) const override
@@ -20,15 +43,7 @@ public:
             return QIcon(QStringLiteral(":/icons/resources/folder.svg"));
         }
 
-        const QString suffix = info.suffix().toLower();
-        if (suffix == QStringLiteral("باء") or
-            suffix == QStringLiteral("رأسباء") or
-            suffix == QStringLiteral("baa") or
-            suffix == QStringLiteral("baahd") or
-            suffix == QStringLiteral("نظم")) {
-            return QIcon(QStringLiteral(":/icons/resources/file-new.svg"));
-        }
-        return QFileIconProvider::icon(info);
+        return explorerFileIcon(info);
     }
 };
 
@@ -141,7 +156,8 @@ QWidget* QalamExplorerView::createSectionHeader(const QString &title, bool expan
     layout->setSpacing(4);
     
     // Expand/collapse arrow
-    QLabel *arrow = new QLabel(expanded ? "▾" : "▸");
+    QLabel *arrow = new QLabel();
+    setSectionArrow(arrow, expanded);
     arrow->setObjectName("sectionArrow");
     arrow->setFixedWidth(12);
     
@@ -262,7 +278,7 @@ void QalamExplorerView::addOpenEditor(const QString &filePath, bool modified)
     
     // File icon
     QLabel *icon = new QLabel();
-    icon->setPixmap(QIcon(":/icons/resources/file-new.svg").pixmap(14, 14));
+    icon->setPixmap(explorerFileIcon(info).pixmap(14, 14));
     icon->setFixedSize(14, 14);
     
     // File name
@@ -276,7 +292,9 @@ void QalamExplorerView::addOpenEditor(const QString &filePath, bool modified)
     QPushButton *closeBtn = new QPushButton();
     closeBtn->setObjectName("openEditorClose");
     closeBtn->setIcon(QIcon(":/icons/resources/close.svg"));
-    closeBtn->setIconSize(QSize(10, 10));
+    closeBtn->setIconSize(QSize(12, 12));
+    closeBtn->setToolTip(QStringLiteral("إغلاق"));
+    closeBtn->setAccessibleName(QStringLiteral("إغلاق ") + info.fileName());
     closeBtn->setFixedSize(16, 16);
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->hide();  // Show on hover
@@ -379,20 +397,23 @@ void QalamExplorerView::showTreeContextMenu(
         QIcon(QStringLiteral(":/icons/resources/file-new.svg")),
         QStringLiteral("ملف باء جديد"));
     QAction *newFolderAction = menu.addAction(
-        QIcon(QStringLiteral(":/icons/resources/folder.svg")),
+        QIcon(QStringLiteral(":/icons/resources/folder-new.svg")),
         QStringLiteral("مجلد جديد"));
 
     QAction *renameAction{};
     QAction *deleteAction{};
     if (index.isValid()) {
         menu.addSeparator();
-        renameAction = menu.addAction(QStringLiteral("إعادة التسمية"));
+        renameAction = menu.addAction(
+            QIcon(QStringLiteral(":/icons/resources/rename.svg")),
+            QStringLiteral("إعادة التسمية"));
         deleteAction = menu.addAction(
-            style()->standardIcon(QStyle::SP_TrashIcon),
+            QIcon(QStringLiteral(":/icons/resources/trash.svg")),
             QStringLiteral("حذف"));
     }
     menu.addSeparator();
     QAction *removeRootAction = menu.addAction(
+        QIcon(QStringLiteral(":/icons/resources/close.svg")),
         QStringLiteral("إزالة المجلد من مساحة العمل"));
 
     QAction *chosen = menu.exec(treeView->viewport()->mapToGlobal(position));
@@ -419,7 +440,8 @@ void QalamExplorerView::showOpenEditorContextMenu(
 
     QMenu menu(this);
     menu.setLayoutDirection(Qt::RightToLeft);
-    QAction *closeAction = menu.addAction(QStringLiteral("إغلاق"));
+    QAction *closeAction = menu.addAction(
+        QIcon(QStringLiteral(":/icons/resources/close.svg")), QStringLiteral("إغلاق"));
     QAction *closeOthersAction = menu.addAction(QStringLiteral("إغلاق البقية"));
     QAction *closeAllAction = menu.addAction(QStringLiteral("إغلاق الكل"));
 
@@ -454,7 +476,7 @@ bool QalamExplorerView::eventFilter(QObject *watched, QEvent *event)
             m_openEditorsExpanded = !m_openEditorsExpanded;
             m_openEditorsContent->setVisible(m_openEditorsExpanded);
             if (auto *arrow = m_openEditorsHeader->findChild<QLabel*>("sectionArrow")) {
-                arrow->setText(m_openEditorsExpanded ? "▾" : "▸");
+                setSectionArrow(arrow, m_openEditorsExpanded);
             }
             return true;
         }
@@ -466,7 +488,7 @@ bool QalamExplorerView::eventFilter(QObject *watched, QEvent *event)
             m_noFolderWidget->setVisible(
                 m_folderExpanded && m_rootPaths.isEmpty());
             if (auto *arrow = m_folderHeader->findChild<QLabel*>("sectionArrow")) {
-                arrow->setText(m_folderExpanded ? "▾" : "▸");
+                setSectionArrow(arrow, m_folderExpanded);
             }
             return true;
         }
@@ -476,7 +498,7 @@ bool QalamExplorerView::eventFilter(QObject *watched, QEvent *event)
             m_outlineView->setVisible(m_outlineExpanded);
             if (auto *arrow =
                     m_outlineHeader->findChild<QLabel*>("sectionArrow")) {
-                arrow->setText(m_outlineExpanded ? "▾" : "▸");
+                setSectionArrow(arrow, m_outlineExpanded);
             }
             return true;
         }

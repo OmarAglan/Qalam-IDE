@@ -2,6 +2,7 @@
 
 #include "QalamDocumentModel.h"
 #include "QalamEditor.h"
+#include "Constants.h"
 
 #include <QApplication>
 #include <QDataStream>
@@ -12,7 +13,10 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QSplitter>
+#include <QStyle>
+#include <QStyleOptionTab>
 #include <QTabBar>
+#include <QToolButton>
 
 namespace {
 constexpr auto EditorViewMimeType = "application/x-qalam-editor-view";
@@ -27,6 +31,48 @@ public:
     }
 
 protected:
+    // Tab text keeps the "[*]" modified marker that the managers rely on;
+    // the bar shows it as a dot instead of the literal placeholder.
+    void initStyleOption(QStyleOptionTab *option, int tabIndex) const override
+    {
+        QTabBar::initStyleOption(option, tabIndex);
+        if (option->text.endsWith(QLatin1String("[*]"))) {
+            option->text.chop(3);
+            option->text += QStringLiteral(" ●");
+        }
+    }
+
+    // Replace the style-drawn close control with a themed icon button that
+    // carries an accessible name.
+    void tabInserted(int index) override
+    {
+        QTabBar::tabInserted(index);
+        if (not tabsClosable()) return;
+        const auto side = static_cast<QTabBar::ButtonPosition>(
+            style()->styleHint(QStyle::SH_TabBar_CloseButtonPosition, nullptr, this));
+        auto *close = new QToolButton(this);
+        close->setObjectName(QStringLiteral("editorTabClose"));
+        close->setAutoRaise(true);
+        close->setIcon(QIcon(QStringLiteral(":/icons/resources/close.svg")));
+        close->setIconSize(QSize(12, 12));
+        close->setFixedSize(18, 18);
+        close->setCursor(Qt::PointingHandCursor);
+        close->setToolTip(QStringLiteral("إغلاق (Ctrl+W)"));
+        close->setAccessibleName(QStringLiteral("إغلاق التبويب"));
+        close->setStyleSheet(QStringLiteral(
+            "QToolButton { border: none; border-radius: 4px; background: transparent; }"
+            "QToolButton:hover { background: %1; }").arg(Constants::Colors::ButtonHover));
+        connect(close, &QToolButton::clicked, this, [this, close, side]() {
+            for (int tab = 0; tab < count(); ++tab) {
+                if (tabButton(tab, side) == close) {
+                    emit tabCloseRequested(tab);
+                    return;
+                }
+            }
+        });
+        setTabButton(index, side, close);
+    }
+
     void mousePressEvent(QMouseEvent *event) override
     {
         m_dragStart = event->position().toPoint();

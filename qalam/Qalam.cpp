@@ -1,4 +1,5 @@
 #include "Qalam.h"
+#include "QalamTextPosition.h"
 #include "QalamDocumentModel.h"
 #include "QalamWelcomePage.h"
 #include "QalamConsole.h"
@@ -153,6 +154,7 @@ Qalam::Qalam(const QString& filePath, QWidget *parent,
     // الخطوة 3: إعداد الإعدادات
     // ===================================================================
     setting = new QalamSettings(this);
+    connectSettings();
 
     // ===================================================================
     // الخطوة 4: إعداد التخطيط الجديد (VSCode-like)
@@ -1116,26 +1118,31 @@ void Qalam::toggleSidebar()
 
 void Qalam::openSettings() {
     if (setting and setting->isVisible()) return;
- 
+    setting->show();
+}
+
+void Qalam::connectSettings() {
+    // Connected once at construction. Qt rejects Qt::UniqueConnection for
+    // lambdas, which previously left every live setting unapplied.
     connect(setting, &QalamSettings::fontSizeChanged, this, [this](int size){
         for (int i = 0; i < tabWidget->count(); ++i) {
             QalamEditor* editor = qobject_cast<QalamEditor*>(tabWidget->widget(i));
             if (editor) editor->updateFontSize(size);
         }
-    }, Qt::UniqueConnection);
+    });
     connect(setting, &QalamSettings::fontTypeChanged, this, [this](QString font){
         for (int i = 0; i < tabWidget->count(); ++i) {
             QalamEditor* editor = qobject_cast<QalamEditor*>(tabWidget->widget(i));
             if (editor) editor->updateFontType(font);
         }
-    }, Qt::UniqueConnection);
+    });
     connect(setting, &QalamSettings::highlighterThemeChanged, this, [this](int themeIdx){
         auto theme = ThemeManager::getThemeByIndex(themeIdx);
         for (int i = 0; i < tabWidget->count(); ++i) {
             QalamEditor* editor = qobject_cast<QalamEditor*>(tabWidget->widget(i));
             if (editor) editor->updateHighlighterTheme(theme);
         }
-    }, Qt::UniqueConnection);
+    });
     connect(setting, &QalamSettings::toolPathsChanged, this, [this]() {
         refreshToolActions();
         if (m_languageClient) {
@@ -1148,9 +1155,7 @@ void Qalam::openSettings() {
             m_layoutManager->statusBar()->showMessage(
                 QStringLiteral("حُدّثت مسارات أدوات منظومة باء"), 3500);
         }
-    }, Qt::UniqueConnection);
- 
-    setting->show();
+    });
 }
 
 
@@ -1175,11 +1180,6 @@ void Qalam::onCurrentTabChanged()
 
     if (editor) {
         connect(editor, &QPlainTextEdit::cursorPositionChanged, this, &Qalam::updateCursorPosition);
-        connect(editor, &QObject::destroyed, this, [this, editor]() {
-            if (m_lastConnectedEditor == editor) {
-                m_lastConnectedEditor = nullptr;
-            }
-        }, Qt::UniqueConnection);
         m_lastConnectedEditor = editor;
         attachAnalysisToEditor(editor);
         scheduleEditorAnalysis(editor);
@@ -1742,11 +1742,11 @@ void Qalam::goToLocation(const QString &filePath, int line, int column)
     QalamEditor *editor = currentEditor();
     if (!editor) return;
 
+    // Logical UTF-16 placement: visual Down/Right moves would follow wrapped
+    // lines and reverse inside right-to-left blocks.
     QTextCursor cursor(editor->document());
-    const int targetLine = qMax(1, line);
-    cursor.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, targetLine - 1);
-    const int targetColumn = qMax(1, column);
-    cursor.movePosition(QTextCursor::Right, QTextCursor::MoveAnchor, targetColumn - 1);
+    cursor.setPosition(QalamTextPosition::documentPosition(
+        editor->document(), qMax(1, line) - 1, qMax(1, column) - 1));
     editor->setTextCursor(cursor);
     editor->centerCursor();
     editor->setFocus();
@@ -2089,6 +2089,11 @@ ProjectSearchRequest Qalam::projectSearchRequest(
     request.caseSensitive = caseSensitive;
     request.wholeWord = wholeWord;
     request.regularExpression = regex;
+    if (m_layoutManager and m_layoutManager->sidebar() and
+        m_layoutManager->sidebar()->searchView()) {
+        request.ignoreDiacritics =
+            m_layoutManager->sidebar()->searchView()->ignoresDiacritics();
+    }
 
     QSet<QString> indexedPaths;
     for (const QString &filePath : request.filePaths)
@@ -2561,7 +2566,8 @@ void Qalam::applyDiagnosticsToEditors()
         if (m_diagnosticsModel) {
             for (const Diagnostic &diagnostic : m_diagnosticsModel->diagnosticsForFile(editor->currentFilePath())) {
                 editorDiagnostics.push_back({diagnostic.file, diagnostic.line, diagnostic.column,
-                                             diagnostic.severity, diagnostic.message});
+                                             diagnostic.severity, diagnostic.message,
+                                             diagnostic.endLine, diagnostic.endColumn});
             }
         }
         editor->setDiagnostics(editorDiagnostics);

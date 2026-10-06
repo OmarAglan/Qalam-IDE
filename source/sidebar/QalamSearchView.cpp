@@ -148,6 +148,18 @@ void QalamSearchView::setupUi()
     m_regexBtn->setCheckable(true);
     m_regexBtn->setFixedSize(28, 24);
     
+    m_diacriticsBtn = new QPushButton();
+    m_diacriticsBtn->setObjectName("diacriticsButton");
+    m_diacriticsBtn->setProperty("searchOption", true);
+    installCheckableIcons(m_diacriticsBtn,
+        QStringLiteral(":/icons/resources/match-diacritics.svg"),
+        QStringLiteral(":/icons/resources/match-diacritics-active.svg"));
+    m_diacriticsBtn->setIconSize(QSize(18, 18));
+    m_diacriticsBtn->setAccessibleName(QStringLiteral("تجاهل التشكيل"));
+    m_diacriticsBtn->setToolTip("تجاهل التشكيل والتطويل دون تعديل النص");
+    m_diacriticsBtn->setCheckable(true);
+    m_diacriticsBtn->setFixedSize(28, 24);
+
     m_toggleReplaceBtn = new QPushButton();
     m_toggleReplaceBtn->setIcon(QIcon(":/icons/resources/right-arrow.svg"));
     m_toggleReplaceBtn->setIconSize(QSize(14, 14));
@@ -159,6 +171,7 @@ void QalamSearchView::setupUi()
     optionsLayout->addWidget(m_caseSensitiveBtn);
     optionsLayout->addWidget(m_wholeWordBtn);
     optionsLayout->addWidget(m_regexBtn);
+    optionsLayout->addWidget(m_diacriticsBtn);
     optionsLayout->addStretch();
     
     m_mainLayout->addWidget(m_optionsContainer);
@@ -220,6 +233,13 @@ void QalamSearchView::setupUi()
     
     connect(m_regexBtn, &QPushButton::toggled, this, [this](bool checked) {
         m_useRegex = checked;
+        // A regular expression is taken literally, so mark folding does not apply.
+        m_diacriticsBtn->setEnabled(not checked);
+        onSearchTriggered();
+    });
+
+    connect(m_diacriticsBtn, &QPushButton::toggled, this, [this](bool checked) {
+        m_ignoreDiacritics = checked;
         onSearchTriggered();
     });
 }

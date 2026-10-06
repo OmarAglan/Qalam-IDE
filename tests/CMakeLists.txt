@@ -89,6 +89,8 @@ add_qalam_test(test_snippet_manager TestSnippetManager.cpp)
 add_qalam_test(test_symbol_outline_view TestSymbolOutlineView.cpp)
 add_qalam_test(test_panel_area TestPanelArea.cpp)
 add_qalam_test(test_search_panel TestSearchPanel.cpp)
+add_qalam_test(test_arabic_search TestArabicSearch.cpp)
+target_sources(test_arabic_search PRIVATE ../qalam/resources.qrc)
 add_qalam_test(test_search_view TestSearchView.cpp)
 target_sources(test_panel_area PRIVATE ../qalam/resources.qrc)
 target_sources(test_search_panel PRIVATE ../qalam/resources.qrc)
@@ -97,10 +99,13 @@ target_sources(test_search_view PRIVATE ../qalam/resources.qrc)
 add_qalam_test(test_lsp_message_framer TestLspMessageFramer.cpp)
 add_qalam_test(test_editor_semantic_requests TestEditorSemanticRequests.cpp)
 add_qalam_test(test_bracket_handler TestBracketHandler.cpp)
+add_qalam_test(test_bracket_matcher TestBracketMatcher.cpp)
 add_qalam_test(test_completion_popup TestCompletionPopup.cpp)
 add_qalam_test(test_completion_history TestCompletionHistory.cpp)
 add_qalam_test(test_syntax_highlighter TestSyntaxHighlighter.cpp)
 add_qalam_test(test_workspace_edit TestWorkspaceEdit.cpp)
+add_qalam_test(test_arabic_editing TestArabicEditing.cpp)
+add_qalam_test(test_text_position TestTextPosition.cpp)
 
 add_executable(qalam_fake_baa_lsp
     FakeBaaLsp.cpp
@@ -133,3 +138,13 @@ if(QALAM_TEST_BAA_LSP AND QALAM_TEST_BAA_COMPILER)
         QALAM_TEST_BAA_LSP="${QALAM_TEST_BAA_LSP}"
         QALAM_TEST_BAA_COMPILER="${QALAM_TEST_BAA_COMPILER}")
 endif()
+
+# Always-on workbench chrome guard; also saves review screenshots on request.
+if(WIN32)
+    # The real platform plugin renders fonts and native frames for review.
+    add_qalam_test(test_workbench_chrome TestWorkbenchChrome.cpp windows)
+else()
+    add_qalam_test(test_workbench_chrome TestWorkbenchChrome.cpp)
+endif()
+target_sources(test_workbench_chrome PRIVATE
+    ../qalam/Qalam.cpp ../qalam/Qalam.h ../qalam/resources.qrc)

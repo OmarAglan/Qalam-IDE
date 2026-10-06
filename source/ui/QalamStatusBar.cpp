@@ -16,13 +16,21 @@ QalamStatusBar::QalamStatusBar(QWidget* parent)
     
     // Primary/workspace indicators on the right in RTL.
     // Problems indicator
-    m_problemsBtn = createStatusItem("", "المشاكل");
+    // Errors and warnings each carry their own glyph; both open Problems.
+    m_problemsBtn = createStatusItem("", "الأخطاء");
+    m_problemsBtn->setIcon(QIcon(QStringLiteral(":/icons/resources/status-error.svg")));
     m_problemsBtn->setVisible(false);  // Hidden until there are problems
     connect(m_problemsBtn, &QPushButton::clicked, this, &QalamStatusBar::problemsClicked);
     m_layout->addWidget(m_problemsBtn);
+    m_warningsBtn = createStatusItem("", "التحذيرات");
+    m_warningsBtn->setIcon(QIcon(QStringLiteral(":/icons/resources/status-warning.svg")));
+    m_warningsBtn->setVisible(false);
+    connect(m_warningsBtn, &QPushButton::clicked, this, &QalamStatusBar::problemsClicked);
+    m_layout->addWidget(m_warningsBtn);
     
     // Branch name
     m_branchBtn = createStatusItem("", "الفرع الحالي");
+    m_branchBtn->setIcon(QIcon(QStringLiteral(":/icons/resources/status-branch.svg")));
     m_branchBtn->setVisible(false);  // Hidden until branch is set
     connect(m_branchBtn, &QPushButton::clicked, this, &QalamStatusBar::branchClicked);
     m_layout->addWidget(m_branchBtn);
@@ -81,6 +89,7 @@ QPushButton* QalamStatusBar::createStatusItem(const QString& text, const QString
     btn->setFlat(true);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setToolTip(tooltip);
+    btn->setIconSize(QSize(14, 14));
     
     btn->setStyleSheet(QString(R"(
         QPushButton {
@@ -131,22 +140,15 @@ void QalamStatusBar::setProblemsCount(int errors, int warnings)
     m_errorCount = errors;
     m_warningCount = warnings;
     
-    if (errors == 0 && warnings == 0) {
-        m_problemsBtn->setVisible(false);
-        return;
-    }
-    
-    QString text;
-    if (errors > 0) {
-        text = QString("✕ %1").arg(errors);
-    }
-    if (warnings > 0) {
-        if (!text.isEmpty()) text += "  ";
-        text += QString("⚠ %1").arg(warnings);
-    }
-    
-    m_problemsBtn->setText(text);
-    m_problemsBtn->setVisible(true);
+    const bool any = errors > 0 or warnings > 0;
+    m_problemsBtn->setVisible(any);
+    m_warningsBtn->setVisible(any);
+    if (not any) return;
+
+    m_problemsBtn->setText(locale().toString(errors));
+    m_problemsBtn->setAccessibleName(QStringLiteral("الأخطاء: %1").arg(locale().toString(errors)));
+    m_warningsBtn->setText(locale().toString(warnings));
+    m_warningsBtn->setAccessibleName(QStringLiteral("التحذيرات: %1").arg(locale().toString(warnings)));
 }
 
 void QalamStatusBar::setBranch(const QString& branch)
@@ -156,7 +158,7 @@ void QalamStatusBar::setBranch(const QString& branch)
         return;
     }
     
-    m_branchBtn->setText(QString("⎇ %1").arg(branch));  // Git branch symbol
+    m_branchBtn->setText(branch);
     m_branchBtn->setVisible(true);
 }
 
