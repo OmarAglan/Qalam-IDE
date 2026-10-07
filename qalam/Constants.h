@@ -1,9 +1,19 @@
 #pragma once
+#include <QSettings>
 #include <QString>
 
 namespace Constants {
     const QString OrgName = "BaaEcosystem";
     const QString AppName = "Qalam";
+
+    // The one way to open Qalam's settings. QSettings(org, app) always uses
+    // the native backend (the registry on Windows) and ignores
+    // QSettings::setDefaultFormat(), so tests that redirect settings to a
+    // temporary INI directory would still write the user's real settings.
+    inline QSettings settings()
+    {
+        return QSettings(QSettings::defaultFormat(), QSettings::UserScope, OrgName, AppName);
+    }
     const QString AppVersion = "3.6.0";
     
     // Settings Keys
@@ -17,6 +27,7 @@ namespace Constants {
     const QString SettingsKeyTakweenPath = "takweenPath";
     const QString SettingsKeyNazmPath = "nazmPath";
     const QString SettingsKeyLanguageServerPath = "baaLspPath";
+    const QString SettingsKeyAnalysisDelay = "analysisDelayMs";
     const QString SettingsKeySidebarWidth = "sidebarWidth";
     const QString SettingsKeyPanelHeight = "panelHeight";
     const QString SettingsKeyShowWelcome = "ShowWelcomeOnStartup";
@@ -258,6 +269,9 @@ namespace Constants {
         constexpr int AutoSaveInterval = 30000;
         constexpr int SearchDebounce = 300;
         constexpr int HoverDelay = 500;
+        // Pause after typing before Baa-LSP re-analyzes the document.
+        constexpr int AnalysisDelay = 75;
+        constexpr int AnalysisDelayMax = 2000;
     }
 
     // ==========================================================================

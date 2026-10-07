@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QMetaType>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 struct TakweenTarget {
@@ -12,6 +13,20 @@ struct TakweenTarget {
     bool buildable{};
     bool runnable{};
     bool test{};
+};
+
+struct TakweenBuildPlan {
+    QString operation;
+    QString project;
+    QString target;
+    QString profileName;
+    int optimization{};
+    bool verify{};
+    QStringList targetOrder;
+    QString workingDirectory;
+    QStringList sourceFiles;
+    QStringList includePaths;
+    QStringList argv;
 };
 
 struct TakweenBuildEvent {
@@ -35,6 +50,9 @@ public:
     static bool parseTargets(const QByteArray &json,
                              QVector<TakweenTarget> *targets,
                              QString *error = nullptr);
+    static bool parseBuildPlan(const QByteArray &json,
+                               TakweenBuildPlan *plan,
+                               QString *error = nullptr);
     static bool parseBuildEvent(const QByteArray &line,
                                 TakweenBuildEvent *event,
                                 QString *error = nullptr);
@@ -54,4 +72,5 @@ public:
 
 Q_DECLARE_METATYPE(TakweenTarget)
 Q_DECLARE_METATYPE(QVector<TakweenTarget>)
+Q_DECLARE_METATYPE(TakweenBuildPlan)
 Q_DECLARE_METATYPE(TakweenBuildEvent)

@@ -65,6 +65,33 @@ bool requiredInteger(const QJsonObject &object,
     return true;
 }
 
+bool requiredStringList(const QJsonObject &object,
+                        const QString &key,
+                        bool allowEmptyList,
+                        QStringList *values,
+                        QString *error)
+{
+    const QJsonValue field = object.value(key);
+    if (not field.isArray()) {
+        setError(error, QString("الحقل المطلوب %1 يجب أن يكون مصفوفة.").arg(key));
+        return false;
+    }
+    QStringList parsed;
+    for (const QJsonValue &item : field.toArray()) {
+        if (not item.isString() or item.toString().isEmpty()) {
+            setError(error, QString("كل عنصر في %1 يجب أن يكون نصا غير فارغ.").arg(key));
+            return false;
+        }
+        parsed.push_back(item.toString());
+    }
+    if (parsed.isEmpty() and not allowEmptyList) {
+        setError(error, QString("الحقل %1 لا يقبل مصفوفة فارغة.").arg(key));
+        return false;
+    }
+    *values = parsed;
+    return true;
+}
+
 bool parseObject(const QByteArray &json, QJsonObject *object, QString *error)
 {
     QJsonParseError parseError;
@@ -150,6 +177,63 @@ bool TakweenProtocol::parseTargets(const QByteArray &json,
     }
 
     *targets = parsed;
+    return true;
+}
+
+bool TakweenProtocol::parseBuildPlan(const QByteArray &json,
+                                     TakweenBuildPlan *plan,
+                                     QString *error)
+{
+    if (not plan) {
+        setError(error, "وجهة خطة البناء غير موجودة.");
+        return false;
+    }
+    *plan = TakweenBuildPlan{};
+
+    QJsonObject root;
+    if (not parseObject(json, &root, error)) return false;
+    if (root.value("schema_version").toString() != "takween-build-plan-v1") {
+        setError(error, "إصدار عقد خطة تكوين غير مدعوم.");
+        return false;
+    }
+    if (not root.value("profile").isObject()) {
+        setError(error, "حقل profile المطلوب ليس كائنا.");
+        return false;
+    }
+
+    TakweenBuildPlan parsed;
+    const QJsonObject profile = root.value("profile").toObject();
+    // Manifest v0.1 projects carry no named profile, so the name may be empty.
+    if (not profile.value("name").isString()) {
+        setError(error, "الحقل المطلوب profile.name يجب أن يكون نصا.");
+        return false;
+    }
+    parsed.profileName = profile.value("name").toString();
+    qint64 optimization = 0;
+    if (not requiredString(root, "operation", &parsed.operation, error) or
+        not requiredString(root, "project", &parsed.project, error) or
+        not requiredString(root, "target", &parsed.target, error) or
+        not requiredInteger(profile, "optimization", 0, 2, &optimization, error) or
+        not requiredBool(profile, "verify", &parsed.verify, error) or
+        not requiredStringList(root, "target_order", false, &parsed.targetOrder, error) or
+        not requiredString(root, "working_directory", &parsed.workingDirectory, error) or
+        not requiredStringList(root, "source_files", false, &parsed.sourceFiles, error) or
+        not requiredStringList(root, "include_paths", true, &parsed.includePaths, error) or
+        not requiredStringList(root, "argv", false, &parsed.argv, error)) {
+        return false;
+    }
+    parsed.optimization = static_cast<int>(optimization);
+    if (parsed.targetOrder.last() != parsed.target) {
+        setError(error, "آخر عنصر في target_order يجب أن يكون الهدف المختار.");
+        return false;
+    }
+    if (QSet<QString>(parsed.targetOrder.cbegin(), parsed.targetOrder.cend()).size() !=
+        parsed.targetOrder.size()) {
+        setError(error, "target_order يحتوي هدفا مكررا.");
+        return false;
+    }
+
+    *plan = parsed;
     return true;
 }
 

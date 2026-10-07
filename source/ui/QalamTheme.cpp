@@ -1,6 +1,8 @@
 #include "QalamTheme.h"
 #include "../../qalam/Constants.h"
+#include <QAccessibilityHints>
 #include <QFontDatabase>
+#include <QStyleHints>
 
 QalamTheme& QalamTheme::instance() {
     static QalamTheme instance;
@@ -10,8 +12,77 @@ QalamTheme& QalamTheme::instance() {
 QalamTheme::QalamTheme() {}
 
 void QalamTheme::apply(QApplication* app) {
+    m_currentType = systemPrefersHighContrast() ? Type::HighContrast : Type::Dark;
     app->setStyleSheet(globalStyleSheet());
     app->setFont(uiFont());
+
+    if (m_followsSystemContrast) return;
+    m_followsSystemContrast = true;
+    QObject::connect(QGuiApplication::styleHints()->accessibility(),
+                     &QAccessibilityHints::contrastPreferenceChanged, app, [this, app]() {
+        m_currentType = systemPrefersHighContrast() ? Type::HighContrast : Type::Dark;
+        app->setStyleSheet(globalStyleSheet());
+    });
+}
+
+bool QalamTheme::systemPrefersHighContrast() {
+    return QGuiApplication::styleHints()->accessibility()->contrastPreference()
+        == Qt::ContrastPreference::HighContrast;
+}
+
+QString QalamTheme::focusStyles() {
+    using namespace Constants;
+    // Padding shrinks by the border width so focus never shifts the layout.
+    return QString(R"(
+        QPushButton:focus {
+            border: 1px solid %1;
+            padding: 5px 13px;
+        }
+        QAbstractItemView:focus {
+            border: 1px solid %1;
+        }
+        QCheckBox:focus, QRadioButton:focus {
+            color: %2;
+        }
+    )")
+    .arg(Colors::BorderFocus)
+    .arg(Colors::TextPrimary);
+}
+
+QString QalamTheme::highContrastStyles() {
+    return QStringLiteral(R"(
+        QMainWindow, QDialog, QWidget {
+            color: #ffffff;
+        }
+        QMainWindow, QDialog, QMenu, QToolTip {
+            background-color: #000000;
+        }
+        QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QAbstractItemView {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #ffffff;
+        }
+        QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+        QAbstractItemView:focus, QPushButton:focus, QToolButton:focus {
+            border: 2px solid #ffd700;
+        }
+        QPushButton {
+            background-color: #000000;
+            color: #ffffff;
+            border: 1px solid #ffffff;
+        }
+        QPushButton:hover, QToolButton:hover {
+            border: 1px dashed #ffd700;
+        }
+        QPushButton:disabled, QLineEdit:disabled {
+            color: #8f8f8f;
+            border: 1px dashed #8f8f8f;
+        }
+        QAbstractItemView::item:selected, QMenu::item:selected {
+            background-color: #ffd700;
+            color: #000000;
+        }
+    )");
 }
 
 // ==========================================================================
@@ -328,7 +399,9 @@ QString QalamTheme::globalStyleSheet() const {
          + inputStyles() 
          + listStyles() 
          + tooltipStyles()
-         + tabBarStyleSheet();
+         + tabBarStyleSheet()
+         + focusStyles()
+         + (m_currentType == Type::HighContrast ? highContrastStyles() : QString());
 }
 
 // ==========================================================================

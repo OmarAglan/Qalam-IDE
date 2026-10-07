@@ -19,6 +19,7 @@ class BreakpointModel;
 class BaaLanguageClient;
 struct BaaWorkspaceEdit;
 class CommandRegistry;
+class QalamKeybindings;
 class DiagnosticsModel;
 class QalamWelcomePage;
 class QalamEditorWorkspace;
@@ -172,6 +173,7 @@ private:
     SessionManager *m_sessionManager{};
     LayoutManager *m_layoutManager{};
     CommandRegistry *m_commandRegistry{};
+    QalamKeybindings *m_keybindings{};
     DiagnosticsModel *m_diagnosticsModel{};
     WorkspaceIndexer *m_workspaceIndexer{};
     ProjectSearchService *m_projectSearchService{};

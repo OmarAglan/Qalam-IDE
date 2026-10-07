@@ -3,7 +3,8 @@ function(add_qalam_test test_name source_file)
         message(FATAL_ERROR "Missing test source for ${test_name}: ${source_file}")
     endif()
 
-    add_executable(${test_name} ${source_file})
+    # QalamTestSettings.cpp keeps every test away from the real user settings.
+    add_executable(${test_name} ${source_file} QalamTestSettings.cpp)
     # Unit tests must be console executables on Windows. If a parent project or
     # Qt helper has initialized WIN32_EXECUTABLE, MinGW will look for WinMain()
     # instead of main(), which breaks QTEST_MAIN-based tests.
@@ -106,6 +107,10 @@ add_qalam_test(test_syntax_highlighter TestSyntaxHighlighter.cpp)
 add_qalam_test(test_workspace_edit TestWorkspaceEdit.cpp)
 add_qalam_test(test_arabic_editing TestArabicEditing.cpp)
 add_qalam_test(test_text_position TestTextPosition.cpp)
+add_qalam_test(test_keybindings TestKeybindings.cpp)
+add_qalam_test(test_auto_save TestAutoSave.cpp)
+add_qalam_test(test_qalam_theme TestQalamTheme.cpp)
+target_sources(test_keybindings PRIVATE ../qalam/resources.qrc)
 
 add_executable(qalam_fake_baa_lsp
     FakeBaaLsp.cpp

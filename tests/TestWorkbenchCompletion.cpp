@@ -45,7 +45,7 @@ void TestWorkbenchCompletion::completesArabicWords()
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, directory.path());
     QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, directory.path());
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     settings.setValue(Constants::SettingsKeyCompilerPath, QString::fromUtf8(QALAM_TEST_BAA_COMPILER));
     settings.setValue(Constants::SettingsKeyLanguageServerPath, QString::fromUtf8(QALAM_TEST_BAA_LSP));
     settings.sync();

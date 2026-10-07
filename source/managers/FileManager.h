@@ -47,6 +47,9 @@ signals:
     void openEditorsChanged();
     /// Emitted for session recovery after an editor buffer changes.
     void documentContentsChanged();
+    /// Emitted when crash-recovery backups for a file cannot be written.
+    void autoSaveFailed(const QString &backupPath, const QString &error);
+    void autoSaveRestored(const QString &backupPath);
 
 private:
     QalamEditor *createEditor(const QString &filePath = QString());

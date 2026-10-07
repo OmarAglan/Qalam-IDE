@@ -2,6 +2,8 @@ add_library(qalam_core STATIC
     # Core platform
     core/CommandRegistry.cpp
     core/CommandRegistry.h
+    core/QalamKeybindings.cpp
+    core/QalamKeybindings.h
     # Language / IDE services
     language/BaaLanguageClient.cpp
     language/BaaLanguageClient.h

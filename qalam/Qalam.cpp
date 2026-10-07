@@ -49,6 +49,7 @@
 #include <algorithm>
 #include "QalamSearchView.h"
 #include "CommandRegistry.h"
+#include "QalamKeybindings.h"
 #include "DiagnosticParser.h"
 #include "DiagnosticsModel.h"
 #include "BaaLanguageClient.h"
@@ -108,6 +109,10 @@ Qalam::Qalam(const QString& filePath, QWidget *parent,
     m_languageClient = new BaaLanguageClient(this);
     m_languageClient->setCompilerProgram(BuildManager::resolveCompilerProgram());
     m_languageClient->setTakweenProgram(BuildManager::resolveTakweenProgram());
+    m_languageClient->setChangeDebounceInterval(
+        Constants::settings()
+            .value(Constants::SettingsKeyAnalysisDelay, Constants::Timing::AnalysisDelay)
+            .toInt());
     m_sessionManager = new SessionManager(
         tabWidget, this, sessionSettingsPath);
     m_sessionSaveTimer = new QTimer(this);
@@ -293,6 +298,49 @@ void Qalam::connectSignals()
         new QShortcut(QKeySequence("Ctrl+T"), this);
     connect(workspaceSymbolsShortcut, &QShortcut::activated,
             this, &Qalam::showWorkspaceSymbols);
+
+    // Every rebindable command gets exactly one key owner. Menu actions keep
+    // theirs; commands without one get a dormant window shortcut the user
+    // can assign in the settings page.
+    m_keybindings = new QalamKeybindings(m_commandRegistry, this);
+    const QList<QPair<const char *, QAction *>> actionBindings{
+        {"file.new", menuBar->newAction}, {"file.open", menuBar->openFileAction},
+        {"folder.open", menuBar->openFolderAction}, {"folder.add", menuBar->addFolderAction},
+        {"folder.reopenLast", menuBar->reopenLastProjectAction},
+        {"file.save", menuBar->saveAction}, {"file.saveAs", menuBar->saveAsAction},
+        {"quick.open", menuBar->quickOpenAction}, {"go.line", menuBar->goToLineAction},
+        {"view.commandPalette", menuBar->commandPaletteAction},
+        {"edit.find", menuBar->findAction}, {"view.search", menuBar->findInFilesAction},
+        {"view.sidebar", menuBar->toggleSidebarAction}, {"view.panel", menuBar->togglePanelAction},
+        {"view.problems", menuBar->problemsAction}, {"view.debug", menuBar->debugPanelAction},
+        {"editor.splitRight", menuBar->splitRightAction},
+        {"editor.splitDown", menuBar->splitDownAction},
+        {"editor.closeGroup", menuBar->closeEditorGroupAction},
+        {"code.definition", menuBar->goToDefinitionAction},
+        {"code.references", menuBar->findReferencesAction},
+        {"project.build", menuBar->buildAction}, {"run.baa", menuBar->runAction},
+        {"project.test", menuBar->testAction}, {"project.clean", menuBar->cleanAction},
+        {"settings.open", menuBar->SettingsAction}, {"help.about", menuBar->aboutAction}};
+    for (const auto &[id, action] : actionBindings)
+        m_keybindings->bind(QString::fromLatin1(id), action);
+    const QList<QPair<const char *, QShortcut *>> shortcutBindings{
+        {"editor.comment", commentShortcut}, {"editor.duplicateLine", duplicateShortcut},
+        {"editor.moveLineUp", moveUpShortcut}, {"editor.moveLineDown", moveDownShortcut},
+        {"project.stop", stopToolingShortcut}, {"code.rename", renameShortcut},
+        {"code.quickFix", quickFixShortcut}, {"code.format", formatShortcut},
+        {"code.workspaceSymbols", workspaceSymbolsShortcut}};
+    for (const auto &[id, shortcut] : shortcutBindings)
+        m_keybindings->bind(QString::fromLatin1(id), shortcut);
+    for (const CommandRegistry::Command &command : m_commandRegistry->commands()) {
+        if (m_keybindings->isBound(command.id) or
+            not QalamKeybindings::isRebindable(command.id))
+            continue;
+        auto *shortcut = new QShortcut(this);
+        const QString id = command.id;
+        connect(shortcut, &QShortcut::activated, this, [this, id]() { runCommandById(id); });
+        m_keybindings->bind(id, shortcut);
+    }
+    m_keybindings->apply(Constants::settings());
 
     // --- Menu bar signals ---
     connect(menuBar, &QalamMenuBar::newRequested, this, &Qalam::newFileFromUi);
@@ -737,6 +785,20 @@ void Qalam::connectSignals()
             this, &Qalam::scheduleSessionSave);
     connect(m_fileManager, &FileManager::documentContentsChanged,
             this, &Qalam::scheduleSessionSave);
+    connect(m_fileManager, &FileManager::autoSaveFailed, this,
+            [this](const QString &backupPath, const QString &error) {
+        const QString message = QStringLiteral("تعذّر حفظ النسخة الاحتياطية التلقائية %1: %2")
+            .arg(QDir::toNativeSeparators(backupPath), error);
+        qWarning().noquote() << message;
+        if (m_layoutManager and m_layoutManager->statusBar())
+            m_layoutManager->statusBar()->showMessage(
+                QStringLiteral("⚠ ") + message + QStringLiteral(" — احفظ الملف يدوياً"), 15000);
+    });
+    connect(m_fileManager, &FileManager::autoSaveRestored, this, [this](const QString &) {
+        if (m_layoutManager and m_layoutManager->statusBar())
+            m_layoutManager->statusBar()->showMessage(
+                QStringLiteral("عاد الحفظ الاحتياطي التلقائي للعمل"), 4000);
+    });
     connect(tabWidget, &QalamEditorWorkspace::currentChanged,
             this, &Qalam::scheduleSessionSave);
 
@@ -993,7 +1055,7 @@ void Qalam::loadFolders(const QStringList &paths)
     folderPaths = normalizedRoots;
     folderPath = folderPaths.constFirst();
 
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     QStringList recentFolders = settings.value(
         Constants::SettingsKeyRecentFolders).toStringList();
     for (auto it = folderPaths.crbegin(); it != folderPaths.crend(); ++it) {
@@ -1019,7 +1081,7 @@ void Qalam::loadFolders(const QStringList &paths)
 
 void Qalam::handleOpenFolderMenu()
 {
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     const QString initialDirectory = not folderPath.isEmpty()
         ? folderPath
         : settings.value(Constants::SettingsKeyLastOpenLocation,
@@ -1045,7 +1107,7 @@ void Qalam::openFolderFromPath(const QString &path)
 
 void Qalam::handleAddFolderMenu()
 {
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     const QString initialDirectory = not folderPath.isEmpty()
         ? folderPath
         : settings.value(Constants::SettingsKeyLastOpenLocation,
@@ -1095,7 +1157,7 @@ QString Qalam::workspaceRelativePath(const QString &path) const
 
 void Qalam::reopenLastProject()
 {
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     QStringList recentFolders = settings.value(
         Constants::SettingsKeyRecentFolders).toStringList();
     while (not recentFolders.isEmpty()) {
@@ -1155,6 +1217,12 @@ void Qalam::connectSettings() {
             m_layoutManager->statusBar()->showMessage(
                 QStringLiteral("حُدّثت مسارات أدوات منظومة باء"), 3500);
         }
+    });
+    connect(setting, &QalamSettings::analysisDelayChanged, this, [this](int milliseconds) {
+        if (m_languageClient) m_languageClient->setChangeDebounceInterval(milliseconds);
+    });
+    connect(setting, &QalamSettings::shortcutsChanged, this, [this]() {
+        if (m_keybindings) m_keybindings->apply(Constants::settings());
     });
 }
 
@@ -1440,7 +1508,7 @@ QalamEditor* Qalam::currentEditor() {
 
 bool Qalam::shouldShowWelcome() const
 {
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     return settings.value(Constants::SettingsKeyShowWelcome, true).toBool();
 }
 
@@ -2318,6 +2386,27 @@ bool Qalam::runCommandById(const QString &commandId)
     }
     if (commandId == "editor.closeGroup") {
         tabWidget->closeSecondaryGroup();
+        return true;
+    }
+    if (commandId == "view.commandPalette") { showCommandPalette(); return true; }
+    if (commandId == "edit.find") {
+        if (menuBar) menuBar->findAction->trigger();
+        return true;
+    }
+    if (commandId == "editor.comment") {
+        if (QalamEditor *editor = currentEditor()) editor->toggleComment();
+        return true;
+    }
+    if (commandId == "editor.duplicateLine") {
+        if (QalamEditor *editor = currentEditor()) editor->duplicateLine();
+        return true;
+    }
+    if (commandId == "editor.moveLineUp") {
+        if (QalamEditor *editor = currentEditor()) editor->moveLineUp();
+        return true;
+    }
+    if (commandId == "editor.moveLineDown") {
+        if (QalamEditor *editor = currentEditor()) editor->moveLineDown();
         return true;
     }
     if (commandId == "code.definition") { goToDefinition(); return true; }

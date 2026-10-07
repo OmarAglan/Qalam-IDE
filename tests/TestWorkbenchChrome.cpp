@@ -8,10 +8,12 @@
 #include <QAbstractButton>
 #include <QDir>
 #include <QFile>
+#include <QKeySequenceEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QScopeGuard>
 #include <QSettings>
+#include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -28,6 +30,7 @@ private slots:
     void iconOnlyButtonsHaveIconsAndNames();
     void primaryMenuActionsHaveIcons();
     void menuBarShowsEveryTopLevelMenu();
+    void settingsShortcutRebindsMenuAction();
     void capturesSurfaces();
 
 private:
@@ -45,7 +48,8 @@ void TestWorkbenchChrome::initTestCase()
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, m_directory.path());
     QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope, m_directory.path());
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
+    QVERIFY(settings.fileName().startsWith(m_directory.path()));
     // Missing tools keep the test hermetic: nothing external is launched.
     const QString missing = m_directory.filePath(QStringLiteral("missing-tool"));
     settings.setValue(Constants::SettingsKeyCompilerPath, missing);
@@ -185,6 +189,28 @@ void TestWorkbenchChrome::menuBarShowsEveryTopLevelMenu()
         capture(titleBar, QStringLiteral("chrome-titlebar"));
 }
 
+void TestWorkbenchChrome::settingsShortcutRebindsMenuAction()
+{
+    auto *settings = m_window->findChild<QalamSettings *>();
+    auto *menuBar = m_window->findChild<QalamMenuBar *>();
+    QVERIFY(settings);
+    QVERIFY(menuBar);
+    auto *table = settings->findChild<QTableWidget *>(QStringLiteral("settingsShortcutTable"));
+    QVERIFY(table);
+    QKeySequenceEdit *edit{};
+    for (int row = 0; row < table->rowCount(); ++row) {
+        if (table->item(row, 0)->data(Qt::UserRole).toString() == QLatin1String("file.save"))
+            edit = qobject_cast<QKeySequenceEdit *>(table->cellWidget(row, 1));
+    }
+    QVERIFY(edit);
+    QCOMPARE(menuBar->saveAction->shortcut(), QKeySequence(QStringLiteral("Ctrl+S")));
+
+    edit->setKeySequence(QKeySequence(QStringLiteral("Ctrl+Alt+S")));
+    QCOMPARE(menuBar->saveAction->shortcut(), QKeySequence(QStringLiteral("Ctrl+Alt+S")));
+    edit->setKeySequence(QKeySequence(QStringLiteral("Ctrl+S")));
+    QCOMPARE(menuBar->saveAction->shortcut(), QKeySequence(QStringLiteral("Ctrl+S")));
+}
+
 void TestWorkbenchChrome::capture(QWidget *widget, const QString &name)
 {
     const QString directory = qEnvironmentVariable("QALAM_TEST_SCREENSHOTS");
@@ -232,7 +258,14 @@ void TestWorkbenchChrome::capturesSurfaces()
 
     if (auto *settings = m_window->findChild<QalamSettings *>()) {
         settings->show();
-        capture(settings, QStringLiteral("chrome-settings"));
+        if (auto *categories = settings->findChild<QListWidget *>(
+                QStringLiteral("settingsCategories"))) {
+            for (int row = 0; row < categories->count(); ++row) {
+                categories->setCurrentRow(row);
+                capture(settings, QStringLiteral("chrome-settings-%1").arg(row));
+            }
+            categories->setCurrentRow(0);
+        }
         settings->hide();
     }
 }

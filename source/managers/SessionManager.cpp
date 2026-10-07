@@ -363,7 +363,8 @@ std::unique_ptr<QSettings> SessionManager::createSettings() const
         return std::make_unique<QSettings>(
             m_settingsFilePath, QSettings::IniFormat);
     }
-    return std::make_unique<QSettings>(Constants::OrgName, Constants::AppName);
+    return std::make_unique<QSettings>(QSettings::defaultFormat(), QSettings::UserScope,
+                                       Constants::OrgName, Constants::AppName);
 }
 
 bool SessionManager::isUsableWindowGeometry(
@@ -395,7 +396,7 @@ void SessionManager::savePreferences(QalamEditor *editor, int themeIndex)
 {
     if (not editor) return;
 
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     settings.setValue(Constants::SettingsKeyFontSize, editor->font().pixelSize());
     settings.setValue(Constants::SettingsKeyFontType, editor->font().family());
     settings.setValue(Constants::SettingsKeyTheme, themeIndex);

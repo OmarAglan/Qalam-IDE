@@ -1,6 +1,5 @@
 #pragma once
 
-#include "QalamFlatButton.h"
 #include "ThemeManager.h"
 
 #include <QWidget>
@@ -17,6 +16,8 @@
 #include <QFontDatabase>
 #include <QFormLayout>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QTableWidget>
 
 enum class QalamToolKind;
 
@@ -37,29 +38,40 @@ signals:
     void fontTypeChanged(QString font);
     void highlighterThemeChanged(int themeIdx);
     void toolPathsChanged();
+    void analysisDelayChanged(int milliseconds);
+    void shortcutsChanged();
 
 
 private:
-    void switchPage();
-    void createCategory(const QString&, const QString&);
+    void createCategory(const QString &name, const QString &iconName,
+                        const QString &description);
     void createAppearancePage(QVBoxLayout*);
     void createToolsPage(QVBoxLayout*);
+    void createShortcutsPage(QVBoxLayout*);
+    void refreshShortcutConflicts();
+    void saveShortcut(int row);
+    void filterShortcuts(const QString &text);
+    void refreshLanguageServerHealth();
     void chooseToolPath(QalamToolKind kind, QLineEdit *editor);
     void refreshToolHealth();
     void saveToolPaths();
 
-    QVBoxLayout* optionsLayout{};
+    QListWidget* categoryList{};
     QStackedWidget* stackedWidget{};
-    QList<QalamFlatButton*> categories{};
 
     QSpinBox* fontSpin{};
     QComboBox* fontCombo{};
     QComboBox* themeCombo{};
+    QSpinBox* analysisDelaySpin{};
+    QTableWidget* shortcutTable{};
+    QLabel* shortcutConflictLabel{};
     QLineEdit* baaPathEdit{};
     QLineEdit* takweenPathEdit{};
     QLineEdit* nazmPathEdit{};
+    QLineEdit* languageServerPathEdit{};
     QLabel* baaStatusLabel{};
     QLabel* takweenStatusLabel{};
     QLabel* nazmStatusLabel{};
+    QLabel* languageServerStatusLabel{};
 
 };

@@ -12,6 +12,7 @@
 #include <QStandardPaths>
 #include <QMetaObject>
 #include <QPointer>
+#include <QTimer>
 #include <QUuid>
 
 namespace {
@@ -59,7 +60,7 @@ BuildManager::~BuildManager()
 
 bool BuildManager::isRunning() const
 {
-    return m_buildThread and m_buildThread->isRunning();
+    return (m_buildThread and m_buildThread->isRunning()) or m_checkProcess;
 }
 
 QString BuildManager::resolveCompilerProgram()
@@ -159,22 +160,79 @@ BuildManager::ToolActionState BuildManager::toolActionState(
 }
 
 QStringList BuildManager::takweenCommandArguments(const QString &command,
-                                                   const QString &targetName)
+                                                   const QString &targetName,
+                                                   const QString &profileName)
 {
     const QString normalized = command.trimmed().toLower();
     QString canonical;
     if (normalized == "build") canonical = "بناء";
+    else if (normalized == "check") canonical = "فحص";
     else if (normalized == "run") canonical = "تشغيل";
     else if (normalized == "test") canonical = "اختبار";
     else if (normalized == "clean") canonical = "تنظيف";
     else return {};
 
+    const QString target = targetName.trimmed();
+    const QString profile = profileName.trimmed();
+    // A leading dash would turn a remembered name into a Takween option.
+    if (target.startsWith(QLatin1Char('-')) or profile.startsWith(QLatin1Char('-'))) return {};
+
     QStringList arguments = {canonical};
-    if (not targetName.trimmed().isEmpty()) {
-        if (normalized == "clean") return {};
-        arguments.push_back(targetName.trimmed());
+    if (normalized == "clean") {
+        if (not target.isEmpty() or not profile.isEmpty()) return {};
+        return arguments;
     }
+    if (not target.isEmpty()) arguments.push_back(target);
+    if (not profile.isEmpty()) arguments << QStringLiteral("--نمط") << profile;
     return arguments;
+}
+
+QStringList BuildManager::builtInTakweenProfiles()
+{
+    return {QStringLiteral("تطوير"), QStringLiteral("إصدار")};
+}
+
+QString BuildManager::takweenSelectionKey(const QString &projectRoot)
+{
+    QString identity = QDir::cleanPath(QFileInfo(projectRoot).absoluteFilePath());
+#if defined(Q_OS_WIN)
+    identity = identity.toLower();
+#endif
+    return QStringLiteral("takweenProjects/") + QString::fromLatin1(
+        QCryptographicHash::hash(identity.toUtf8(), QCryptographicHash::Sha256)
+            .toHex()
+            .left(16));
+}
+
+BuildManager::TakweenSelection BuildManager::takweenSelection(const QString &projectRoot)
+{
+    if (projectRoot.isEmpty()) return {};
+    QSettings settings = Constants::settings();
+    settings.beginGroup(takweenSelectionKey(projectRoot));
+    return {settings.value(QStringLiteral("target")).toString(),
+            settings.value(QStringLiteral("profile")).toString()};
+}
+
+void BuildManager::setTakweenSelection(const QString &projectRoot,
+                                       const TakweenSelection &selection)
+{
+    if (projectRoot.isEmpty()) return;
+    QSettings settings = Constants::settings();
+    settings.beginGroup(takweenSelectionKey(projectRoot));
+    const QString target = selection.target.trimmed();
+    const QString profile = selection.profile.trimmed();
+    if (target.isEmpty() and profile.isEmpty()) {
+        settings.remove(QString());
+        return;
+    }
+    // The key is a digest; keep the readable root beside it for humans.
+    settings.setValue(QStringLiteral("root"), QDir::cleanPath(projectRoot));
+    auto store = [&settings](const QString &key, const QString &value) {
+        if (value.isEmpty()) settings.remove(key);
+        else settings.setValue(key, value);
+    };
+    store(QStringLiteral("target"), target);
+    store(QStringLiteral("profile"), profile);
 }
 
 BuildManager::CompilerExitClass BuildManager::classifyCompilerExitCode(int exitCode)
@@ -254,49 +312,92 @@ QVector<TakweenTarget> BuildManager::discoverTakweenTargets(const QString &fileP
                                                             QString *error) const
 {
     const QString projectRoot = findTakweenProjectRoot(filePath);
-    const QString takween = resolveTakweenProgram();
     if (projectRoot.isEmpty()) {
         if (error) *error = "لم يُعثر على مشروع.تكوين.";
         return {};
     }
+
+    QByteArray output;
+    if (not runTakweenQuery(projectRoot, {"أهداف", "--جسون"}, &output, error)) return {};
+
+    QVector<TakweenTarget> targets;
+    QString parseError;
+    if (not TakweenProtocol::parseTargets(output, &targets, &parseError)) {
+        if (error) *error = parseError;
+        return {};
+    }
+    return targets;
+}
+
+bool BuildManager::loadTakweenBuildPlan(const QString &filePath,
+                                        const TakweenSelection &selection,
+                                        TakweenBuildPlan *plan,
+                                        QString *error) const
+{
+    const QString projectRoot = findTakweenProjectRoot(filePath);
+    if (projectRoot.isEmpty()) {
+        if (error) *error = "لم يُعثر على مشروع.تكوين.";
+        return false;
+    }
+    // `خطة` shares the target/profile grammar of `بناء`.
+    QStringList arguments = takweenCommandArguments("build", selection.target, selection.profile);
+    if (arguments.isEmpty()) {
+        if (error) *error = "اسم الهدف أو النمط غير صالح.";
+        return false;
+    }
+    arguments[0] = QStringLiteral("خطة");
+    arguments.insert(1, QStringLiteral("--جسون"));
+
+    QByteArray output;
+    if (not runTakweenQuery(projectRoot, arguments, &output, error)) return false;
+    QString parseError;
+    if (not TakweenProtocol::parseBuildPlan(output, plan, &parseError)) {
+        if (error) *error = parseError;
+        return false;
+    }
+    return true;
+}
+
+bool BuildManager::runTakweenQuery(const QString &projectRoot,
+                                   const QStringList &arguments,
+                                   QByteArray *output,
+                                   QString *error) const
+{
+    const QString takween = resolveTakweenProgram();
     if (takween.isEmpty()) {
         if (error) *error = "لم يُعثر على برنامج تكوين القابل للتنفيذ.";
-        return {};
+        return false;
     }
 
     QProcess process;
     process.setProgram(takween);
-    process.setArguments({"أهداف", "--جسون"});
+    process.setArguments(arguments);
     process.setWorkingDirectory(projectRoot);
+    process.setProcessEnvironment(ToolchainDiscovery::processEnvironment());
     process.setProcessChannelMode(QProcess::SeparateChannels);
     process.start();
     if (not process.waitForStarted(3000)) {
-        if (error) *error = "تعذر بدء تكوين لاكتشاف الأهداف: " + process.errorString();
-        return {};
+        if (error) *error = "تعذر بدء تكوين: " + process.errorString();
+        return false;
     }
-    if (not process.waitForFinished(5000)) {
+    // Planning may resolve dependencies, so it gets more time than a listing.
+    if (not process.waitForFinished(15000)) {
         process.kill();
         process.waitForFinished(500);
-        if (error) *error = "انتهت مهلة اكتشاف أهداف تكوين.";
-        return {};
+        if (error) *error = "انتهت مهلة انتظار تكوين.";
+        return false;
     }
     if (process.exitStatus() != QProcess::NormalExit or process.exitCode() != 0) {
         if (error) {
             const QString detail = QString::fromUtf8(process.readAllStandardError()).trimmed();
             *error = detail.isEmpty()
-                ? QString("فشل اكتشاف أهداف تكوين بكود %1.").arg(process.exitCode())
+                ? QString("فشل تكوين بكود %1.").arg(process.exitCode())
                 : detail;
         }
-        return {};
+        return false;
     }
-
-    QVector<TakweenTarget> targets;
-    QString parseError;
-    if (not TakweenProtocol::parseTargets(process.readAllStandardOutput(), &targets, &parseError)) {
-        if (error) *error = parseError;
-        return {};
-    }
-    return targets;
+    *output = process.readAllStandardOutput();
+    return true;
 }
 
 QVector<TakweenTarget> BuildManager::selectableTakweenTargets(
@@ -343,7 +444,66 @@ void BuildManager::cleanupBuild()
 void BuildManager::stop()
 {
     if (isRunning()) m_cancelRequested = true;
+    if (m_checkProcess) {
+        m_checkProcess->setProperty("qalam.cancelled", true);
+        stopTakweenCheck();
+    }
     cleanupBuild();
+}
+
+void BuildManager::stopTakweenCheck()
+{
+    QProcess *process = m_checkProcess.data();
+    if (not process) return;
+    process->kill();
+    process->waitForFinished(1000);
+}
+
+void BuildManager::startTakweenCheck(const std::function<void()> &finish)
+{
+    const QString target = m_takweenFailedTarget.isEmpty()
+        ? m_takweenRunSelection.target : m_takweenFailedTarget;
+    const QStringList arguments =
+        takweenCommandArguments("check", target, m_takweenRunSelection.profile);
+    const QString takween = resolveTakweenProgram();
+    if (arguments.isEmpty() or takween.isEmpty() or m_takweenProjectRoot.isEmpty()) {
+        finish();
+        return;
+    }
+
+    auto *process = new QProcess(this);
+    m_checkProcess = process;
+    process->setProgram(takween);
+    process->setArguments(arguments);
+    process->setWorkingDirectory(m_takweenProjectRoot);
+    process->setProcessEnvironment(ToolchainDiscovery::processEnvironment());
+    process->setProcessChannelMode(QProcess::SeparateChannels);
+    QTimer::singleShot(60000, process, [process]() { process->kill(); });
+
+    const QString root = m_takweenProjectRoot;
+    auto complete = [this, process, root, finish](bool exited) {
+        if (m_checkProcess != process) return;
+        m_checkProcess = nullptr;
+        process->deleteLater();
+        // A newer operation superseded this check; its result is stale.
+        if (process->property("qalam.superseded").toBool()) return;
+        const QByteArray output = exited ? process->readAllStandardOutput() : QByteArray();
+        if (not process->property("qalam.cancelled").toBool() and
+            not output.trimmed().isEmpty()) {
+            emit takweenDiagnosticsReady(root, output);
+        }
+        finish();
+    };
+    connect(process, &QProcess::finished, this,
+            [complete](int, QProcess::ExitStatus status) {
+        complete(status == QProcess::NormalExit);
+    });
+    connect(process, &QProcess::errorOccurred, this,
+            [complete](QProcess::ProcessError processError) {
+        if (processError == QProcess::FailedToStart) complete(false);
+    });
+    emit toolingProgress(QStringLiteral("جمع تشخيصات تكوين…"));
+    process->start();
 }
 
 void BuildManager::runBaa(const QString &filePath, QalamConsole *console)
@@ -364,6 +524,7 @@ void BuildManager::runBaa(const QString &filePath, QalamConsole *console)
             args = takweenCommandArguments("run");
             workingDir = projectRoot;
             usingTakween = true;
+            m_takweenRunSelection = {};
         }
     }
 
@@ -420,11 +581,12 @@ void BuildManager::buildNazm(const QString &filePath, QalamConsole *console)
 bool BuildManager::runTakweenCommand(const QString &filePath,
                                      const QString &command,
                                      QalamConsole *console,
-                                     const QString &targetName)
+                                     const QString &targetName,
+                                     const QString &profileName)
 {
     if (!console) return false;
 
-    const QStringList arguments = takweenCommandArguments(command, targetName);
+    const QStringList arguments = takweenCommandArguments(command, targetName, profileName);
     const QString projectRoot = findTakweenProjectRoot(filePath);
     const QString takween = resolveTakweenProgram();
     if (arguments.isEmpty() or projectRoot.isEmpty() or takween.isEmpty()) return false;
@@ -436,6 +598,7 @@ bool BuildManager::runTakweenCommand(const QString &filePath,
     else if (normalized == "test") heading = "🧪 اختبار مشروع تكوين...\n";
     else if (normalized == "clean") heading = "🧹 تنظيف مشروع تكوين...\n";
 
+    m_takweenRunSelection = {targetName.trimmed(), profileName.trimmed()};
     startProcess(
         takween, arguments, projectRoot, filePath, normalized, heading, console, true);
     return true;
@@ -479,6 +642,10 @@ void BuildManager::startProcess(const QString &requestedProgram,
 
     // Safely clean up existing thread/worker before creating new ones.
     // The same console hosts an interactive shell, so stop it while Baa owns stdin/stdout.
+    if (m_checkProcess) {
+        m_checkProcess->setProperty("qalam.superseded", true);
+        stopTakweenCheck();
+    }
     cleanupBuild();
     console->stopCmd();
     console->beginTask(heading.section(QLatin1Char('\n'), 0, 0));
@@ -503,6 +670,9 @@ void BuildManager::startProcess(const QString &requestedProgram,
     m_eventProtocolFailed = false;
     m_terminalEventExitCode = 0;
     m_cancelRequested = false;
+    m_takweenCompilerFailed = false;
+    m_takweenFailedTarget.clear();
+    m_takweenProjectRoot = usesTakweenEvents ? workingDirectory : QString();
 
     m_worker = new ProcessWorker(
         program,
@@ -520,13 +690,16 @@ void BuildManager::startProcess(const QString &requestedProgram,
 
     connect(m_buildThread, &QThread::started, m_worker, &ProcessWorker::start);
 
-    connect(m_worker, &ProcessWorker::outputReady, this, [this, console](const QString &text) {
+    // Takween failures are diagnosed through `فحص` JSON, never by scraping text.
+    connect(m_worker, &ProcessWorker::outputReady, this,
+            [this, console, usesTakweenEvents](const QString &text) {
         console->appendPlainTextThreadSafe(text);
-        emit outputChunk(text);
+        if (not usesTakweenEvents) emit outputChunk(text);
     });
-    connect(m_worker, &ProcessWorker::errorReady, this, [this, console](const QString &text) {
+    connect(m_worker, &ProcessWorker::errorReady, this,
+            [this, console, usesTakweenEvents](const QString &text) {
         console->appendPlainTextThreadSafe(text);
-        emit outputChunk(text);
+        if (not usesTakweenEvents) emit outputChunk(text);
     });
     connect(m_worker, &ProcessWorker::eventLineReady, this,
             [this, console, operation](const QByteArray &line) {
@@ -551,6 +724,13 @@ void BuildManager::startProcess(const QString &requestedProgram,
                 }
 
                 m_lastEventSequence = event.sequence;
+                if (event.event == "target_started" and not m_takweenCompilerFailed) {
+                    m_takweenFailedTarget = event.target;
+                }
+                if (event.event == "phase_finished" and event.status == "failed" and
+                    (event.phase == "compiler" or event.phase == "compiler_check")) {
+                    m_takweenCompilerFailed = true;
+                }
                 if (event.event == "operation_finished") {
                     m_terminalEventSeen = true;
                     m_terminalEventExitCode = event.exitCode;
@@ -599,8 +779,15 @@ void BuildManager::startProcess(const QString &requestedProgram,
             thread->quit();
         }
         m_cancelRequested = false;
-        emit buildFinished(effectiveCode);
-        emit toolingFinished(operation, effectiveCode);
+        auto finish = [this, operation, effectiveCode]() {
+            emit buildFinished(effectiveCode);
+            emit toolingFinished(operation, effectiveCode);
+        };
+        if (not eventFilePath.isEmpty() and effectiveCode != -2 and m_takweenCompilerFailed) {
+            startTakweenCheck(finish);
+        } else {
+            finish();
+        }
     });
 
     // Cleanup logic: ensure pointers are cleared after the worker thread finishes.

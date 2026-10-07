@@ -35,6 +35,10 @@ public:
     
     // Set theme type (for future theme switching support)
     void setType(Type type) { m_currentType = type; }
+
+    // True when the operating system asks applications for high contrast
+    // (Windows contrast themes, the GNOME/KDE high-contrast settings).
+    static bool systemPrefersHighContrast();
     
     // ==========================================================================
     // Global Stylesheet
@@ -87,4 +91,11 @@ private:
     static QString inputStyles();
     static QString listStyles();
     static QString tooltipStyles();
+    // Visible keyboard focus for controls whose base style has no border.
+    static QString focusStyles();
+    // Overlay for high contrast: pure foreground/background, solid borders,
+    // and a thick focus ring. Component stylesheets keep their own colors.
+    static QString highContrastStyles();
+
+    bool m_followsSystemContrast{};
 };

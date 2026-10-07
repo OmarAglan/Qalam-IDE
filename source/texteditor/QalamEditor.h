@@ -204,6 +204,8 @@ signals:
     void hoverRequested(QString filePath, int line, int character);
     void signatureHelpRequested(QString filePath, int line, int character);
     void selectionRangeRequested(QString filePath, int line, int character);
+    void autoSaveFailed(QString backupPath, QString error);
+    void autoSaveRestored(QString backupPath);
 };
 
 

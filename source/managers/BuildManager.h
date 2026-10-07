@@ -7,6 +7,8 @@
 #include <QProcess>
 #include <QThread>
 
+#include <functional>
+
 class QalamConsole;
 
 class BuildManager : public QObject {
@@ -16,6 +18,12 @@ public:
     struct ToolActionState {
         bool enabled{};
         QString explanation;
+    };
+
+    /// Remembered per-project Takween choice; empty means the manifest default.
+    struct TakweenSelection {
+        QString target;
+        QString profile;
     };
 
     enum class CompilerExitClass {
@@ -44,11 +52,28 @@ public:
     bool runTakweenCommand(const QString &filePath,
                            const QString &command,
                            QalamConsole *console,
-                           const QString &targetName = QString());
+                           const QString &targetName = QString(),
+                           const QString &profileName = QString());
 
     /// Build argv for the supported Takween project commands, or an empty list.
     static QStringList takweenCommandArguments(const QString &command,
-                                               const QString &targetName = QString());
+                                               const QString &targetName = QString(),
+                                               const QString &profileName = QString());
+
+    /// Ask Takween for its takween-build-plan-v1 view of a target and profile.
+    bool loadTakweenBuildPlan(const QString &filePath,
+                              const TakweenSelection &selection,
+                              TakweenBuildPlan *plan,
+                              QString *error = nullptr) const;
+
+    /// Active target/profile remembered for a project root across sessions.
+    static TakweenSelection takweenSelection(const QString &projectRoot);
+    static void setTakweenSelection(const QString &projectRoot,
+                                    const TakweenSelection &selection);
+    static QString takweenSelectionKey(const QString &projectRoot);
+
+    /// Profiles every v1 manifest has; projects may define more in [الأنماط.*].
+    static QStringList builtInTakweenProfiles();
 
     /// Ask Takween for the authoritative target index; Qalam never parses the manifest.
     QVector<TakweenTarget> discoverTakweenTargets(const QString &filePath,
@@ -113,10 +138,19 @@ signals:
     void toolingProgress(const QString &text);
     /// A malformed, out-of-order, or incomplete event stream was observed.
     void toolingProtocolError(const QString &message);
+    /// diagnostics-json-v1 from `تكوين فحص` after a Takween compile failure.
+    /// Emitted before toolingFinished for the operation that failed.
+    void takweenDiagnosticsReady(const QString &projectRoot, const QByteArray &json);
 
 private:
     /// Clean up existing thread/worker safely
     void cleanupBuild();
+    bool runTakweenQuery(const QString &projectRoot,
+                         const QStringList &arguments,
+                         QByteArray *output,
+                         QString *error) const;
+    void startTakweenCheck(const std::function<void()> &finish);
+    void stopTakweenCheck();
     void startProcess(const QString &program,
                       const QStringList &arguments,
                       const QString &workingDirectory,
@@ -137,4 +171,9 @@ private:
     bool m_eventProtocolFailed{};
     bool m_cancelRequested{};
     int m_terminalEventExitCode{};
+    bool m_takweenCompilerFailed{};
+    QString m_takweenFailedTarget;
+    QString m_takweenProjectRoot;
+    TakweenSelection m_takweenRunSelection;
+    QPointer<QProcess> m_checkProcess;
 };

@@ -826,6 +826,18 @@ QString BaaLanguageClient::resolveServerProgram() const
         return found.isEmpty() ? configured : found;
     }
 
+    // An explicit choice (environment, then the settings page) wins over the
+    // server bundled next to Qalam, so a user can test a newer Baa-LSP.
+    configured = qEnvironmentVariable("BAA_LSP").trimmed();
+    if (configured.isEmpty()) {
+        QSettings settings = Constants::settings();
+        configured = settings.value(Constants::SettingsKeyLanguageServerPath).toString().trimmed();
+    }
+    if (not configured.isEmpty()) {
+        const QString found = QStandardPaths::findExecutable(configured);
+        return found.isEmpty() ? configured : found;
+    }
+
     const QString appDirectory = QCoreApplication::applicationDirPath();
     const QStringList candidates = {
 #if defined(Q_OS_WIN)
@@ -838,16 +850,6 @@ QString BaaLanguageClient::resolveServerProgram() const
     };
     for (const QString &candidate : candidates) {
         if (not candidate.isEmpty() and QFileInfo(candidate).isExecutable()) return candidate;
-    }
-
-    configured = qEnvironmentVariable("BAA_LSP").trimmed();
-    if (configured.isEmpty()) {
-        QSettings settings(Constants::OrgName, Constants::AppName);
-        configured = settings.value(Constants::SettingsKeyLanguageServerPath).toString().trimmed();
-    }
-    if (not configured.isEmpty()) {
-        const QString found = QStandardPaths::findExecutable(configured);
-        return found.isEmpty() ? configured : found;
     }
 
 #if defined(Q_OS_WIN)

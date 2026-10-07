@@ -123,6 +123,8 @@ QalamEditor *FileManager::createEditor(const QString &filePath)
     });
     connect(editor->document(), &QTextDocument::contentsChanged,
             this, &FileManager::documentContentsChanged);
+    connect(editor, &QalamEditor::autoSaveFailed, this, &FileManager::autoSaveFailed);
+    connect(editor, &QalamEditor::autoSaveRestored, this, &FileManager::autoSaveRestored);
 
     return editor;
 }
@@ -132,7 +134,7 @@ void FileManager::addRecentFile(const QString &filePath)
     const QString normalizedPath = normalizePath(filePath);
     if (normalizedPath.isEmpty()) return;
 
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     QStringList recentFiles = settings.value(Constants::SettingsKeyRecentFiles).toStringList();
     recentFiles.removeAll(normalizedPath);
     recentFiles.prepend(normalizedPath);
@@ -206,7 +208,7 @@ void FileManager::newFile()
 void FileManager::openFile(QString filePath)
 {
     if (filePath.isEmpty()) {
-        QSettings settings(Constants::OrgName, Constants::AppName);
+        QSettings settings = Constants::settings();
         const QString initialDirectory = settings.value(
             Constants::SettingsKeyLastOpenLocation, QDir::homePath()).toString();
         filePath = QFileDialog::getOpenFileName(
@@ -291,6 +293,13 @@ void FileManager::openFile(QString filePath)
                     newEditor->setPlainText(backupIn.readAll());
                     newEditor->document()->setModified(true);
                     backup.close();
+                } else {
+                    // Keep the backup on disk: the user may recover it by hand.
+                    QMessageBox::warning(m_parentWindow, "تعذّرت الاستعادة",
+                                         QStringLiteral("تعذّر قراءة النسخة الاحتياطية:\n%1\n\n%2\n\n"
+                                                        "فُتح الملف الأصلي وبقيت النسخة الاحتياطية في مكانها.")
+                                             .arg(QDir::toNativeSeparators(backupPath),
+                                                  backup.errorString()));
                 }
             } else {
                 QFile::remove(backupPath);
@@ -373,7 +382,7 @@ bool FileManager::saveEditorAs(QalamEditor *editor)
     QString currentPath = oldPath;
     QString currentName = currentPath.isEmpty()
         ? QStringLiteral("ملف جديد.باء") : QFileInfo(currentPath).fileName();
-    QSettings settings(Constants::OrgName, Constants::AppName);
+    QSettings settings = Constants::settings();
     const QString initialPath = currentPath.isEmpty()
         ? QDir(settings.value(Constants::SettingsKeyLastOpenLocation,
                               QDir::homePath()).toString()).filePath(currentName)

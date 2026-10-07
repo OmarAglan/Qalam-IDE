@@ -23,11 +23,17 @@ public:
 
 public slots:
     void onContentChanged();
+    // Writes the backup now; returns false when it could not be written.
+    bool performAutoSave();
 
-private slots:
-    void performAutoSave();
+signals:
+    // Emitted once when backups start failing for a path, not on every
+    // retry, so the user is told without being flooded.
+    void backupFailed(const QString &backupPath, const QString &error);
+    void backupRestored(const QString &backupPath);
 
 private:
     QPlainTextEdit *m_editor{};
     QTimer *m_timer{};
+    QString m_failingPath{};
 };

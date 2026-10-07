@@ -124,7 +124,7 @@ void QalamEditor::initializeEditor()
     highlightCurrentLine();
 
     // set saved setting font size to the editor
-    QSettings settingsVal(Constants::OrgName, Constants::AppName);
+    QSettings settingsVal = Constants::settings();
     int savedSize = settingsVal.value(Constants::SettingsKeyFontSize).toInt();
     updateFontSize(savedSize);
     // set saved setting font type to the editor
@@ -139,6 +139,8 @@ void QalamEditor::initializeEditor()
     // Auto-save (delegated to QalamAutoSave helper)
     m_autoSave = new QalamAutoSave(this, this);
     connect(this->document(), &QTextDocument::contentsChanged, m_autoSave, &QalamAutoSave::onContentChanged);
+    connect(m_autoSave, &QalamAutoSave::backupFailed, this, &QalamEditor::autoSaveFailed);
+    connect(m_autoSave, &QalamAutoSave::backupRestored, this, &QalamEditor::autoSaveRestored);
     connect(m_documentModel, &QalamDocumentModel::filePathChanged,
             this, [this](const QString &path) {
         filePath = path;
@@ -1529,7 +1531,7 @@ void QalamEditor::showLanguageCompletions(const QVector<BaaCompletionItem> &item
         item.endCharacter = source.endCharacter;
         completions.push_back(std::move(item));
     }
-    QSettings completionSettings(Constants::OrgName, Constants::AppName);
+    QSettings completionSettings = Constants::settings();
     QalamCompletionHistory::rank(completions, completionSettings);
     model->updateData(completions);
     if (completions.empty()) {
@@ -1632,7 +1634,7 @@ void QalamEditor::insertCompletion(const CompletionItem &item) {
     const int end = documentPosition(item.endLine, item.endCharacter);
     if (start < 0 or end < start) return;
 
-    QSettings completionSettings(Constants::OrgName, Constants::AppName);
+    QSettings completionSettings = Constants::settings();
     QalamCompletionHistory::record(
         completionSettings, item.context, item.stableKey);
 

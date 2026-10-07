@@ -664,7 +664,8 @@ void QalamWelcomePage::onShowOnStartupToggled(bool show)
 QSettings *QalamWelcomePage::createSettings() const
 {
     if (m_settingsFilePath.isEmpty()) {
-        return new QSettings(Constants::OrgName, Constants::AppName);
+        return new QSettings(QSettings::defaultFormat(), QSettings::UserScope,
+                             Constants::OrgName, Constants::AppName);
     }
     return new QSettings(m_settingsFilePath, QSettings::IniFormat);
 }

@@ -87,7 +87,7 @@ std::unique_ptr<SessionSlot> SessionSlot::acquire(
 
 void SessionSlot::migrateLegacySettings(const QString &settingsFilePath)
 {
-    QSettings legacy(Constants::OrgName, Constants::AppName);
+    QSettings legacy = Constants::settings();
     if (legacy.value(QString::fromLatin1(LegacyMigrationKey), false).toBool())
         return;
 
