@@ -28,18 +28,18 @@ jobs:
         run: .\scripts\bootstrap-windows.ps1 -SkipWinget -BuildTests -SkipCompiler -BaaLspSourceDir ecosystem/Baa-LSP
       - name: Build standalone installer
         shell: pwsh
-        run: .\scripts\build_installer.ps1 -Version 3.6.0 -BuildDir build/windows-release -BaaLspExecutable ecosystem/Baa-LSP/build/windows-release/baa-lsp.exe -SkipBuild
+        run: .\scripts\build_installer.ps1 -Version 3.7.0 -BuildDir build/windows-release -BaaLspExecutable ecosystem/Baa-LSP/build/windows-release/baa-lsp.exe -SkipBuild
       - name: Verify install, launch, and uninstall
         shell: powershell
-        run: .\scripts\test_installer.ps1 -Version 3.6.0
+        run: .\scripts\test_installer.ps1 -Version 3.7.0
       - uses: actions/upload-artifact@v4
         with:
-          name: qalam-setup-3.6.0-x64
+          name: qalam-setup-3.7.0-x64
           path: |
             dist/Qalam-win64.zip
             dist/Qalam-win64.zip.sha256
-            dist/installer/qalam-setup-3.6.0-x64.exe
-            dist/installer/qalam-setup-3.6.0-x64.exe.sha256
+            dist/installer/qalam-setup-3.7.0-x64.exe
+            dist/installer/qalam-setup-3.7.0-x64.exe.sha256
 
   linux:
     name: Linux build

@@ -1,4 +1,7 @@
 #include "BuildManager.h"
+#include "Constants.h"
+#include "DiagnosticParser.h"
+#include "QalamConsole.h"
 #include "QalamMenuBar.h"
 #include "QalamTitleBar.h"
 
@@ -14,6 +17,9 @@ class TestBuildManager : public QObject
 private slots:
     void buildsValidatedTakweenArguments();
     void filtersTakweenTargetsByCapability();
+    void passesProfilesAndRejectsOptionLikeNames();
+    void remembersTakweenSelectionPerProject();
+    void diagnosesTakweenCompileFailureFromCheckJson();
     void classifiesCompilerCliExitCodes();
     void buildsOperationAwareExitDiagnostics();
     void findsNearestTakweenProjectRoot();
@@ -81,6 +87,114 @@ void TestBuildManager::buildsValidatedTakweenArguments()
     QVERIFY(BuildManager::takweenCommandArguments("clean", "تطبيق").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("publish").isEmpty());
     QVERIFY(BuildManager::takweenCommandArguments("build & whoami").isEmpty());
+}
+
+void TestBuildManager::passesProfilesAndRejectsOptionLikeNames()
+{
+    QCOMPARE(BuildManager::takweenCommandArguments("build", "تطبيق", "إصدار"),
+             (QStringList{"بناء", "تطبيق", "--نمط", "إصدار"}));
+    QCOMPARE(BuildManager::takweenCommandArguments("run", QString(), "تطوير"),
+             (QStringList{"تشغيل", "--نمط", "تطوير"}));
+    QCOMPARE(BuildManager::takweenCommandArguments("check", "تطبيق"),
+             (QStringList{"فحص", "تطبيق"}));
+    // Takween's clean takes neither a target nor a profile.
+    QVERIFY(BuildManager::takweenCommandArguments("clean", QString(), "إصدار").isEmpty());
+    QVERIFY(BuildManager::takweenCommandArguments("build", "--مقفل").isEmpty());
+    QVERIFY(BuildManager::takweenCommandArguments("build", "تطبيق", "-O3").isEmpty());
+    QCOMPARE(BuildManager::builtInTakweenProfiles(), (QStringList{"تطوير", "إصدار"}));
+}
+
+void TestBuildManager::remembersTakweenSelectionPerProject()
+{
+    QTemporaryDir first;
+    QTemporaryDir second;
+    QVERIFY(first.isValid() and second.isValid());
+    QVERIFY(BuildManager::takweenSelection(first.path()).target.isEmpty());
+
+    BuildManager::setTakweenSelection(first.path(), {"تطبيق", "إصدار"});
+    BuildManager::setTakweenSelection(second.path(), {"أداة", QString()});
+    BuildManager::TakweenSelection selection = BuildManager::takweenSelection(first.path());
+    QCOMPARE(selection.target, QStringLiteral("تطبيق"));
+    QCOMPARE(selection.profile, QStringLiteral("إصدار"));
+    selection = BuildManager::takweenSelection(second.path());
+    QCOMPARE(selection.target, QStringLiteral("أداة"));
+    QVERIFY(selection.profile.isEmpty());
+
+    // The same project reached through a non-canonical path shares its choice.
+    const QString dotted = QDir(first.path()).filePath(QStringLiteral("مجلد/.."));
+    QCOMPARE(BuildManager::takweenSelectionKey(dotted),
+             BuildManager::takweenSelectionKey(first.path()));
+#if defined(Q_OS_WIN)
+    QCOMPARE(BuildManager::takweenSelectionKey(first.path().toUpper()),
+             BuildManager::takweenSelectionKey(first.path()));
+#endif
+
+    // Clearing both values forgets the project entirely.
+    BuildManager::setTakweenSelection(first.path(), {});
+    QSettings settings = Constants::settings();
+    QVERIFY(not settings.childGroups().contains(QStringLiteral("takweenProjects")) or
+            not settings.value(BuildManager::takweenSelectionKey(first.path())
+                               + QStringLiteral("/root")).isValid());
+    QVERIFY(BuildManager::takweenSelection(first.path()).target.isEmpty());
+    BuildManager::setTakweenSelection(second.path(), {});
+}
+
+void TestBuildManager::diagnosesTakweenCompileFailureFromCheckJson()
+{
+    if (BuildManager::resolveTakweenProgram().isEmpty() or
+        BuildManager::resolveCompilerProgram().isEmpty()) {
+        QSKIP("Takween and Baa are not installed.");
+    }
+    QTemporaryDir project;
+    QVERIFY(project.isValid());
+    const QString root = QDir::cleanPath(project.path());
+    QVERIFY(QDir(root).mkpath(QStringLiteral("المصدر")));
+    auto write = [&root](const QString &relative, const QByteArray &content) {
+        QFile file(QDir(root).filePath(relative));
+        return file.open(QIODevice::WriteOnly | QIODevice::Truncate) and
+               file.write(content) == content.size();
+    };
+    QVERIFY(write(QStringLiteral("مشروع.تكوين"),
+                  "[المشروع]\nالاسم = \"تجربة\"\nالإصدار = \"1.0.0\"\n\n"
+                  "[الأهداف.تطبيق]\nالنوع = \"تنفيذي\"\nالمدخل = \"المصدر/الرئيسية.baa\"\n"
+                  "يعتمد_على = [\"حساب\"]\n\n"
+                  "[الأهداف.حساب]\nالنوع = \"مكتبة\"\nالمدخل = \"المصدر/حساب.baa\"\n\n"
+                  "[البناء]\nالمخرج = \"بناء\"\n\n[الأنماط.سريع]\nالتحسين = ٢\n"));
+    QVERIFY(write(QStringLiteral("المصدر/حساب.baa"),
+                  "صحيح جمع(صحيح أ، صحيح ب) {\n    إرجع أ + ب.\n}\n"));
+    const QString source = QDir(root).filePath(QStringLiteral("المصدر/الرئيسية.baa"));
+    QVERIFY(write(QStringLiteral("المصدر/الرئيسية.baa"),
+                  "صحيح الرئيسية() {\n    صحيح س = غير_معرف.\n    إرجع ٠.\n}\n"));
+
+    BuildManager manager;
+    TakweenBuildPlan plan;
+    QString error;
+    QVERIFY2(manager.loadTakweenBuildPlan(source, {"تطبيق", "سريع"}, &plan, &error),
+             qPrintable(error));
+    QCOMPARE(plan.profileName, QStringLiteral("سريع"));
+    QCOMPARE(plan.optimization, 2);
+    QCOMPARE(plan.targetOrder, (QStringList{"حساب", "تطبيق"}));
+    QVERIFY(not manager.loadTakweenBuildPlan(source, {"تطبيق", "مجهول"}, &plan, &error));
+    QVERIFY(not error.isEmpty());
+
+    QalamConsole console;
+    QSignalSpy diagnostics(&manager, &BuildManager::takweenDiagnosticsReady);
+    QSignalSpy finished(&manager, &BuildManager::toolingFinished);
+    QSignalSpy scraped(&manager, &BuildManager::outputChunk);
+    QVERIFY(manager.runTakweenCommand(source, "build", &console, "تطبيق", "سريع"));
+    QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 60000);
+    QCOMPARE(finished.first().at(1).toInt(), 1);
+    QVERIFY(not manager.isRunning());
+    // Human output stays in the terminal; problems come only from `فحص` JSON.
+    QCOMPARE(scraped.count(), 0);
+    QCOMPARE(diagnostics.count(), 1);
+    QCOMPARE(diagnostics.first().at(0).toString(), root);
+    const QVector<Diagnostic> parsed = DiagnosticParser::parseCompilerOutput(
+        QString::fromUtf8(diagnostics.first().at(1).toByteArray()), QString(), root);
+    QCOMPARE(parsed.size(), 1);
+    QCOMPARE(parsed.first().code, QStringLiteral("B1000"));
+    QCOMPARE(parsed.first().file, source);
+    QCOMPARE(parsed.first().line, 2);
 }
 
 void TestBuildManager::filtersTakweenTargetsByCapability()

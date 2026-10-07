@@ -217,6 +217,11 @@ load-time protection remains automatic.
 3. Wire up the load/save logic in `QalamSettings::loadSettings()` and `applySettings()`.
 4. Connect the change signal in `Qalam::openSettings()` to propagate changes.
 
+Always open settings with `Constants::settings()`. Tests link
+`tests/QalamTestSettings.cpp`, which switches the default format to INI in a
+temporary directory before any test runs, so tests never read or write the
+user's real settings. A plain `QSettings(org, app)` would bypass that.
+
 ## Build System
 
 **CMake is the only supported build system.** The `.pro` file is stale and cannot build the current codebase.

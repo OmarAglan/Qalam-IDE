@@ -81,6 +81,7 @@ private slots:
     void stopsRestartingAfterTheConfiguredLimit();
     void publishesWorkspaceFolderAndManifestChanges();
     void publishesConfiguredWorkspaceRootsBeforeDocumentsOpen();
+    void sendsActiveTakweenTargetOnlyForSoleProject();
     void rejectsNonBaaDocuments();
     void resolvesOnlyCurrentCompletionDocumentation();
     void respectsCompletionResolveCapability();
@@ -866,6 +867,67 @@ void TestBaaLanguageClient::publishesConfiguredWorkspaceRootsBeforeDocumentsOpen
     client.setWorkspaceRoots({firstRoot});
     QTRY_VERIFY_WITH_TIMEOUT(hasWorkspaceFolderChange(
         logPath, QStringLiteral("removed"), secondUri), 5000);
+    client.stop();
+}
+
+void TestBaaLanguageClient::sendsActiveTakweenTargetOnlyForSoleProject()
+{
+    QTemporaryDir temporary(QStringLiteral("qalam-lsp-target-XXXXXX"));
+    QVERIFY(temporary.isValid());
+    const QString projectRoot = QDir(temporary.path()).filePath(QStringLiteral("تطبيقي"));
+    const QString otherRoot = QDir(temporary.path()).filePath(QStringLiteral("آخر"));
+    QVERIFY(QDir().mkpath(projectRoot));
+    QVERIFY(QDir().mkpath(otherRoot));
+    for (const QString &root : {projectRoot, otherRoot}) {
+        QFile manifest(QDir(root).filePath(QStringLiteral("مشروع.تكوين")));
+        QVERIFY(manifest.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        manifest.write("[المشروع]\nالاسم = \"تجربة\"\nالإصدار = \"1.0.0\"\n");
+    }
+    const QString source = QDir(projectRoot).filePath(QStringLiteral("رئيسي.baa"));
+
+    const QString logPath = QDir(temporary.path()).filePath(QStringLiteral("target.jsonl"));
+    QVERIFY(qputenv("QALAM_FAKE_LSP_WORKSPACE_LOG", logPath.toUtf8()));
+    const auto clearEnvironment = qScopeGuard([]() {
+        qunsetenv("QALAM_FAKE_LSP_WORKSPACE_LOG");
+    });
+    auto initializeTargets = [&logPath]() {
+        QStringList targets;
+        for (const QJsonObject &message : workspaceMessages(logPath)) {
+            if (message.value(QStringLiteral("method")).toString() != QStringLiteral("initialize"))
+                continue;
+            targets << message.value(QStringLiteral("params")).toObject()
+                           .value(QStringLiteral("initializationOptions")).toObject()
+                           .value(QStringLiteral("takweenTarget")).toString();
+        }
+        return targets;
+    };
+
+    BaaLanguageClient client;
+    client.setServerProgram(QString::fromUtf8(QALAM_FAKE_BAA_LSP_PATH));
+    client.setTakweenTarget(projectRoot, QStringLiteral("تطبيق"));
+    client.synchronizeDocument(source, QStringLiteral("صحيح الرئيسية() { إرجع ٠. }\n"),
+                               1, projectRoot);
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Ready, 5000);
+    QTRY_COMPARE_WITH_TIMEOUT(initializeTargets(), QStringList{QStringLiteral("تطبيق")}, 5000);
+    QCOMPARE(client.effectiveTakweenTarget(), QStringLiteral("تطبيق"));
+
+    // A new active target restarts the server so Baa-LSP plans it.
+    client.setTakweenTarget(projectRoot, QStringLiteral("أداة"));
+    QTRY_COMPARE_WITH_TIMEOUT(initializeTargets(),
+                              (QStringList{QStringLiteral("تطبيق"), QStringLiteral("أداة")}),
+                              5000);
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Ready, 5000);
+
+    // Reapplying the same target is not a reason to restart.
+    client.setTakweenTarget(projectRoot, QStringLiteral("أداة"));
+    QCOMPARE(client.state(), BaaLanguageClient::State::Ready);
+
+    // A second Takween project would be planned with a target it lacks.
+    client.setWorkspaceRoots({otherRoot});
+    QCOMPARE(client.effectiveTakweenTarget(), QString());
+    QTRY_COMPARE_WITH_TIMEOUT(initializeTargets().size(), 3, 5000);
+    QCOMPARE(initializeTargets().last(), QString());
+    QTRY_COMPARE_WITH_TIMEOUT(client.state(), BaaLanguageClient::State::Ready, 5000);
     client.stop();
 }
 

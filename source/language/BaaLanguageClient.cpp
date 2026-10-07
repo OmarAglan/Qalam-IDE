@@ -655,6 +655,7 @@ void BaaLanguageClient::closeDocument(const QString &filePath)
 
 void BaaLanguageClient::stop()
 {
+    m_restartAfterStop = false;
     m_changeTimer.stop();
     m_workspaceWatchTimer.stop();
     m_pendingWatchedFileChanges.clear();
@@ -694,6 +695,39 @@ void BaaLanguageClient::setCompilerProgram(const QString &program)
 void BaaLanguageClient::setTakweenProgram(const QString &program)
 {
     m_takweenProgram = program.trimmed();
+}
+
+void BaaLanguageClient::setTakweenTarget(const QString &projectRoot,
+                                         const QString &target)
+{
+    if (projectRoot.trimmed().isEmpty()) return;
+    const QString root = normalizedFilePath(projectRoot);
+    if (target.trimmed().isEmpty()) m_takweenTargets.remove(root);
+    else m_takweenTargets.insert(root, target.trimmed());
+    reconcileTakweenTarget();
+}
+
+QString BaaLanguageClient::effectiveTakweenTarget() const
+{
+    QString projectRoot;
+    for (const QString &root : workspaceRoots()) {
+        if (not QFileInfo(QDir(root).filePath(QStringLiteral("مشروع.تكوين"))).isFile())
+            continue;
+        // Another project would be planned with a target it does not have.
+        if (not projectRoot.isEmpty()) return QString();
+        projectRoot = root;
+    }
+    return projectRoot.isEmpty() ? QString() : m_takweenTargets.value(projectRoot);
+}
+
+void BaaLanguageClient::reconcileTakweenTarget()
+{
+    if (not m_process or m_process->state() == QProcess::NotRunning) return;
+    if (m_state == State::Stopping) return;
+    if (effectiveTakweenTarget() == m_initializedTakweenTarget) return;
+    emit logMessage(QStringLiteral("تغيّر هدف تكوين النشط؛ إعادة تشغيل Baa-LSP."), 3);
+    stop();
+    m_restartAfterStop = m_state == State::Stopping;
 }
 
 void BaaLanguageClient::setChangeDebounceInterval(int milliseconds)
@@ -919,6 +953,7 @@ void BaaLanguageClient::retainWorkspaceRoot(const QString &workspaceRoot)
         m_workspaceFoldersSupported) {
         sendWorkspaceFolderChanges({workspaceRoot}, {});
     }
+    reconcileTakweenTarget();
 }
 
 void BaaLanguageClient::releaseWorkspaceRoot(const QString &workspaceRoot)
@@ -936,6 +971,7 @@ void BaaLanguageClient::releaseWorkspaceRoot(const QString &workspaceRoot)
     } else {
         m_serverWorkspaceRoots.remove(workspaceRoot);
     }
+    reconcileTakweenTarget();
 }
 
 QStringList BaaLanguageClient::workspaceRoots() const
@@ -983,6 +1019,7 @@ void BaaLanguageClient::setWorkspaceRoots(const QStringList &workspaceRoots)
         (not added.isEmpty() or not removed.isEmpty())) {
         sendWorkspaceFolderChanges(added, removed);
     }
+    reconcileTakweenTarget();
 }
 
 QJsonObject BaaLanguageClient::workspaceFolder(
@@ -1128,18 +1165,24 @@ void BaaLanguageClient::sendInitialize()
     const QString rootUri = roots.isEmpty()
         ? QString()
         : QUrl::fromLocalFile(roots.first()).toString();
+    QJsonObject initializationOptions{
+        {QStringLiteral("baaStructuredLogs"), QJsonObject{
+            {QStringLiteral("schemaVersion"),
+             QStringLiteral("baa-lsp-log-v1")}
+        }}
+    };
+    m_initializedTakweenTarget = effectiveTakweenTarget();
+    if (not m_initializedTakweenTarget.isEmpty()) {
+        initializationOptions.insert(QStringLiteral("takweenTarget"),
+                                     m_initializedTakweenTarget);
+    }
     QJsonObject params{
         {QStringLiteral("processId"), static_cast<qint64>(QCoreApplication::applicationPid())},
         {QStringLiteral("clientInfo"), QJsonObject{
             {QStringLiteral("name"), QStringLiteral("Qalam")},
                 {QStringLiteral("version"), Constants::AppVersion}
         }},
-        {QStringLiteral("initializationOptions"), QJsonObject{
-            {QStringLiteral("baaStructuredLogs"), QJsonObject{
-                {QStringLiteral("schemaVersion"),
-                 QStringLiteral("baa-lsp-log-v1")}
-            }}
-        }},
+        {QStringLiteral("initializationOptions"), initializationOptions},
         {QStringLiteral("rootUri"), rootUri.isEmpty() ? QJsonValue::Null : QJsonValue(rootUri)},
         {QStringLiteral("capabilities"), QJsonObject{
             {QStringLiteral("general"), QJsonObject{
@@ -2622,6 +2665,10 @@ void BaaLanguageClient::handleProcessFinished(int exitCode, QProcess::ExitStatus
     clearServerSession();
     if (expected) {
         setState(State::Stopped);
+        if (m_restartAfterStop) {
+            m_restartAfterStop = false;
+            if (not m_documents.isEmpty()) ensureStarted();
+        }
         return;
     }
     emit logMessage(QStringLiteral("توقف Baa-LSP بصورة غير متوقعة (الرمز %1، الحالة %2).")

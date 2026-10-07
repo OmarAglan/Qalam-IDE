@@ -4,7 +4,7 @@
 #define MyAppId "{{1A6F6714-2C14-4DBD-BACB-B26CBABE36EE}"
 #define MyAppName "قلم"
 #ifndef MyAppVersion
-  #define MyAppVersion "3.6.0"
+  #define MyAppVersion "3.7.0"
 #endif
 #ifndef QalamPayloadDir
   #define QalamPayloadDir "dist\installer-payload"
@@ -65,9 +65,9 @@ WelcomeFontName=Segoe UI
 
 [Messages]
 arabic.WelcomeLabel1=مساحتك للكتابة والإبداع
-arabic.WelcomeLabel2=قلم 3.6 مع خادم لغة باء: تحرير عربي، إكمال سياقي ومساحات عمل مرنة.%n%nثبّت عدة تطوير باء للحصول على أدوات البناء أيضاً.
+arabic.WelcomeLabel2=قلم 3.7 مع خادم لغة باء: تحرير عربي، إكمال سياقي، لوحة مشروع تكوين ومساحات عمل مرنة.%n%nثبّت عدة تطوير باء للحصول على أدوات البناء أيضاً.
 english.WelcomeLabel1=Your space to create
-english.WelcomeLabel2=Qalam 3.6 with the Baa language server: Arabic editing, contextual completion and flexible workspaces.%n%nInstall the Baa Developer Kit for the build tools too.
+english.WelcomeLabel2=Qalam 3.7 with the Baa language server: Arabic editing, contextual completion, a Takween project panel and flexible workspaces.%n%nInstall the Baa Developer Kit for the build tools too.
 
 [Languages]
 Name: "arabic"; MessagesFile: "compiler:Languages\Arabic.isl"
@@ -183,6 +183,9 @@ begin
   if CurUninstallStep = usPostUninstall then
   begin
     QalamRegistryRoot(Root);
-    RegDeleteKeyIncludingSubkeys(Root, QALAM_INSTALLER_KEY);
+    // The key also holds the user's settings; remove only the ownership marker.
+    RegDeleteValue(Root, QALAM_INSTALLER_KEY, 'InstallLocation');
+    RegDeleteValue(Root, QALAM_INSTALLER_KEY, 'Version');
+    RegDeleteKeyIfEmpty(Root, QALAM_INSTALLER_KEY);
   end;
 end;

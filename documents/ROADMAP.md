@@ -1,7 +1,7 @@
 # Qalam IDE - Improvement Roadmap
 
-**Date:** 2026-08-15
-**Version:** 3.6.0
+**Date:** 2026-10-07
+**Version:** 3.7.0
 **Codebase:** ~9,750 lines C++ across 67 files (Qt 6 + C++23)
 
 > **Active product direction:** Qalam is now the dedicated Baa-first IDE. The

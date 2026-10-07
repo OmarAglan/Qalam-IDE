@@ -46,6 +46,10 @@ void QalamActivityBar::setupUi()
                                RunLabel,
                                ViewType::Run,
                                true);
+    auto projectBtn = createButton(":/icons/resources/project.svg",
+                                   ":/icons/resources/project-active.svg",
+                                   ProjectLabel,
+                                   ViewType::Project);
     auto extensionsBtn = createButton(":/icons/resources/extensions.svg",
                                       ":/icons/resources/extensions-active.svg",
                                       ExtensionsLabel,
@@ -55,6 +59,7 @@ void QalamActivityBar::setupUi()
     m_topLayout->addWidget(searchBtn);
     m_topLayout->addWidget(scmBtn);
     m_topLayout->addWidget(runBtn);
+    m_topLayout->addWidget(projectBtn);
     m_topLayout->addWidget(extensionsBtn);
     
     // Bottom section - settings (pushed to bottom)

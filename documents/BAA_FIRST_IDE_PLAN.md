@@ -253,6 +253,19 @@ Acceptance:
 - Qalam never reconstructs or guesses the project graph from source files.
 - Editor analysis and build results use the same target and dependency context.
 
+Current progress (3.7.0): the «مشروع تكوين» sidebar shows targets, the active
+profile, build order, source files, include paths, and output/cache state, all
+from `takween-targets-v1` and `takween-build-plan-v1` (`تكوين خطة --جسون`).
+The active target and profile are remembered per project root and validated by
+Takween before they are saved. Build/run/test pass them as `<هدف> --نمط <نمط>`.
+Baa-LSP receives the same target through `initializationOptions.takweenTarget`
+when exactly one Takween root is open; with several roots Qalam sends none,
+because Baa-LSP accepts a single global target. Changing the target restarts
+the server. A failed compiler phase is diagnosed by `تكوين فحص`, whose
+`diagnostics-json-v1` fills the Problems panel; human build output is never
+parsed. Remaining: a test-target view and dependency packages once Takween
+reports them.
+
 ### Step 8 — Essential IDE completeness
 
 - Finish replace and project search.
@@ -267,6 +280,14 @@ creates Baa files and folders, renames validated entries while keeping open
 documents and language analysis synchronized, and confirms safe in-workspace
 deletion. Tabs provide close, close-others, and close-all actions, and Baa files
 have a dedicated explorer icon.
+
+3.7.0 adds a shortcuts page with live rebinding and conflict reporting,
+configurable analysis delay, explicit Baa-LSP path checks, atomic autosave with
+visible failure and recovery, focus outlines, and following the system
+high-contrast mode. The high-contrast overlay is partial: some component
+stylesheets still set their own colors. All settings go through
+`Constants::settings()`, and tests redirect them to a temporary INI file so a
+test run never touches the user's registry.
 
 Acceptance:
 
@@ -288,7 +309,9 @@ Acceptance:
 ## Initial Performance Budgets
 
 - Local typing/highlighting work: no visible input stall.
-- Analysis debounce: 250 ms by default and configurable later.
+- Analysis debounce: configurable in Settings (0–2000 ms). The shipped default
+  is 75 ms, below the original 250 ms budget, because Baa-LSP cancels stale
+  requests; raise it on slow machines.
 - Stale-result decision: constant time using document identity and revision.
 - Small-file diagnostic refresh: target under 750 ms after debounce on the
   supported development machines.

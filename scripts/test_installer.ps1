@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '3.6.0',
+    [string]$Version = '3.7.0',
     [string]$InstallerPath = '',
     [int]$StartupSeconds = 2
 )
@@ -48,6 +48,15 @@ $startMenuShortcut = Join-Path $env:APPDATA (
     'Microsoft\Windows\Start Menu\Programs\' + $qalamArabicName + '\' +
     $qalamArabicName + '.lnk')
 $installed = $false
+# Qalam's settings live in the marker key; uninstall must leave them alone.
+$settingSentinel = 'installerTestSetting'
+$settingsKeyExisted = Test-Path -LiteralPath $markerKey
+
+function Test-InstallerMarker {
+    if (!(Test-Path -LiteralPath $markerKey)) { return $false }
+    $names = (Get-Item -LiteralPath $markerKey).Property
+    return ($names -contains 'InstallLocation') -or ($names -contains 'Version')
+}
 
 if (-not ('QalamShortcutReader' -as [type])) {
     Add-Type -TypeDefinition @'
@@ -161,7 +170,14 @@ function Assert-OpenWithRegistration {
     }
 }
 
+if (Test-InstallerMarker) {
+    throw 'A per-user Qalam installation already exists; run this test on a clean profile.'
+}
+
 try {
+    New-Item -Path $markerKey -Force | Out-Null
+    New-ItemProperty -LiteralPath $markerKey -Name $settingSentinel -Value 'kept' `
+        -PropertyType String -Force | Out-Null
     $arguments = @(
         '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-',
         '/CURRENTUSER', "/DIR=`"$installRoot`"", "/LOG=`"$setupLog`""
@@ -294,7 +310,11 @@ try {
     }
     Wait-InstallerState 'Qalam uninstall cleanup' {
         !(Test-Path -LiteralPath $installRoot) -and
-        !(Test-Path -LiteralPath $markerKey)
+        !(Test-InstallerMarker)
+    }
+    $kept = (Get-ItemProperty -LiteralPath $markerKey -ErrorAction SilentlyContinue).$settingSentinel
+    if ($kept -ne 'kept') {
+        throw 'Qalam uninstall deleted the user settings stored beside its marker.'
     }
     foreach ($programId in @('Qalam.BaaSource', 'Qalam.BaaHeader',
                               'Qalam.NazmSource')) {
@@ -308,6 +328,15 @@ try {
     }
 }
 finally {
+    if (Test-Path -LiteralPath $markerKey) {
+        Remove-ItemProperty -LiteralPath $markerKey -Name $settingSentinel `
+            -ErrorAction SilentlyContinue
+        if (!$settingsKeyExisted -and
+            @((Get-Item -LiteralPath $markerKey).Property).Count -eq 0 -and
+            @(Get-ChildItem -LiteralPath $markerKey).Count -eq 0) {
+            Remove-Item -LiteralPath $markerKey
+        }
+    }
     if ($installed -and (Test-Path -LiteralPath $installRoot)) {
         $cleanupUninstaller = Join-Path $installRoot 'unins000.exe'
         if (Test-Path -LiteralPath $cleanupUninstaller -PathType Leaf) {
@@ -318,7 +347,7 @@ finally {
     }
 }
 
-if (Test-Path -LiteralPath $markerKey) {
+if (Test-InstallerMarker) {
     throw 'Qalam uninstaller left its ownership marker.'
 }
 Write-Output 'Qalam installer contract passed.'

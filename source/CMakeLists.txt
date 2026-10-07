@@ -82,6 +82,8 @@ add_library(qalam_core STATIC
     sidebar/QalamSearchView.cpp
     sidebar/QalamSymbolOutlineView.cpp
     sidebar/QalamSymbolOutlineView.h
+    sidebar/QalamTakweenProjectView.cpp
+    sidebar/QalamTakweenProjectView.h
     # UI Components
     ui/QalamTheme.cpp
     ui/QalamTitleBar.cpp
@@ -101,6 +103,9 @@ add_library(qalam_core STATIC
     managers/SessionSlot.h
     managers/LayoutManager.cpp
 )
+
+# The root project() version is the only place Qalam's version is written.
+target_compile_definitions(qalam_core PUBLIC QALAM_VERSION="${PROJECT_VERSION}")
 
 target_include_directories(qalam_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}

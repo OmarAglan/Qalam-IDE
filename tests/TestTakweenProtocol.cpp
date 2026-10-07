@@ -13,6 +13,8 @@ private slots:
     void rejectsInvalidBuildEvents();
     void validatesStreamOrderingAndCompletion();
     void rendersArabicProgress();
+    void parsesBuildPlanContract();
+    void rejectsInvalidBuildPlan();
 };
 
 void TestTakweenProtocol::parsesTargetsContract()
@@ -121,6 +123,89 @@ void TestTakweenProtocol::rendersArabicProgress()
     event.event = "phase_started";
     event.phase = "compiler";
     QVERIFY(TakweenProtocol::progressText(event).contains("الترجمة"));
+}
+
+namespace {
+QJsonObject validPlan()
+{
+    return QJsonObject{
+        {"schema_version", "takween-build-plan-v1"},
+        {"operation", "build"},
+        {"project", "تجربة"},
+        {"target", "تطبيق"},
+        {"profile", QJsonObject{{"name", "سريع"}, {"optimization", 2}, {"verify", false}}},
+        {"target_order", QJsonArray{"حساب", "تطبيق"}},
+        {"working_directory", "."},
+        {"source_files", QJsonArray{"././المصدر/الرئيسية.baa", "././المصدر/حساب.baa"}},
+        {"include_paths", QJsonArray{}},
+        {"argv", QJsonArray{"baa", "././المصدر/الرئيسية.baa", "-O2", "-o", "بناء/تطبيق.exe"}},
+    };
+}
+
+QByteArray planBytes(const QJsonObject &plan)
+{
+    return QJsonDocument(plan).toJson(QJsonDocument::Compact);
+}
+}
+
+void TestTakweenProtocol::parsesBuildPlanContract()
+{
+    TakweenBuildPlan plan;
+    QString error;
+    QVERIFY2(TakweenProtocol::parseBuildPlan(planBytes(validPlan()), &plan, &error),
+             qPrintable(error));
+    QCOMPARE(plan.project, QStringLiteral("تجربة"));
+    QCOMPARE(plan.target, QStringLiteral("تطبيق"));
+    QCOMPARE(plan.profileName, QStringLiteral("سريع"));
+    QCOMPARE(plan.optimization, 2);
+    QVERIFY(not plan.verify);
+    QCOMPARE(plan.targetOrder, (QStringList{"حساب", "تطبيق"}));
+    QCOMPARE(plan.sourceFiles.size(), 2);
+    QVERIFY(plan.includePaths.isEmpty());
+    QCOMPARE(plan.argv.last(), QStringLiteral("بناء/تطبيق.exe"));
+
+    // Manifest v0.1 projects report an unnamed profile.
+    QJsonObject legacy = validPlan();
+    legacy["profile"] = QJsonObject{{"name", ""}, {"optimization", 1}, {"verify", false}};
+    QVERIFY(TakweenProtocol::parseBuildPlan(planBytes(legacy), &plan, &error));
+    QVERIFY(plan.profileName.isEmpty());
+}
+
+void TestTakweenProtocol::rejectsInvalidBuildPlan()
+{
+    TakweenBuildPlan plan;
+    QString error;
+    auto rejects = [&](QJsonObject document) {
+        error.clear();
+        const bool parsed = TakweenProtocol::parseBuildPlan(planBytes(document), &plan, &error);
+        return not parsed and not error.isEmpty() and plan.target.isEmpty();
+    };
+
+    QJsonObject wrongSchema = validPlan();
+    wrongSchema["schema_version"] = "takween-build-plan-v2";
+    QVERIFY(rejects(wrongSchema));
+
+    QJsonObject badOptimization = validPlan();
+    badOptimization["profile"] = QJsonObject{{"name", "س"}, {"optimization", 3}, {"verify", true}};
+    QVERIFY(rejects(badOptimization));
+
+    QJsonObject orderWithoutTarget = validPlan();
+    orderWithoutTarget["target_order"] = QJsonArray{"تطبيق", "حساب"};
+    QVERIFY(rejects(orderWithoutTarget));
+
+    QJsonObject duplicateOrder = validPlan();
+    duplicateOrder["target_order"] = QJsonArray{"تطبيق", "تطبيق"};
+    QVERIFY(rejects(duplicateOrder));
+
+    QJsonObject noSources = validPlan();
+    noSources["source_files"] = QJsonArray{};
+    QVERIFY(rejects(noSources));
+
+    QJsonObject numericArgv = validPlan();
+    numericArgv["argv"] = QJsonArray{"baa", 2};
+    QVERIFY(rejects(numericArgv));
+
+    QVERIFY(not TakweenProtocol::parseBuildPlan("not json", &plan, &error));
 }
 
 QTEST_MAIN(TestTakweenProtocol)

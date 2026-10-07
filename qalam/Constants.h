@@ -14,7 +14,7 @@ namespace Constants {
     {
         return QSettings(QSettings::defaultFormat(), QSettings::UserScope, OrgName, AppName);
     }
-    const QString AppVersion = "3.6.0";
+    const QString AppVersion = QStringLiteral(QALAM_VERSION);
     
     // Settings Keys
     const QString SettingsKeyRecentFiles = "RecentFiles";
@@ -73,6 +73,7 @@ namespace Constants {
     const QString SearchLabel = "البحث";
     const QString SourceControlLabel = "التحكم بالمصادر";
     const QString RunLabel = "تشغيل";
+    const QString ProjectLabel = "مشروع تكوين";
     const QString ExtensionsLabel = "الإضافات";
     const QString SettingsLabel = "الإعدادات";
     const QString ProblemsLabel = "المشاكل";

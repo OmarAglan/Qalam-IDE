@@ -79,6 +79,8 @@
         <file>resources/search-active.svg</file>
         <file>resources/source-control.svg</file>
         <file>resources/source-control-active.svg</file>
+        <file>resources/project.svg</file>
+        <file>resources/project-active.svg</file>
         <file>resources/extensions.svg</file>
         <file>resources/extensions-active.svg</file>
         <file>resources/settings.svg</file>

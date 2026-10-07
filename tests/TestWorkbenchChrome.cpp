@@ -4,6 +4,7 @@
 #include "QalamMenuBar.h"
 #include "QalamPanelArea.h"
 #include "QalamSettings.h"
+#include "QalamTakweenProjectView.h"
 
 #include <QAbstractButton>
 #include <QDir>
@@ -16,6 +17,7 @@
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTreeWidget>
 
 // Workbench chrome contract: every button that shows no text carries an icon
 // and an accessible name, so no control is an unlabeled blank square for
@@ -31,6 +33,7 @@ private slots:
     void primaryMenuActionsHaveIcons();
     void menuBarShowsEveryTopLevelMenu();
     void settingsShortcutRebindsMenuAction();
+    void projectViewShowsPlannedTarget();
     void capturesSurfaces();
 
 private:
@@ -209,6 +212,64 @@ void TestWorkbenchChrome::settingsShortcutRebindsMenuAction()
     QCOMPARE(menuBar->saveAction->shortcut(), QKeySequence(QStringLiteral("Ctrl+Alt+S")));
     edit->setKeySequence(QKeySequence(QStringLiteral("Ctrl+S")));
     QCOMPARE(menuBar->saveAction->shortcut(), QKeySequence(QStringLiteral("Ctrl+S")));
+}
+
+namespace {
+QalamTakweenProjectView::Snapshot sampleProject()
+{
+    QalamTakweenProjectView::Snapshot snapshot;
+    snapshot.projectRoot = QDir::cleanPath(QDir::tempPath() + QStringLiteral("/تجربة"));
+    snapshot.targets = {
+        TakweenTarget{QStringLiteral("تطبيق"), QStringLiteral("executable"),
+                      QStringLiteral("ready"), true, true, false},
+        TakweenTarget{QStringLiteral("حساب"), QStringLiteral("library"),
+                      QStringLiteral("unsupported"), false, false, false},
+    };
+    snapshot.activeTarget = QStringLiteral("تطبيق");
+    snapshot.activeProfile = QStringLiteral("سريع");
+    snapshot.hasPlan = true;
+    snapshot.plan.operation = QStringLiteral("build");
+    snapshot.plan.project = QStringLiteral("تجربة");
+    snapshot.plan.target = QStringLiteral("تطبيق");
+    snapshot.plan.profileName = QStringLiteral("سريع");
+    snapshot.plan.optimization = 2;
+    snapshot.plan.targetOrder = {QStringLiteral("حساب"), QStringLiteral("تطبيق")};
+    snapshot.plan.workingDirectory = QStringLiteral(".");
+    snapshot.plan.sourceFiles = {QStringLiteral("././المصدر/الرئيسية.baa"),
+                                 QStringLiteral("././المصدر/حساب.baa")};
+    snapshot.plan.argv = {QStringLiteral("baa"), QStringLiteral("././المصدر/الرئيسية.baa"),
+                          QStringLiteral("-O2"), QStringLiteral("-o"),
+                          QStringLiteral("بناء/تطبيق.exe")};
+    return snapshot;
+}
+}
+
+void TestWorkbenchChrome::projectViewShowsPlannedTarget()
+{
+    auto *view = m_window->findChild<QalamTakweenProjectView *>();
+    QVERIFY(view);
+    view->setSnapshot(sampleProject());
+    auto *target = view->findChild<QComboBox *>(QStringLiteral("takweenTargetCombo"));
+    auto *profile = view->findChild<QComboBox *>(QStringLiteral("takweenProfileCombo"));
+    auto *tree = view->findChild<QTreeWidget *>(QStringLiteral("takweenProjectTree"));
+    QVERIFY(target and profile and tree);
+    QCOMPARE(target->currentData().toString(), QStringLiteral("تطبيق"));
+    QCOMPARE(profile->currentData().toString(), QStringLiteral("سريع"));
+    // Libraries are not buildable on their own, so they are not offered.
+    QCOMPARE(target->findData(QStringLiteral("حساب")), -1);
+    QVERIFY(tree->topLevelItemCount() >= 5);
+    QCOMPARE(QalamTakweenProjectView::planOutputPath(sampleProject().plan,
+                                                     sampleProject().projectRoot,
+                                                     QStringLiteral("-o")),
+             QDir(sampleProject().projectRoot).filePath(QStringLiteral("بناء/تطبيق.exe")));
+
+    if (auto *activity = m_window->findChild<QalamActivityBar *>()) {
+        activity->setCurrentView(QalamActivityBar::ViewType::Project);
+        view->setSnapshot(sampleProject());
+        tree->expandAll();
+        capture(m_window, QStringLiteral("chrome-project"));
+        activity->setCurrentView(QalamActivityBar::ViewType::Explorer);
+    }
 }
 
 void TestWorkbenchChrome::capture(QWidget *widget, const QString &name)

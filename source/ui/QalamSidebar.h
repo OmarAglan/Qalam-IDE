@@ -8,6 +8,7 @@
 
 class QalamExplorerView;
 class QalamSearchView;
+class QalamTakweenProjectView;
 
 /**
  * @brief Sidebar container that shows different views based on Activity Bar selection
@@ -30,6 +31,7 @@ public:
     
     QalamExplorerView* explorerView() const { return m_explorerView; }
     QalamSearchView* searchView() const { return m_searchView; }
+    QalamTakweenProjectView* projectView() const { return m_projectView; }
 
 signals:
     void fileSelected(const QString &filePath);
@@ -63,5 +65,6 @@ private:
     QalamExplorerView *m_explorerView = nullptr;
     QalamSearchView *m_searchView = nullptr;
     QWidget *m_sourceControlView = nullptr;
+    QalamTakweenProjectView *m_projectView = nullptr;
     QWidget *m_extensionsView = nullptr;
 };

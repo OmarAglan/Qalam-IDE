@@ -11,6 +11,7 @@
 
 #include "QalamActivityBar.h"
 #include <QPointer>
+#include <QSet>
 #include <QPoint>
 #include <QStringList>
 #include <QVector>
@@ -151,6 +152,13 @@ private:
                                           int documentVersion) const;
     QString lineTextForLocation(const BaaLocation &location) const;
     void runTakweenProjectCommand(const QString &command);
+    QString activeTakweenProjectRoot() const;
+    void showTakweenProject();
+    void refreshTakweenProjectView(bool force);
+    void applyTakweenSelection(const QString &projectRoot,
+                               const QString &target,
+                               const QString &profile);
+    void handleTakweenDiagnostics(const QString &projectRoot, const QByteArray &json);
     void refreshToolActions();
     void scheduleSessionSave();
     void saveSessionCheckpoint();
@@ -186,4 +194,7 @@ private:
     QPointer<QalamEditor> m_lastConnectedEditor; // Track editor for cursor position disconnect
     QTimer *m_sessionSaveTimer{};
     bool m_sessionSavedCleanly{};
+    // Takween roots whose remembered target was already handed to Baa-LSP.
+    QSet<QString> m_takweenTargetRootsSent;
+    QString m_takweenViewRoot;
 };

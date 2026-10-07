@@ -14,6 +14,7 @@
 #include "QalamBreadcrumb.h"
 #include "QalamEditorWorkspace.h"
 #include "QalamExplorerView.h"
+#include "QalamTakweenProjectView.h"
 #include "WorkspaceFileService.h"
 
 #include <QVBoxLayout>
@@ -723,7 +724,11 @@ void Qalam::connectSignals()
             m_diagnosticsModel->addDiagnostics(runnerDiagnostics);
         }
         updateProblemsStatusBar();
+        // Builds create the lock, manifest and cache the project view reports.
+        refreshTakweenProjectView(true);
     });
+    connect(m_buildManager, &BuildManager::takweenDiagnosticsReady,
+            this, &Qalam::handleTakweenDiagnostics);
     connect(m_buildManager, &BuildManager::toolingProgress, this, [this](const QString &text) {
         if (m_layoutManager and m_layoutManager->statusBar()) {
             m_layoutManager->statusBar()->showMessage(text, 2500);
@@ -821,8 +826,17 @@ void Qalam::connectSignals()
         } else {
             m_layoutManager->sidebar()->show();
             m_layoutManager->sidebar()->setCurrentView(view);
+            if (view == QalamActivityBar::ViewType::Project) refreshTakweenProjectView(true);
         }
     });
+    if (QalamTakweenProjectView *projectView = sidebar->projectView()) {
+        connect(projectView, &QalamTakweenProjectView::selectionChangeRequested, this,
+                [this, projectView](const QString &target, const QString &profile) {
+            applyTakweenSelection(projectView->projectRoot(), target, profile);
+        });
+        connect(projectView, &QalamTakweenProjectView::refreshRequested,
+                this, [this]() { refreshTakweenProjectView(true); });
+    }
 
     connect(sidebar, &QalamSidebar::fileSelected, this, &Qalam::onSidebarFileSelected);
     connect(sidebar, &QalamSidebar::openFolderRequested, this, &Qalam::handleOpenFolderMenu);
@@ -1236,6 +1250,7 @@ void Qalam::onCurrentTabChanged()
     updateWindowTitle();
     updateCursorPosition();
     refreshToolActions();
+    refreshTakweenProjectView(false);
 
     QalamEditor* editor = currentEditor();
 
@@ -1451,6 +1466,8 @@ void Qalam::runTakweenProjectCommand(const QString &command)
 
     if (not ensureToolOperationAvailable(command, editor->currentFilePath())) return;
 
+    const QString projectRoot = BuildManager::findTakweenProjectRoot(editor->currentFilePath());
+    const BuildManager::TakweenSelection selection = BuildManager::takweenSelection(projectRoot);
     QString targetName;
     const QString normalized = command.trimmed().toLower();
     if (normalized != "clean") {
@@ -1467,7 +1484,13 @@ void Qalam::runTakweenProjectCommand(const QString &command)
             return;
         }
 
-        if (targets.size() == 1) {
+        const bool rememberedFits = std::any_of(
+            targets.cbegin(), targets.cend(), [&selection](const TakweenTarget &target) {
+                return target.name == selection.target;
+            });
+        if (not selection.target.isEmpty() and rememberedFits) {
+            targetName = selection.target;
+        } else if (targets.size() == 1) {
             targetName = targets.first().name;
         } else {
             QStringList names;
@@ -1480,6 +1503,17 @@ void Qalam::runTakweenProjectCommand(const QString &command)
             if (normalized != "test" or selected != "كل أهداف الاختبار") {
                 targetName = selected;
             }
+            // Build and run share one active target; remember it so the next
+            // run, Baa-LSP and the project view all agree without asking.
+            if (normalized != "test") {
+                BuildManager::setTakweenSelection(projectRoot, {targetName, selection.profile});
+                if (m_languageClient) m_languageClient->setTakweenTarget(projectRoot, targetName);
+                if (m_layoutManager and m_layoutManager->statusBar()) {
+                    m_layoutManager->statusBar()->showMessage(
+                        QStringLiteral("صار «%1» الهدف النشط؛ غيّره من لوحة مشروع تكوين.")
+                            .arg(targetName), 5000);
+                }
+            }
         }
     }
 
@@ -1491,13 +1525,114 @@ void Qalam::runTakweenProjectCommand(const QString &command)
     panelArea->show();
     panelArea->setCollapsed(false);
 
+    const QString profile = normalized == "clean" ? QString() : selection.profile;
     if (not m_buildManager->runTakweenCommand(
-            editor->currentFilePath(), command, panelArea->terminal(), targetName)) {
+            editor->currentFilePath(), command, panelArea->terminal(), targetName, profile)) {
         QMessageBox::warning(
             this,
             "مشروع تكوين",
             "لم يُعثر على مشروع.تكوين أو على برنامج تكوين القابل للتنفيذ.");
     }
+}
+
+QString Qalam::activeTakweenProjectRoot() const
+{
+    if (const auto *editor = qobject_cast<QalamEditor*>(tabWidget->currentWidget())) {
+        const QString root = BuildManager::findTakweenProjectRoot(editor->currentFilePath());
+        if (not editor->currentFilePath().isEmpty() and not root.isEmpty()) return root;
+    }
+    for (const QString &folder : folderPaths) {
+        if (QFileInfo(QDir(folder).filePath(QStringLiteral("مشروع.تكوين"))).isFile())
+            return QDir::cleanPath(folder);
+    }
+    return QString();
+}
+
+void Qalam::showTakweenProject()
+{
+    if (not m_layoutManager or not m_layoutManager->sidebar()) return;
+    m_layoutManager->sidebar()->show();
+    m_layoutManager->sidebar()->setCurrentView(QalamActivityBar::ViewType::Project);
+    if (m_layoutManager->activityBar()) {
+        m_layoutManager->activityBar()->setCurrentView(QalamActivityBar::ViewType::Project);
+    }
+    refreshTakweenProjectView(true);
+}
+
+void Qalam::refreshTakweenProjectView(bool force)
+{
+    QalamSidebar *sidebar = m_layoutManager ? m_layoutManager->sidebar() : nullptr;
+    QalamTakweenProjectView *view = sidebar ? sidebar->projectView() : nullptr;
+    // Each refresh runs Takween twice, so only do it for a visible view.
+    if (not view or not view->isVisible()) return;
+
+    const QString root = activeTakweenProjectRoot();
+    if (root.isEmpty()) {
+        m_takweenViewRoot.clear();
+        view->showMessage(QStringLiteral("افتح ملفًا داخل مشروع تكوين لعرض أهدافه وخطة بنائه."));
+        return;
+    }
+    if (not force and root == m_takweenViewRoot) return;
+    if (BuildManager::resolveTakweenProgram().isEmpty()) {
+        m_takweenViewRoot.clear();
+        view->showMessage(QStringLiteral(
+            "لم يُعثر على تكوين. ثبّته في PATH أو اضبط مساره من الإعدادات."));
+        return;
+    }
+
+    m_takweenViewRoot = root;
+    const BuildManager::TakweenSelection selection = BuildManager::takweenSelection(root);
+    QalamTakweenProjectView::Snapshot snapshot;
+    snapshot.projectRoot = root;
+    snapshot.activeTarget = selection.target;
+    snapshot.activeProfile = selection.profile;
+    snapshot.targets = m_buildManager->discoverTakweenTargets(root, &snapshot.targetsError);
+    if (snapshot.targetsError.isEmpty()) {
+        snapshot.hasPlan = m_buildManager->loadTakweenBuildPlan(
+            root, selection, &snapshot.plan, &snapshot.planError);
+    }
+    view->setSnapshot(snapshot);
+}
+
+void Qalam::applyTakweenSelection(const QString &projectRoot,
+                                  const QString &target,
+                                  const QString &profile)
+{
+    if (projectRoot.isEmpty()) return;
+    // Takween validates the pair; nothing is remembered that it would reject.
+    TakweenBuildPlan plan;
+    QString error;
+    if (not m_buildManager->loadTakweenBuildPlan(projectRoot, {target, profile}, &plan, &error)) {
+        QMessageBox::warning(this, QStringLiteral("مشروع تكوين"),
+                             QStringLiteral("رفض تكوين هذا الاختيار:\n%1").arg(error));
+        refreshTakweenProjectView(true);
+        return;
+    }
+    BuildManager::setTakweenSelection(projectRoot, {target, profile});
+    if (m_languageClient) m_languageClient->setTakweenTarget(projectRoot, target);
+    refreshTakweenProjectView(true);
+    if (m_layoutManager and m_layoutManager->statusBar()) {
+        m_layoutManager->statusBar()->showMessage(
+            QStringLiteral("هدف تكوين النشط: %1 — النمط: %2")
+                .arg(plan.target,
+                     plan.profileName.isEmpty() ? QStringLiteral("افتراضي البيان")
+                                                : plan.profileName),
+            4000);
+    }
+}
+
+void Qalam::handleTakweenDiagnostics(const QString &projectRoot, const QByteArray &json)
+{
+    if (not m_diagnosticsModel) return;
+    // Only the structured contract is accepted; anything else stays in the terminal.
+    const QJsonDocument document = QJsonDocument::fromJson(json);
+    if (not document.isObject() or
+        document.object().value(QStringLiteral("schema_version")).toString() !=
+            QStringLiteral("diagnostics-json-v1")) {
+        return;
+    }
+    m_diagnosticsModel->addDiagnostics(
+        DiagnosticParser::parseCompilerOutput(QString::fromUtf8(json), QString(), projectRoot));
 }
 
 //----------------
@@ -2434,6 +2569,7 @@ bool Qalam::runCommandById(const QString &commandId)
         return true;
     }
     if (commandId == "project.clean") { cleanTakweenProject(); return true; }
+    if (commandId == "project.view") { showTakweenProject(); return true; }
     if (commandId == "quick.open") { showQuickOpen(); return true; }
     if (commandId == "go.line") { goToLine(); return true; }
     if (commandId == "settings.open") { openSettings(); return true; }
@@ -3097,6 +3233,11 @@ void Qalam::scheduleEditorAnalysis(QalamEditor *editor)
 
     const QString projectRoot =
         BuildManager::findTakweenProjectRoot(normalizedPath);
+    if (not projectRoot.isEmpty() and not m_takweenTargetRootsSent.contains(projectRoot)) {
+        m_takweenTargetRootsSent.insert(projectRoot);
+        m_languageClient->setTakweenTarget(
+            projectRoot, BuildManager::takweenSelection(projectRoot).target);
+    }
     const QString workspaceRoot = projectRoot.isEmpty()
         ? workspaceRootForPath(normalizedPath) : projectRoot;
     const int previousVersion =

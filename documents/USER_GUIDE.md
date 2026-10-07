@@ -115,6 +115,17 @@ close it, close the other tabs, or close all tabs.
 The **المخطط** section below the files shows the hierarchical symbols in the
 current Baa document. Its results follow the current unsaved document version.
 
+### Takween Project Panel
+
+The cube icon in the activity bar opens **مشروع تكوين** for the project that
+owns the current file. Choose the active **target** and **profile** there (or
+from the command palette: «تكوين: عرض المشروع والهدف النشط»). Qalam asks
+Takween to validate the choice, remembers it per project, and uses it for
+build, run, and test and for Baa-LSP analysis. The panel lists the build order,
+source files (double-click to open), include paths, and whether the lock file,
+output, and build cache exist. When a project build fails in the compiler,
+the Problems panel is filled from `تكوين فحص`.
+
 ### Project Symbols (`Ctrl+T`)
 Press `Ctrl+T` after the Baa language server is ready. Qalam loads the
 compiler-owned workspace index once and filters it locally while you type
@@ -296,6 +307,11 @@ After expanding, press **Tab** to jump between placeholders (e.g., function name
 - Open **Settings → الأدوات**, clear stale overrides, and choose
   **إعادة فحص الأدوات**.
 - Open a new terminal after installation so it receives the updated `PATH`.
+
+### Settings location
+Qalam stores settings in the registry under
+`HKEY_CURRENT_USER\Software\BaaEcosystem\Qalam` on Windows (an INI file on
+Linux). Uninstalling Qalam 3.7.0 or later keeps them.
 
 ### Auto-save files
 Backup files use the `.~` suffix (e.g., `برنامج.باء.~`). These are automatically cleaned up when you save or close the file.

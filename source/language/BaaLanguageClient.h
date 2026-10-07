@@ -84,6 +84,11 @@ public:
     void setServerProgram(const QString &program);
     void setCompilerProgram(const QString &program);
     void setTakweenProgram(const QString &program);
+    /// Remember the active Takween target for a project root. Baa-LSP accepts
+    /// one target per server, so it is only sent while that project is the
+    /// sole Takween workspace; a change restarts a running server.
+    void setTakweenTarget(const QString &projectRoot, const QString &target);
+    QString effectiveTakweenTarget() const;
     void setChangeDebounceInterval(int milliseconds);
     void setRestartPolicy(int maximumAttempts,
                           int initialDelayMilliseconds,
@@ -328,10 +333,14 @@ private:
     BaaWorkspaceEdit parseWorkspaceEdit(const QJsonValue &result,
                                         bool *valid) const;
     void handleProcessFinished(int exitCode, QProcess::ExitStatus status);
+    void reconcileTakweenTarget();
 
     QString m_serverProgram;
     QString m_compilerProgram;
     QString m_takweenProgram;
+    QHash<QString, QString> m_takweenTargets;
+    QString m_initializedTakweenTarget;
+    bool m_restartAfterStop{};
     State m_state{State::Stopped};
     QPointer<QProcess> m_process;
     LspMessageFramer m_framer;

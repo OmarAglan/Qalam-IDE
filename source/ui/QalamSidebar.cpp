@@ -2,6 +2,7 @@
 #include "QalamTheme.h"
 #include "../sidebar/QalamExplorerView.h"
 #include "../sidebar/QalamSearchView.h"
+#include "../sidebar/QalamTakweenProjectView.h"
 #include "Constants.h"
 
 QalamSidebar::QalamSidebar(QWidget *parent)
@@ -50,11 +51,13 @@ void QalamSidebar::setupUi()
     m_searchView = new QalamSearchView();
     m_sourceControlView = createPlaceholderView("قيد التطوير");
     m_extensionsView = createPlaceholderView("قيد التطوير");
+    m_projectView = new QalamTakweenProjectView();
     
     m_stackedWidget->addWidget(m_explorerView);  // Index 0
     m_stackedWidget->addWidget(m_searchView);    // Index 1
     m_stackedWidget->addWidget(m_sourceControlView); // Index 2
     m_stackedWidget->addWidget(m_extensionsView);    // Index 3
+    m_stackedWidget->addWidget(m_projectView);       // Index 4
     
     m_mainLayout->addWidget(m_stackedWidget, 1);
     
@@ -82,6 +85,8 @@ void QalamSidebar::setupUi()
             this, &QalamSidebar::searchCancelled);
     connect(m_searchView, &QalamSearchView::replaceRequested,
             this, &QalamSidebar::replaceRequested);
+    connect(m_projectView, &QalamTakweenProjectView::fileActivated,
+            this, &QalamSidebar::fileSelected);
     connect(m_searchView, &QalamSearchView::resultClicked, this, [this](const QString &path, int, int) {
         emit fileSelected(path);
     });
@@ -109,6 +114,9 @@ void QalamSidebar::setCurrentView(QalamActivityBar::ViewType view)
         case QalamActivityBar::ViewType::Extensions:
             m_stackedWidget->setCurrentWidget(m_extensionsView);
             break;
+        case QalamActivityBar::ViewType::Project:
+            m_stackedWidget->setCurrentWidget(m_projectView);
+            break;
         case QalamActivityBar::ViewType::Settings:
             // Settings opens a dialog, doesn't change sidebar
             break;
@@ -131,6 +139,9 @@ void QalamSidebar::updateHeader()
             break;
         case QalamActivityBar::ViewType::Extensions:
             m_headerTitle->setText(Constants::ExtensionsLabel.toUpper());
+            break;
+        case QalamActivityBar::ViewType::Project:
+            m_headerTitle->setText(Constants::ProjectLabel);
             break;
         default:
             break;

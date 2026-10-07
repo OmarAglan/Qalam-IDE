@@ -10,7 +10,8 @@
  * 
  * Uses a mirrored VS Code placement on the RIGHT side of the workbench for
  * Arabic/RTL users.
- * Contains icon buttons for: Explorer, Search, Source Control, Run, Extensions, Settings.
+ * Contains icon buttons for: Explorer, Search, Source Control, Run, Project,
+ * Extensions, Settings.
  * Settings button is pushed to the bottom.
  */
 class QalamActivityBar : public QWidget
@@ -23,6 +24,7 @@ public:
         Search,
         SourceControl,
         Run,
+        Project,
         Extensions,
         Settings,
         None
