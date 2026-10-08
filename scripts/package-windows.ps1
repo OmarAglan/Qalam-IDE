@@ -19,6 +19,10 @@ $ErrorActionPreference = 'Stop'
 $nazmArabicExecutableName =
     (-join [char[]](0x0646, 0x0638, 0x0645)) + '.exe'
 Set-Location (Split-Path -Parent $PSScriptRoot)
+# Set-Location does not move the .NET working directory, which [IO.File]
+# resolves relative paths against; keep them equal so a caller in another
+# directory (the Developer Kit) packages into this repository.
+[Environment]::CurrentDirectory = (Get-Location).ProviderPath
 
 function Get-GccUnicodePathMode {
     param(
