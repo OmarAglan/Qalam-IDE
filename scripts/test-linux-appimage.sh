@@ -78,7 +78,7 @@ while IFS= read -r -d '' binary; do
 done < <(find "$bundle/usr/bin" "$bundle/usr/lib" "$bundle/usr/plugins" \
   -type f \( -perm -u+x -o -name '*.so*' \) -print0)
 outside_qt="$(env -u LD_LIBRARY_PATH ldd "$bundle/usr/bin/Qalam" |
-  grep 'libQt6' | grep -vF "$bundle/usr/lib/" || true)"
+  grep 'libQt6' | grep -vF "=> $bundle/usr/" || true)"
 [[ -z "$outside_qt" ]] || fail "Qalam resolves Qt outside the AppImage:"$'\n'"$outside_qt"
 
 echo "== internal Baa-LSP handshake"
