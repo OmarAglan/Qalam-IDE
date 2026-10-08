@@ -47,6 +47,7 @@ xvfb_pid=""
 qalam_pid=""
 cleanup() {
   [[ -n "$qalam_pid" ]] && kill "$qalam_pid" 2>/dev/null || true
+  pkill -KILL -f '/usr/bin/baa-lsp' 2>/dev/null || true
   [[ -n "$xvfb_pid" ]] && kill "$xvfb_pid" 2>/dev/null || true
   rm -rf "$work"
 }
@@ -127,8 +128,19 @@ done
 echo "window $window: $(xdotool getwindowname "$window")"
 
 # Stop Qalam itself, as a session logout would; the AppImage runtime waits for
-# it and then removes its extraction.
-pkill -TERM -f '/usr/bin/Qalam' || true
+# it and then removes its extraction. Qalam runs as .../AppRun, so take its pid
+# from the window rather than matching a command line.
+app_pid="$(xdotool getwindowpid "$window" 2>/dev/null || true)"
+[[ -n "$app_pid" ]] || fail "Qalam's window does not report its process"
+kill -TERM "$app_pid"
+for _ in $(seq 150); do
+  kill -0 "$qalam_pid" 2>/dev/null || break
+  sleep 0.1
+done
+if kill -0 "$qalam_pid" 2>/dev/null; then
+  cat "$work/qalam.log" >&2
+  fail "Qalam did not exit within 15 seconds of SIGTERM"
+fi
 wait "$qalam_pid" 2>/dev/null || true
 qalam_pid=""
 for _ in $(seq 100); do
