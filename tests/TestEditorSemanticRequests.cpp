@@ -2,6 +2,7 @@
 #include "QalamDocumentModel.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QImage>
 #include <QKeyEvent>
 #include <QSignalSpy>
