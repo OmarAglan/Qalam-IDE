@@ -117,6 +117,7 @@ Qt Creator users can open the root `CMakeLists.txt` and select a Qt 6 kit. CMake
 - [Takween integration](documents/TAKWEEN_INTEGRATION.md)
 - [Internal architecture](documents/INTERNALS.md)
 - [Standalone Windows and Linux packages](documents/INSTALLER.md)
+- [Package visual review checklist](documents/VISUAL_REVIEW.md)
 - [Deployment and packaging](documents/deployment.md)
 - [Branding assets](documents/BRANDING.md)
 - [Roadmap](documents/ROADMAP.md)

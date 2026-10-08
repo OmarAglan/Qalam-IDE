@@ -414,7 +414,8 @@ the portable-linker candidate requires a new green CI receipt.
   [run 37790641394](https://github.com/OmarAglan/Qalam-IDE/actions/runs/37790641394)
   at commit `68632034da5fbc8c5d9e8f496cc3796067a3b80d`.
 - [ ] 7.3.7 Manual visual review of the installed Windows and Linux packages
-  (RTL layout, Arabic shaping, terminal panel, themes, high DPI)
+  (RTL layout, Arabic shaping, terminal panel, themes, high DPI) using
+  [the visual review checklist](VISUAL_REVIEW.md)
 
 ---
 
