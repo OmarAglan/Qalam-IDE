@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Qalam
+Name[ar]=قلم
+GenericName=Baa IDE
+GenericName[ar]=بيئة تطوير باء
+Comment=Arabic-first IDE for the Baa programming language
+Comment[ar]=بيئة تطوير عربية أولاً للغة باء
+Exec=Qalam %f
+Icon=qalam
+Terminal=false
+Categories=Development;IDE;TextEditor;
+MimeType=text/x-baa;text/x-baa-header;text/x-nazm;
+Keywords=Baa;Arabic;IDE;باء;قلم;

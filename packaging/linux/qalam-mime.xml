@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The same source types the Windows installer registers for "Open with". -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-baa">
+    <sub-class-of type="text/plain"/>
+    <comment>Baa source file</comment>
+    <comment xml:lang="ar">ملف مصدر باء</comment>
+    <glob pattern="*.باء"/>
+    <glob pattern="*.baa"/>
+  </mime-type>
+  <mime-type type="text/x-baa-header">
+    <sub-class-of type="text/plain"/>
+    <comment>Baa header file</comment>
+    <comment xml:lang="ar">ملف رأس باء</comment>
+    <glob pattern="*.رأسباء"/>
+    <glob pattern="*.baahd"/>
+  </mime-type>
+  <mime-type type="text/x-nazm">
+    <sub-class-of type="text/plain"/>
+    <comment>Nazm assembly source file</comment>
+    <comment xml:lang="ar">ملف مصدر نظم</comment>
+    <glob pattern="*.نظم"/>
+  </mime-type>
+</mime-info>

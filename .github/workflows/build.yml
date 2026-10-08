@@ -120,3 +120,21 @@ jobs:
         with:
           name: Qalam-linux-x86_64
           path: dist/Qalam-linux-x86_64.tar.gz
+      - name: Package standalone Qalam AppImage with internal Baa-LSP
+        run: |
+          ./scripts/package-linux.sh \
+            --build-dir build/linux-release \
+            --baa-lsp ecosystem/Baa-LSP/build/baa-lsp \
+            --qt-dir "$QALAM_QT_DIR" \
+            --output-dir dist/appimage
+      # A fresh container has no Qt and only a desktop's baseline libraries, so
+      # a pass means the AppImage carries everything else it needs.
+      - name: Verify the AppImage on a clean Ubuntu 24.04 without Qt
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work ubuntu:24.04 \
+            bash scripts/test-linux-appimage.sh --install-desktop-baseline \
+              dist/appimage/Qalam-*-x86_64.AppImage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Qalam-AppImage-x86_64
+          path: dist/appimage/
