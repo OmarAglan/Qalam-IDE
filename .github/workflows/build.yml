@@ -61,13 +61,19 @@ jobs:
           repository: OmarAglan/Nazm
           ref: 42380994625f142fbcfdff92421da2d3f1e8df2f
           path: ecosystem/Nazm
+      # The xcb and xkbcommon-x11 runtime libraries are what Qt's xcb platform
+      # plugin links; the AppImage bundles them from here.
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             build-essential cmake \
             libgl1-mesa-dev libxkbcommon-dev libxcb-cursor0 \
-            libxcb-cursor-dev libxcb-xinerama0 libxcb-xinerama0-dev
+            libxcb-cursor-dev libxcb-xinerama0 libxcb-xinerama0-dev \
+            libxkbcommon-x11-0 libx11-xcb1 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-render0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcb-xinput0 libxcb-util1
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
