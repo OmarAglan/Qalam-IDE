@@ -62,7 +62,7 @@ for required in \
   usr/lib/libQt6Core.so.6 usr/lib/libQt6Widgets.so.6 \
   usr/plugins/platforms/libqxcb.so \
   usr/share/mime/packages/qalam.xml \
-  usr/share/licenses/qalam/QWindowKit-LICENSE.txt \
+  usr/share/licenses/qalam/Qt-NOTICE.txt \
   qalam.desktop qalam.png; do
   [[ -e "$bundle/$required" ]] || fail "AppImage is missing $required"
 done

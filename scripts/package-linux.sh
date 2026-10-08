@@ -103,19 +103,9 @@ export PATH="$tools_dir:$PATH"
 
 install -Dm644 "$root/packaging/linux/qalam-mime.xml" \
   "$appdir/usr/share/mime/packages/qalam.xml"
+# QWindowKit is Windows-only (see CMakeLists.txt), so only Qt's notice applies.
 licenses="$appdir/usr/share/licenses/qalam"
 mkdir -p "$licenses"
-window_kit_license="$build_dir/_deps/qwindowkit-src/LICENSE"
-[[ -f "$window_kit_license" ]] || {
-  echo "QWindowKit license missing from the selected build: $window_kit_license" >&2
-  exit 1
-}
-cp "$window_kit_license" "$licenses/QWindowKit-LICENSE.txt"
-printf '%s\n' \
-  'QWindowKit 1.5.0, commit 35e88f3655720ed0537c7dd1dde243bf4a70c94c' \
-  'https://github.com/stdware/qwindowkit' \
-  'Statically linked into Qalam; upstream source is unmodified.' \
-  > "$licenses/QWindowKit-NOTICE.txt"
 printf '%s\n' \
   "Qt $("$QMAKE" -query QT_VERSION) is used under the GNU LGPL v3." \
   'Its libraries are dynamically linked from usr/lib and usr/plugins and' \
