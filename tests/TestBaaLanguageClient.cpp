@@ -166,7 +166,7 @@ void TestBaaLanguageClient::respectsCompletionResolveCapability()
 
 void TestBaaLanguageClient::synchronizesDocumentsAndRejectsStaleDiagnostics()
 {
-    QTemporaryDir workspace(QStringLiteral("qalam-lsp-مسار-XXXXXX"));
+    QTemporaryDir workspace(QDir::temp().filePath(QStringLiteral("qalam-lsp-مسار-XXXXXX")));
     QVERIFY(workspace.isValid());
     const QString filePath = QDir(workspace.path()).filePath(QStringLiteral("رئيسي.baa"));
 
@@ -615,7 +615,7 @@ void TestBaaLanguageClient::rejectsNonBaaDocuments()
 
 void TestBaaLanguageClient::restartsAfterUnexpectedExitAndReopensDocuments()
 {
-    QTemporaryDir workspace(QStringLiteral("qalam-lsp-restart-XXXXXX"));
+    QTemporaryDir workspace(QDir::temp().filePath(QStringLiteral("qalam-lsp-restart-XXXXXX")));
     QVERIFY(workspace.isValid());
     const QString filePath =
         QDir(workspace.path()).filePath(QStringLiteral("رئيسي.baa"));
@@ -674,7 +674,7 @@ void TestBaaLanguageClient::restartsAfterUnexpectedExitAndReopensDocuments()
 
 void TestBaaLanguageClient::stopsRestartingAfterTheConfiguredLimit()
 {
-    QTemporaryDir workspace(QStringLiteral("qalam-lsp-limit-XXXXXX"));
+    QTemporaryDir workspace(QDir::temp().filePath(QStringLiteral("qalam-lsp-limit-XXXXXX")));
     QVERIFY(workspace.isValid());
     const QString filePath =
         QDir(workspace.path()).filePath(QStringLiteral("رئيسي.baa"));
@@ -718,7 +718,7 @@ void TestBaaLanguageClient::stopsRestartingAfterTheConfiguredLimit()
 
 void TestBaaLanguageClient::publishesWorkspaceFolderAndManifestChanges()
 {
-    QTemporaryDir temporary(QStringLiteral("qalam-lsp-workspaces-XXXXXX"));
+    QTemporaryDir temporary(QDir::temp().filePath(QStringLiteral("qalam-lsp-workspaces-XXXXXX")));
     QVERIFY(temporary.isValid());
     const QString firstRoot = QDir(temporary.path()).filePath(
         QStringLiteral("مشروع أول"));
@@ -826,7 +826,7 @@ void TestBaaLanguageClient::publishesWorkspaceFolderAndManifestChanges()
 
 void TestBaaLanguageClient::publishesConfiguredWorkspaceRootsBeforeDocumentsOpen()
 {
-    QTemporaryDir temporary(QStringLiteral("qalam-lsp-configured-roots-XXXXXX"));
+    QTemporaryDir temporary(QDir::temp().filePath(QStringLiteral("qalam-lsp-configured-roots-XXXXXX")));
     QVERIFY(temporary.isValid());
     const QString firstRoot = QDir(temporary.path()).filePath(
         QStringLiteral("جذر أول"));
@@ -872,7 +872,7 @@ void TestBaaLanguageClient::publishesConfiguredWorkspaceRootsBeforeDocumentsOpen
 
 void TestBaaLanguageClient::sendsActiveTakweenTargetOnlyForSoleProject()
 {
-    QTemporaryDir temporary(QStringLiteral("qalam-lsp-target-XXXXXX"));
+    QTemporaryDir temporary(QDir::temp().filePath(QStringLiteral("qalam-lsp-target-XXXXXX")));
     QVERIFY(temporary.isValid());
     const QString projectRoot = QDir(temporary.path()).filePath(QStringLiteral("تطبيقي"));
     const QString otherRoot = QDir(temporary.path()).filePath(QStringLiteral("آخر"));

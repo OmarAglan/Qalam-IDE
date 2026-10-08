@@ -221,7 +221,7 @@ void TestEditorSemanticRequests::keepsOrdinaryCompletionsOutOfIncludePaths()
 
 void TestEditorSemanticRequests::requestsSignaturesFromArabicEditingTriggers()
 {
-    QTemporaryDir workspace(QStringLiteral("qalam-semantic-مسار-XXXXXX"));
+    QTemporaryDir workspace(QDir::temp().filePath(QStringLiteral("qalam-semantic-مسار-XXXXXX")));
     QVERIFY(workspace.isValid());
 
     QalamEditor editor;
