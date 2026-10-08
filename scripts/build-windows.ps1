@@ -10,7 +10,11 @@ param(
 
     [switch]$SkipDeployAfterBuild,
 
-    [switch]$BuildTests
+    [switch]$BuildTests,
+
+    # A bare --parallel gives MinGW make an unbounded -j and exhausts memory on
+    # CI runners; default to one job per processor.
+    [int]$Jobs = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,6 +22,10 @@ Set-Location (Split-Path -Parent $PSScriptRoot)
 
 $script:NormalizedNativePath = $null
 $script:CMakeLauncher = $null
+
+if ($Jobs -le 0) {
+    $Jobs = if ($env:QALAM_BUILD_JOBS) { [int]$env:QALAM_BUILD_JOBS } else { [Environment]::ProcessorCount }
+}
 
 if (!$BuildDir) {
     $BuildDir = "build/windows-$($Configuration.ToLowerInvariant())"
@@ -151,12 +159,12 @@ Invoke-Native -FilePath $CMakeProgram -Arguments @(
     "-DQALAM_BUILD_TESTS=$testsFlag"
 )
 
-Invoke-Native -FilePath $CMakeProgram -Arguments @('--build', $BuildDir, '--target', 'Qalam', '--parallel')
+Invoke-Native -FilePath $CMakeProgram -Arguments @('--build', $BuildDir, '--target', 'Qalam', '--parallel', "$Jobs")
 
 if ($BuildTests) {
     # Build the complete configured test graph so newly registered CTest targets
     # cannot be skipped by a stale hard-coded executable list.
-    Invoke-Native -FilePath $CMakeProgram -Arguments @('--build', $BuildDir, '--parallel')
+    Invoke-Native -FilePath $CMakeProgram -Arguments @('--build', $BuildDir, '--parallel', "$Jobs")
     Invoke-Native -FilePath $CTestProgram -Arguments @('--test-dir', $BuildDir, '--output-on-failure')
 }
 
