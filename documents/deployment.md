@@ -327,8 +327,13 @@ The Windows job builds the pinned internal Baa-LSP, creates the standalone
 Qalam installer, verifies its checksum, performs a silent per-user lifecycle,
 launches a real native Qalam window, checks Baa-LSP, proves `PATH` is unchanged,
 and uploads the installer plus its checksum. It does not check out or package
-Baa, Takween, or Nazm. The Linux archive remains a developer integration
-artifact until a native Linux installer contract is defined.
+Baa, Takween, or Nazm. The Linux job additionally packages a standalone
+AppImage under the same contract (Qalam, Qt, and the internal Baa-LSP only) and
+verifies it in a fresh Ubuntu 24.04 container without Qt: checksum, contents
+extracted below an Arabic path with spaces, no bundled external tools, no
+unresolved libraries, a Baa-LSP `initialize` handshake, a native window under
+Xvfb with the internal server running, and no server left after Qalam exits.
+The Linux developer archive with Baa and Nazm remains an integration artifact.
 
 ---
 

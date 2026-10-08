@@ -94,6 +94,13 @@ With Qt already installed:
 ./scripts/build-linux.sh Release
 ```
 
+The standalone Linux package is an AppImage with the same contract as the
+Windows installer: Qalam, its Qt runtime, and the internal Baa-LSP only.
+
+```sh
+./scripts/package-linux.sh --build-dir build/linux-release   --baa-lsp ../Baa-LSP/build/baa-lsp --qt-dir ~/Qt/6.10.2/gcc_64
+```
+
 ### macOS
 
 ```sh
@@ -109,7 +116,7 @@ Qt Creator users can open the root `CMakeLists.txt` and select a Qt 6 kit. CMake
 - [Baa-LSP integration](documents/BAA_LSP_INTEGRATION_AR.md)
 - [Takween integration](documents/TAKWEEN_INTEGRATION.md)
 - [Internal architecture](documents/INTERNALS.md)
-- [Windows installer](documents/INSTALLER.md)
+- [Standalone Windows and Linux packages](documents/INSTALLER.md)
 - [Deployment and packaging](documents/deployment.md)
 - [Branding assets](documents/BRANDING.md)
 - [Roadmap](documents/ROADMAP.md)

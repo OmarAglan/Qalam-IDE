@@ -405,6 +405,16 @@ the portable-linker candidate requires a new green CI receipt.
   published. The admitted local archive is 227.59 MiB with SHA-256
   `B995799E754FAB04633BAA95F8ACFD1216CD10BB338DD299FB5F0C42F759B217`.
   All 26 Qalam tests also passed.
+- [x] 7.3.6 Create the standalone Linux AppImage under the Windows installer
+  contract (Qalam + Qt + internal Baa-LSP only, no external tools, no `PATH`
+  changes) and verify it in a fresh Ubuntu 24.04 container without Qt:
+  checksum, contents below an Arabic path with spaces, no unresolved libraries,
+  a Baa-LSP `initialize` handshake, a native window under Xvfb with the
+  internal server running, and no server left after Qalam exits. Receipt:
+  [run 37790641394](https://github.com/OmarAglan/Qalam-IDE/actions/runs/37790641394)
+  at commit `68632034da5fbc8c5d9e8f496cc3796067a3b80d`.
+- [ ] 7.3.7 Manual visual review of the installed Windows and Linux packages
+  (RTL layout, Arabic shaping, terminal panel, themes, high DPI)
 
 ---
 
