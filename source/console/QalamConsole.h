@@ -25,6 +25,9 @@ public:
     void setConsoleRTL();               // force RTL on widgets
     void appendPlainTextThreadSafe(const QString &text); // thread-safe append
     void beginTask(const QString &title);
+    void setUseArbSh(bool useArbSh);    // choose the shell profile and restart
+    bool usesArbSh() const { return m_arbshActive; }
+    static QString findArbSh();         // QALAM_ARBSH_PATH, then PATH
 
 signals:
     void commandEntered(const QString &cmd); // emitted when user enters command
@@ -47,6 +50,7 @@ private:
     QToolButton *m_clearButton{};
     QToolButton *m_restartButton{};
     QToolButton *m_stopButton{};
+    QToolButton *m_shellButton{};
     QProcess *m_process{};
     QTimer *m_flushTimer{};
 
@@ -62,6 +66,9 @@ private:
     // autoscroll
     bool m_autoscroll{};
     bool m_expectedStop{};
+    bool m_arbshActive{};
+
+    QString shellTitle() const;
 
     // helpers
     void appendAnsiText(const QString &text);

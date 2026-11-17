@@ -27,6 +27,7 @@ namespace Constants {
     const QString SettingsKeyTakweenPath = "takweenPath";
     const QString SettingsKeyNazmPath = "nazmPath";
     const QString SettingsKeyLanguageServerPath = "baaLspPath";
+    const QString SettingsKeyConsoleShell = "consoleShell"; // "system" or "arbsh"
     const QString SettingsKeyAnalysisDelay = "analysisDelayMs";
     const QString SettingsKeySidebarWidth = "sidebarWidth";
     const QString SettingsKeyPanelHeight = "panelHeight";

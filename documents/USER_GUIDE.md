@@ -97,6 +97,13 @@ and program output without opening a separate Windows console window.
 - Use `Ctrl+L` to clear the console.
 - Command history is available using the Up/Down keys.
 - The console runs your default shell (cmd.exe on Windows, bash on Linux).
+  The **الصدفة** button switches it to **أربش** (ArbSh), the Arabic shell, and
+  Qalam remembers the choice. Qalam finds `arbsh` on `PATH` (the Baa Developer
+  Kit installs it there) or at `QALAM_ARBSH_PATH`, and falls back to the system
+  shell with a note if it is missing. ArbSh runs on pipes with the Eco tools
+  on its `PATH`, so `تشغيل` builds and runs a Baa file or Takween project from
+  the panel; the prompt row is its input line, and full-screen programs and
+  Tab completion still need the standalone ArbSh terminal.
 - The session bar reports whether the shell or program is starting, ready,
   running, stopped, or failed. Its controls clear, stop, or restart the shell.
 - During F5 execution, the prompt row sends typed input directly to the running

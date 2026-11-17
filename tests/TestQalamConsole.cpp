@@ -1,4 +1,5 @@
 #include "QalamConsole.h"
+#include "Constants.h"
 
 #include <QPlainTextEdit>
 #include <QFrame>
@@ -38,6 +39,8 @@ private slots:
     void resetsFormattingAndClearsPendingSequences();
     void boundsLargeOutputWithoutLosingTheTail();
     void presentsAnIntegratedInteractiveTerminal();
+    void fallsBackToTheSystemShellWithoutArbSh();
+    void startsTheArbShProfileWhenSelected();
 };
 
 void TestQalamConsole::preservesArabicAcrossSplitAnsiSequences()
@@ -174,6 +177,44 @@ void TestQalamConsole::presentsAnIntegratedInteractiveTerminal()
     QVERIFY(not consoleOutput(console)->toPlainText().isEmpty());
     clearButton->click();
     QVERIFY(consoleOutput(console)->toPlainText().isEmpty());
+}
+
+void TestQalamConsole::fallsBackToTheSystemShellWithoutArbSh()
+{
+    qputenv("QALAM_ARBSH_PATH", QByteArrayLiteral("/لا/يوجد/arbsh"));
+    Constants::settings().setValue(Constants::SettingsKeyConsoleShell, QStringLiteral("arbsh"));
+    QalamConsole console;
+    console.startCmd();
+    flushConsole(console);
+
+    QVERIFY(not console.usesArbSh());
+    QVERIFY(consoleOutput(console)->toPlainText().contains(QStringLiteral("لم يُعثر على أربش")));
+    QCOMPARE(console.findChild<QLabel *>(QStringLiteral("consoleSessionLabel"))->text(),
+             QStringLiteral("طرفية النظام"));
+    console.stopCmd();
+    Constants::settings().remove(Constants::SettingsKeyConsoleShell);
+    qunsetenv("QALAM_ARBSH_PATH");
+}
+
+void TestQalamConsole::startsTheArbShProfileWhenSelected()
+{
+    // Any executable stands in for arbsh; the profile choice is what is under test.
+    qputenv("QALAM_ARBSH_PATH", QCoreApplication::applicationFilePath().toUtf8());
+    QalamConsole console;
+    QVERIFY(console.findChild<QToolButton *>(QStringLiteral("consoleShellButton")));
+
+    console.setUseArbSh(true);
+    QVERIFY(console.usesArbSh());
+    QCOMPARE(Constants::settings().value(Constants::SettingsKeyConsoleShell).toString(),
+             QStringLiteral("arbsh"));
+    QCOMPARE(console.findChild<QLabel *>(QStringLiteral("consoleSessionLabel"))->text(),
+             QStringLiteral("أربش"));
+
+    console.setUseArbSh(false);
+    QVERIFY(not console.usesArbSh());
+    console.stopCmd();
+    Constants::settings().remove(Constants::SettingsKeyConsoleShell);
+    qunsetenv("QALAM_ARBSH_PATH");
 }
 
 QTEST_MAIN(TestQalamConsole)

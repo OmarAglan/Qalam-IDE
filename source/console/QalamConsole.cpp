@@ -1,6 +1,7 @@
 #include "QalamConsole.h"
 #include "EmbeddedProcess.h"
 #include "Constants.h"
+#include "tooling/ToolchainDiscovery.h"
 #include "ui/QalamTheme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -16,6 +17,10 @@
 #include <QTextBlock>
 #include <QTextOption>
 #include <QProcessEnvironment>
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QMenu>
+#include <QStandardPaths>
 #include <utility>
 
 namespace {
@@ -85,6 +90,7 @@ QalamConsole::QalamConsole(QWidget *parent)
     m_clearButton(new QToolButton(this)),
     m_restartButton(new QToolButton(this)),
     m_stopButton(new QToolButton(this)),
+    m_shellButton(new QToolButton(this)),
     m_process(new QProcess(this)),
     m_flushTimer(new QTimer(this)),
     m_historyIndex(-1),
@@ -103,6 +109,7 @@ QalamConsole::QalamConsole(QWidget *parent)
     m_clearButton->setObjectName(QStringLiteral("consoleClearButton"));
     m_restartButton->setObjectName(QStringLiteral("consoleRestartButton"));
     m_stopButton->setObjectName(QStringLiteral("consoleStopButton"));
+    m_shellButton->setObjectName(QStringLiteral("consoleShellButton"));
     m_output->setReadOnly(true);
     m_output->setUndoRedoEnabled(false);
     m_output->setWordWrapMode(QTextOption::WordWrap);
@@ -144,6 +151,16 @@ QalamConsole::QalamConsole(QWidget *parent)
                         QStringLiteral(":/icons/resources/stop.svg"),
                         QStringLiteral("إيقاف العملية الحالية"));
 
+    auto *shellMenu = new QMenu(m_shellButton);
+    shellMenu->addAction(QStringLiteral("طرفية النظام"), this, [this]() { setUseArbSh(false); });
+    shellMenu->addAction(QStringLiteral("أربش"), this, [this]() { setUseArbSh(true); });
+    m_shellButton->setMenu(shellMenu);
+    m_shellButton->setPopupMode(QToolButton::InstantPopup);
+    m_shellButton->setAutoRaise(true);
+    m_shellButton->setCursor(Qt::PointingHandCursor);
+    m_shellButton->setToolTip(QStringLiteral("اختيار الصدفة"));
+    m_shellButton->setText(QStringLiteral("الصدفة"));
+
     setStyleSheet(QalamTheme::consoleStyleSheet());
 
     auto *lay = new QVBoxLayout(this);
@@ -160,6 +177,7 @@ QalamConsole::QalamConsole(QWidget *parent)
     toolbarLayout->addWidget(m_clearButton);
     toolbarLayout->addWidget(m_stopButton);
     toolbarLayout->addWidget(m_restartButton);
+    toolbarLayout->addWidget(m_shellButton);
     toolbarLayout->addStretch(1);
     toolbarLayout->addWidget(m_stateLabel);
     toolbarLayout->addWidget(m_sessionLabel);
@@ -190,7 +208,7 @@ QalamConsole::QalamConsole(QWidget *parent)
     connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &QalamConsole::processFinished);
     connect(m_process, &QProcess::started, this, [this]() {
-        setSessionState(QStringLiteral("طرفية النظام"),
+        setSessionState(shellTitle(),
                         QStringLiteral("● جاهزة"),
                         QStringLiteral("ready"));
         m_input->setPlaceholderText(QStringLiteral("اكتب أمرًا ثم اضغط إدخال"));
@@ -198,11 +216,11 @@ QalamConsole::QalamConsole(QWidget *parent)
     connect(m_process, &QProcess::errorOccurred, this,
             [this](QProcess::ProcessError error) {
         if (error != QProcess::FailedToStart) return;
-        setSessionState(QStringLiteral("طرفية النظام"),
+        setSessionState(shellTitle(),
                         QStringLiteral("● تعذر البدء"),
                         QStringLiteral("error"));
         appendPlainTextThreadSafe(
-            QStringLiteral("تعذر تشغيل طرفية النظام: %1\n").arg(m_process->errorString()));
+            QStringLiteral("تعذر تشغيل %1: %2\n").arg(shellTitle(), m_process->errorString()));
     });
 
     connect(m_input, &QLineEdit::returnPressed, this, &QalamConsole::onInputReturn);
@@ -210,7 +228,7 @@ QalamConsole::QalamConsole(QWidget *parent)
     connect(m_restartButton, &QToolButton::clicked, this, &QalamConsole::restartShell);
     connect(m_stopButton, &QToolButton::clicked, this, [this]() {
         stopCmd();
-        setSessionState(QStringLiteral("طرفية النظام"),
+        setSessionState(shellTitle(),
                         QStringLiteral("● متوقفة"),
                         QStringLiteral("stopped"));
     });
@@ -232,7 +250,29 @@ void QalamConsole::startCmd()
     if (m_process->state() != QProcess::NotRunning) return;
 
     m_expectedStop = false;
-    setSessionState(QStringLiteral("طرفية النظام"),
+    m_arbshActive = false;
+    if (Constants::settings().value(Constants::SettingsKeyConsoleShell).toString()
+        == QStringLiteral("arbsh")) {
+        const QString arbsh = findArbSh();
+        if (arbsh.isEmpty()) {
+            appendPlainTextThreadSafe(QStringLiteral(
+                "لم يُعثر على أربش (arbsh) في PATH أو QALAM_ARBSH_PATH؛ تُستخدم طرفية النظام.\n"));
+        } else {
+            m_arbshActive = true;
+        }
+        if (m_arbshActive) {
+            setSessionState(shellTitle(), QStringLiteral("● جارٍ البدء"), QStringLiteral("busy"));
+            // ArbSh on pipes writes logical-order text and Qalam's input row is its prompt.
+            QProcessEnvironment env = ToolchainDiscovery::processEnvironment(
+                QCoreApplication::applicationDirPath());
+            env.insert("TERM", "dumb");
+            m_process->setProcessEnvironment(env);
+            m_process->start(arbsh, {QStringLiteral("--interactive")});
+            return;
+        }
+    }
+
+    setSessionState(shellTitle(),
                     QStringLiteral("● جارٍ البدء"),
                     QStringLiteral("busy"));
     m_input->setPlaceholderText(QStringLiteral("اكتب أمرًا ثم اضغط إدخال"));
@@ -337,13 +377,34 @@ void QalamConsole::processFinished(int code, QProcess::ExitStatus status)
     }
 
     const bool crashed = status == QProcess::CrashExit;
-    setSessionState(QStringLiteral("طرفية النظام"),
+    setSessionState(shellTitle(),
                     crashed ? QStringLiteral("● توقفت بخطأ")
                             : QStringLiteral("● انتهت"),
                     crashed ? QStringLiteral("error")
                             : QStringLiteral("stopped"));
     appendPlainTextThreadSafe(
-        QStringLiteral("\nانتهت طرفية النظام (رمز الخروج %1).\n").arg(code));
+        QStringLiteral("\nانتهت %1 (رمز الخروج %2).\n").arg(shellTitle()).arg(code));
+}
+
+QString QalamConsole::shellTitle() const
+{
+    return m_arbshActive ? QStringLiteral("أربش") : QStringLiteral("طرفية النظام");
+}
+
+QString QalamConsole::findArbSh()
+{
+    const QString configured = qEnvironmentVariable("QALAM_ARBSH_PATH").trimmed();
+    if (not configured.isEmpty()) {
+        return QFileInfo(configured).isExecutable() ? configured : QString();
+    }
+    return QStandardPaths::findExecutable(QStringLiteral("arbsh"));
+}
+
+void QalamConsole::setUseArbSh(bool useArbSh)
+{
+    Constants::settings().setValue(Constants::SettingsKeyConsoleShell,
+                                   useArbSh ? QStringLiteral("arbsh") : QStringLiteral("system"));
+    restartShell();
 }
 
 void QalamConsole::restartShell()
@@ -388,6 +449,8 @@ void QalamConsole::onInputReturn()
 // appendPlainTextThreadSafe(cmd + "\n");
 #if defined(Q_OS_WIN)
     appendPlainTextThreadSafe(cmd + "\n");
+#else
+    if (m_arbshActive) appendPlainTextThreadSafe(cmd + "\n");
 #endif
 
     // send to process (CRLF on Windows)
